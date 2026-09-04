@@ -38,7 +38,7 @@ constexpr int nodeKindCount = 0
 
 const char *nodeKindName(NodeKind kind);
 
-enum NodeFlags : uint16_t {
+enum NodeFlags : uint32_t {
   FLAG_NONE = 0,
   /** Node synthesized by error recovery for something the source lacks. */
   FLAG_MISSING = 1 << 0,
@@ -67,15 +67,21 @@ enum NodeFlags : uint16_t {
   FLAG_GENERATOR = 1 << 14,
   /** Question-dot chain (`a?.b`, `a?.[b]`, `a?.()`). */
   FLAG_OPTIONAL_CHAIN = 1 << 15,
+  /** Statement ended by automatic semicolon insertion rather than a `;`. */
+  FLAG_ASI = 1 << 16,
+  /** `public`, `private`, `protected` on a member or constructor parameter. */
+  FLAG_PUBLIC = 1 << 17,
+  FLAG_PRIVATE = 1 << 18,
+  FLAG_PROTECTED = 1 << 19,
 };
 
 inline NodeFlags operator|(NodeFlags a, NodeFlags b)
 {
-  return NodeFlags(uint16_t(a) | uint16_t(b));
+  return NodeFlags(uint32_t(a) | uint32_t(b));
 }
-inline bool hasFlags(uint16_t flags, NodeFlags test)
+inline bool hasFlags(uint32_t flags, NodeFlags test)
 {
-  return (flags & uint16_t(test)) != 0;
+  return (flags & uint32_t(test)) != 0;
 }
 
 using NodeId = uint32_t;
@@ -84,7 +90,7 @@ constexpr NodeId kNoNode = 0xffffffffu;
 /** One grammar-tree node. Children are a range into the tree's shared id vector. */
 struct Node {
   NodeKind kind;
-  uint16_t flags = FLAG_NONE;
+  uint32_t flags = FLAG_NONE;
   NodeId parent = kNoNode;
   /** Index into the shared child-id vector; children are firstChild..+childCount. */
   uint32_t firstChild = 0;

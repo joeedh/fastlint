@@ -275,10 +275,24 @@ Still open in 3.2:
 - [~] ASI rules (restricted productions: `return`, `throw`, `break`,
   `continue`, postfix `++/--`, arrow `=>`, `yield`, `async`) — done for the
   productions implemented.
+  - [x] `do … while (x)` takes ASI after `)` without a line break.
+  - [x] Statements ended by ASI carry `FLAG_ASI`, so rules can tell a
+    written `;` from an inserted one from a missing one (diagnostic).
 - [ ] JSX (`.jsx`/`.tsx`), JS mode (`.js` incl. JSDoc *ranges* only, no
   JSDoc parsing yet).
 - [~] Error recovery: `Error`/`Missing` nodes, sync sets per production,
   no infinite loops on garbage (basic level done).
+  - [x] Every repetition goes through `parseList`/`parseDelimitedList`
+    (parser/internal.h); the loop owns progress, productions never unwind.
+  - [x] Sync sets per `ListKind` in parser/lists.cc; a token an enclosing
+    list accepts ends the inner list, anything else is skipped as an
+    `ErrorNode` with TS's "X expected" code.
+  - [x] Diagnostics at the same offset as the previous one are dropped, so
+    an abort through several lists reports once.
+  - [ ] Real-world corpus (`parser.real_world_ts_code`) still fails on
+    grammar gaps, not recovery: `x as T`/`satisfies`, `new Set<T>()` type
+    arguments, function types `(a) => T` in type position, and the
+    cascades that follow them.
 - [ ] Diagnostics: TS-compatible codes where practical.
 
 ### 3.3 Grammar tree representation

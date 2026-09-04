@@ -39,21 +39,39 @@ uint32_t Parser::expect(TokenKind k)
   return kNoToken;
 }
 
-uint32_t Parser::expectSemicolon()
+bool Parser::canInsertSemicolon() const
+{
+  return is(TokenKind::EndOfFile) || is(TokenKind::CloseBraceToken) || hasPrecedingLineBreak();
+}
+
+Semicolon Parser::expectSemicolon()
 {
   if (eat(TokenKind::SemicolonToken)) {
-    return pos() - 1;
+    return Semicolon::Written;
   }
-  // ASI: end of file, `}` or a line break before the next token.
-  if (is(TokenKind::EndOfFile) || is(TokenKind::CloseBraceToken) || hasPrecedingLineBreak()) {
-    return kNoToken;
+  if (canInsertSemicolon()) {
+    return Semicolon::Inserted;
   }
   errorAt(token(), 1005, string("';' expected."));
-  return kNoToken;
+  return Semicolon::Missing;
+}
+
+NodeId Parser::endStatement(NodeId node)
+{
+  if (expectSemicolon() == Semicolon::Inserted) {
+    m_tree->node(node).flags |= FLAG_ASI;
+  }
+  return m_tree->endNode(node, pos());
 }
 
 void Parser::error(uint32_t code, uint32_t offset, uint32_t length, string message)
 {
+  // Recovery can fail several productions at one token; the first report
+  // there is the useful one.
+  const Vector<Diagnostic> &items = m_diagnostics.items();
+  if (!items.isEmpty() && items[items.size() - 1].offset == offset) {
+    return;
+  }
   m_diagnostics.report(code, offset, length, std::move(message));
 }
 
@@ -114,16 +132,7 @@ void Parser::parseFile(GrammarTree &tree)
   m_scanner.scanOne();
   NodeId root = tree.beginNode(NodeKind::SourceFile, pos());
 
-  while (!is(TokenKind::EndOfFile)) {
-    Token startToken = token();
-    NodeId statement = parseStatement();
-    if (statement != kNoNode) {
-      tree.addChild(statement);
-    } else {
-      errorAt(startToken, 1005, string("Statement expected."));
-      break;
-    }
-  }
+  parseList(ListKind::SourceElements, [&] { return parseStatement(); });
   tree.endNode(root, m_scanner.tokenIndex() + 1);
   tree.setRoot(root);
 

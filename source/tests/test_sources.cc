@@ -1,3 +1,4 @@
+#include "util/alloc.h"
 #include "util/vector.h"
 #include "util/string.h"
 #include <cstdio>
@@ -34,6 +35,11 @@ namespace fastlint::test {
     }
 
     void loadTestSources() {
+        if (!tsTestSources.isEmpty()) {
+            return;
+        }
+        // The sources live for the whole run, so the leak tracker skips them.
+        litestl::alloc::PermanentGuard guard;
         loadTestSource("ts_test_struct_intern2.ts");
         loadTestSource("ts_test_base.ts");
         loadTestSource("ts_test_nodes.ts");

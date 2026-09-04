@@ -123,35 +123,7 @@ NodeId Parser::parsePrimaryType()
   case TokenKind::OpenBracketToken: {
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::TupleType, firstToken);
-    while (!is(TokenKind::CloseBracketToken) && !is(TokenKind::EndOfFile)) {
-      if (eat(TokenKind::DotDotDotToken)) {
-        NodeId rest = m_tree->beginNode(NodeKind::RestType, pos() - 1);
-        m_tree->addChild(parseType());
-        m_tree->addChild(m_tree->endNode(rest, pos()));
-      }
-      else {
-        if (isAlwaysIdentifier(kind()) && peekKind() == TokenKind::ColonToken) {
-          // named tuple member: `name: T`
-          uint32_t nameIndex = pos();
-          NodeId member = m_tree->beginNode(NodeKind::NamedTupleMember, nameIndex);
-          m_scanner.scanOne();
-          m_scanner.scanOne();
-          m_tree->addChild(parseType());
-          m_tree->addChild(m_tree->endNode(member, pos()));
-        }
-        else {
-          bool optionalType = eat(TokenKind::QuestionToken);
-          NodeId element = m_tree->beginNode(optionalType ? NodeKind::OptionalType
-                                                           : NodeKind::TypeReference,
-                                              pos());
-          m_tree->addChild(parseType());
-          m_tree->addChild(m_tree->endNode(element, pos()));
-        }
-      }
-      if (!eat(TokenKind::CommaToken)) {
-        break;
-      }
-    }
+    parseDelimitedList(ListKind::TupleElements, [&] { return parseTupleElement(); });
     (void)expect(TokenKind::CloseBracketToken);
     return m_tree->endNode(node, pos());
   }
@@ -193,16 +165,7 @@ NodeId Parser::parsePrimaryType()
         m_tree->addChild(parseType());
       }
     }
-    while (!is(TokenKind::CloseBraceToken) && !is(TokenKind::EndOfFile)) {
-      uint32_t before = pos();
-      m_tree->addChild(parseTypeMember(false));
-      if (pos() == before) {
-        errorAt(token(), 1174, string("Member expected."));
-        NodeId errorNode = m_tree->beginNode(NodeKind::ErrorNode, before);
-        m_scanner.scanOne();
-        m_tree->addChild(m_tree->endNode(errorNode, pos()));
-      }
-    }
+    parseList(ListKind::TypeMembers, [&] { return parseTypeMember(false); });
     (void)expect(TokenKind::CloseBraceToken);
     return m_tree->endNode(node, pos());
   }
@@ -326,6 +289,30 @@ NodeId Parser::parsePrimaryType()
   }
 }
 
+NodeId Parser::parseTupleElement()
+{
+  if (is(TokenKind::DotDotDotToken)) {
+    NodeId rest = m_tree->beginNode(NodeKind::RestType, pos());
+    m_scanner.scanOne();
+    m_tree->addChild(parseType());
+    return m_tree->endNode(rest, pos());
+  }
+  if (isAlwaysIdentifier(kind()) && peekKind() == TokenKind::ColonToken) {
+    // named tuple member: `name: T`
+    NodeId member = m_tree->beginNode(NodeKind::NamedTupleMember, pos());
+    m_scanner.scanOne();
+    m_scanner.scanOne();
+    m_tree->addChild(parseType());
+    return m_tree->endNode(member, pos());
+  }
+  uint32_t firstToken = pos();
+  bool optionalType = eat(TokenKind::QuestionToken);
+  NodeId element = m_tree->beginNode(
+      optionalType ? NodeKind::OptionalType : NodeKind::TypeReference, firstToken);
+  m_tree->addChild(parseType());
+  return m_tree->endNode(element, pos());
+}
+
 NodeId Parser::parseImportTypeRest(uint32_t firstToken)
 {
   (void)expect(TokenKind::OpenParenToken);
@@ -376,28 +363,33 @@ NodeId Parser::parseTypeParameters()
   uint32_t firstToken = pos();
   (void)expect(TokenKind::LessThanToken);
   NodeId node = m_tree->beginNode(NodeKind::TypeParameter, firstToken); // wrapper
-  while (!is(TokenKind::GreaterThanToken) && !is(TokenKind::EndOfFile)) {
-    uint32_t paramFirst = pos();
-    NodeId param = m_tree->beginNode(NodeKind::TypeParameter, paramFirst);
-    if (eat(TokenKind::ConstKeyword)) {
-      // `const T` type parameter
-    }
-    if (isAlwaysIdentifier(kind())) {
-      m_scanner.scanOne();
-    }
-    if (eat(TokenKind::ExtendsKeyword)) {
-      m_tree->addChild(parseType());
-    }
-    if (eat(TokenKind::EqualsToken)) {
-      m_tree->addChild(parseType());
-    }
-    m_tree->addChild(m_tree->endNode(param, pos()));
-    if (!eat(TokenKind::CommaToken)) {
-      break;
-    }
-  }
+  parseDelimitedList(ListKind::TypeParameters, [&] { return parseTypeParameter(); });
   (void)expect(TokenKind::GreaterThanToken);
   return m_tree->endNode(node, pos());
+}
+
+NodeId Parser::parseTypeParameter()
+{
+  NodeId param = m_tree->beginNode(NodeKind::TypeParameter, pos());
+  if (eat(TokenKind::ConstKeyword)) {
+    // `const T` type parameter
+  }
+  // Variance annotations: `in T`, `out T`, `in out T`.
+  while (is(TokenKind::InKeyword) || (is(TokenKind::OutKeyword) && wordFollows())) {
+    m_scanner.scanOne();
+  }
+  if (isAlwaysIdentifier(kind())) {
+    m_scanner.scanOne();
+  } else {
+    errorAt(token(), 1003, string("Identifier expected."));
+  }
+  if (eat(TokenKind::ExtendsKeyword)) {
+    m_tree->addChild(parseType());
+  }
+  if (eat(TokenKind::EqualsToken)) {
+    m_tree->addChild(parseType());
+  }
+  return m_tree->endNode(param, pos());
 }
 
 NodeId Parser::parseTypeArguments(bool speculative)
@@ -411,13 +403,7 @@ NodeId Parser::parseTypeArgumentList()
   uint32_t firstToken = pos();
   (void)expect(TokenKind::LessThanToken);
   NodeId node = m_tree->beginNode(NodeKind::TypeReference, firstToken); // wrapper
-  m_tree->node(node).kind = NodeKind::TypeReference;
-  while (!is(TokenKind::GreaterThanToken) && !is(TokenKind::EndOfFile)) {
-    m_tree->addChild(parseType());
-    if (!eat(TokenKind::CommaToken)) {
-      break;
-    }
-  }
+  parseDelimitedList(ListKind::TypeArguments, [&] { return parseType(); });
   (void)expect(TokenKind::GreaterThanToken);
   return m_tree->endNode(node, pos());
 }
@@ -439,7 +425,8 @@ NodeId Parser::parseTypeMember(bool isInterface)
     }
     return m_tree->endNode(member, pos());
   }
-  if (eat(TokenKind::NewKeyword) && peekKind() == TokenKind::OpenParenToken) {
+  if (is(TokenKind::NewKeyword) && peekKind() == TokenKind::OpenParenToken) {
+    m_scanner.scanOne();
     NodeId member = m_tree->beginNode(NodeKind::ConstructSignature, firstToken);
     (void)expect(TokenKind::OpenParenToken);
     parseParameterList(false, false);
@@ -496,17 +483,7 @@ NodeId Parser::parseTypeLiteralBody()
   uint32_t firstToken = pos();
   (void)expect(TokenKind::OpenBraceToken);
   NodeId node = m_tree->beginNode(NodeKind::TypeLiteral, firstToken);
-  while (!is(TokenKind::CloseBraceToken) && !is(TokenKind::EndOfFile)) {
-    uint32_t before = pos();
-    m_tree->addChild(parseTypeMember(true));
-    if (pos() == before) {
-      // No progress on garbage: consume one token as an error node.
-      errorAt(token(), 1174, string("Member expected."));
-      NodeId errorNode = m_tree->beginNode(NodeKind::ErrorNode, before);
-      m_scanner.scanOne();
-      m_tree->addChild(m_tree->endNode(errorNode, pos()));
-    }
-  }
+  parseList(ListKind::TypeMembers, [&] { return parseTypeMember(true); });
   (void)expect(TokenKind::CloseBraceToken);
   return m_tree->endNode(node, pos());
 }

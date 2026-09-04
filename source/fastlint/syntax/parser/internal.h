@@ -117,3 +117,55 @@ inline bool isAlwaysIdentifier(TokenKind kind)
 }
 
 } // namespace fastlint::syntax::detail
+
+namespace fastlint::syntax {
+
+// Both loops test for an element before a terminator, so a list whose
+// terminator set is "anything else" (type arguments) still parses elements.
+template <typename Fn> void Parser::parseList(ListKind list, Fn &&element)
+{
+  uint32_t savedLists = m_lists;
+  m_lists |= 1u << uint32_t(list);
+  while (!is(TokenKind::EndOfFile)) {
+    uint32_t before = pos();
+    if (isListElement(list)) {
+      m_tree->addChild(element());
+      if (pos() != before) {
+        continue;
+      }
+    }
+    if (isListTerminator(list) || !skipOrAbort(list)) {
+      break;
+    }
+  }
+  m_lists = savedLists;
+}
+
+template <typename Fn> void Parser::parseDelimitedList(ListKind list, Fn &&element)
+{
+  uint32_t savedLists = m_lists;
+  m_lists |= 1u << uint32_t(list);
+  while (!is(TokenKind::EndOfFile)) {
+    uint32_t before = pos();
+    if (isListElement(list)) {
+      m_tree->addChild(element());
+      if (eat(TokenKind::CommaToken)) {
+        continue;
+      }
+      if (isListTerminator(list)) {
+        break;
+      }
+      if (pos() != before) {
+        errorAt(token(), 1005, litestl::util::string("',' expected."));
+        continue;
+      }
+    }
+    if (isListTerminator(list) || !skipOrAbort(list)) {
+      break;
+    }
+  }
+  m_lists = savedLists;
+}
+
+} // namespace fastlint::syntax
+

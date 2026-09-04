@@ -34,6 +34,15 @@ struct Parsed {
   }
 };
 
+size_t count(const std::string &text, std::string_view needle)
+{
+  size_t n = 0;
+  for (size_t at = text.find(needle); at != std::string::npos; at = text.find(needle, at + 1)) {
+    ++n;
+  }
+  return n;
+}
+
 } // namespace
 
 TEST(parser, expression_precedence_shape)
@@ -43,7 +52,7 @@ TEST(parser, expression_precedence_shape)
   // 1 + (2 * 3): the outer BinaryExpression's right child nests.
   CHECK_EQ(p.text(),
            "(SourceFile\n"
-           "  (ExpressionStatement\n"
+           "  (ExpressionStatement : asi\n"
            "    (BinaryExpression \"+\"\n"
            "      (NumericLiteral \"1\"\n"
            "      )\n"
@@ -234,9 +243,113 @@ TEST(parser, real_world_ts_code)
     fflush(stdout);
     Parsed p(ts.source);
     CHECK(p.ok());
-    //printf("%s\n", ts.source.c_str());
+    for (const Diagnostic &d : p.diagnostics.items()) {
+      printf("  %s:%u: TS%u %s\n", ts.path.c_str(), p.tree.lineOf(d.offset), d.code,
+             d.message.c_str());
+    }
     fflush(stdout);
   }
 }
 #endif
 
+// ------------------------------------------------------------ error recovery
+
+TEST(parser, class_body_recovers_after_bad_token)
+{
+  Parsed p("class A { a() {} ) b() {} }\nlet z = 1;");
+  CHECK(!p.ok());
+  // The stray token becomes an ErrorNode; later members and statements survive.
+  CHECK_EQ(count(p.text(), "(MethodDeclaration"), size_t(2));
+  CHECK(p.text().find("(ErrorNode") != std::string::npos);
+  CHECK(p.text().find("(VariableStatement") != std::string::npos);
+}
+
+TEST(parser, class_cut_off_at_eof)
+{
+  Parsed p("class A { a() {");
+  CHECK(!p.ok());
+  CHECK(p.text().find("(ClassDeclaration") != std::string::npos);
+  CHECK(p.text().find("(MethodDeclaration") != std::string::npos);
+}
+
+TEST(parser, unclosed_parameter_list_ends_at_class_brace)
+{
+  Parsed p("class A { foo( }\nlet z = 1;");
+  CHECK(!p.ok());
+  CHECK(p.text().find("(MethodDeclaration") != std::string::npos);
+  CHECK(p.text().find("(VariableStatement") != std::string::npos);
+}
+
+TEST(parser, decorator_with_bad_expression)
+{
+  Parsed p("@) class A {}");
+  CHECK(!p.ok());
+  CHECK(p.text().find("(Decorator") != std::string::npos);
+  CHECK(p.text().find("(ClassDeclaration") != std::string::npos);
+}
+
+TEST(parser, unclosed_arguments_stop_at_semicolon)
+{
+  Parsed p("f(a, b;\nlet z = 1;");
+  CHECK(!p.ok());
+  CHECK(p.text().find("(CallExpression") != std::string::npos);
+  CHECK(p.text().find("(VariableStatement") != std::string::npos);
+}
+
+TEST(parser, semicolon_class_element)
+{
+  Parsed p("class A { ; a() {} ; }");
+  CHECK(p.ok());
+  CHECK_EQ(count(p.text(), "(SemicolonClassElement"), size_t(2));
+}
+
+TEST(parser, keyword_property_names)
+{
+  Parsed p("const o = { default: 1, delete: 2 }; class A { if() {} } type T = { for: 1 };");
+  CHECK(p.ok());
+}
+
+TEST(parser, class_visibility_modifiers)
+{
+  Parsed p("class A { private x = 1; protected y() {} public z: number; constructor(private w: number) {} }");
+  CHECK(p.ok());
+  CHECK(p.text().find("(PropertyDeclaration : private") != std::string::npos);
+  CHECK(p.text().find("(MethodDeclaration : protected") != std::string::npos);
+  CHECK(p.text().find("(PropertyDeclaration : public") != std::string::npos);
+  CHECK(p.text().find("(Parameter : private") != std::string::npos);
+}
+
+// ---------------------------------------------------------------------- ASI
+
+TEST(parser, asi_flag_records_insertion)
+{
+  Parsed p("let a = 1\nlet b = 2;");
+  CHECK(p.ok());
+  CHECK_EQ(count(p.text(), "(VariableStatement : asi"), size_t(1));
+  // The written `;` is a token of the statement itself.
+  CHECK_EQ(count(p.text(), "(VariableStatement \";\""), size_t(1));
+}
+
+TEST(parser, missing_semicolon_is_an_error_not_asi)
+{
+  Parsed p("let a = 1 let b = 2");
+  CHECK(!p.ok());
+  // The first statement has no ASI flag; the second ends at EOF by ASI.
+  CHECK(p.text().find("(VariableStatement\n") < p.text().find("(VariableStatement : asi"));
+}
+
+TEST(parser, do_while_asi_needs_no_line_break)
+{
+  Parsed p("do x(); while (y) z();");
+  CHECK(p.ok());
+  CHECK(p.text().find("(DoStatement : asi") != std::string::npos);
+  CHECK_EQ(count(p.text(), "(ExpressionStatement"), size_t(2));
+}
+
+TEST(parser, written_semicolon_is_inside_the_statement)
+{
+  Parsed p("do x(); while (y);");
+  CHECK(p.ok());
+  CHECK(p.text().find("(DoStatement : asi") == std::string::npos);
+  CHECK(p.text().find("\")\" \";\"") != std::string::npos);
+}

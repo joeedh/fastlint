@@ -84,6 +84,18 @@ struct TreeWriter {
         if (node.flags & FLAG_OPTIONAL_CHAIN) {
           text(" optional-chain");
         }
+        if (node.flags & FLAG_ASI) {
+          text(" asi");
+        }
+        if (node.flags & FLAG_PUBLIC) {
+          text(" public");
+        }
+        if (node.flags & FLAG_PRIVATE) {
+          text(" private");
+        }
+        if (node.flags & FLAG_PROTECTED) {
+          text(" protected");
+        }
       }
       // Tokens not owned by any child belong to this node directly.
       uint32_t tokenEnd = node.firstToken + node.tokenCount;

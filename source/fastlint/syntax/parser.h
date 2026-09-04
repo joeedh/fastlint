@@ -5,15 +5,15 @@
 // ranges are indices into the final token array; the tree's token/trivia/
 // line-start arrays are copied out of the scanner once parsing finishes, so
 // speculation (scanner rewind) needs no special handling.
+//
+// Every production returns a node. Recovery happens inside the list loops
+// (`parseList`/`parseDelimitedList`), which own progress: a token that fits
+// no element of the current list is skipped as an ErrorNode, or ends the list
+// when an enclosing list would accept it. Productions never unwind.
 
 #include "fastlint/syntax/diagnostics.h"
 #include "fastlint/syntax/scanner.h"
 #include "fastlint/syntax/tree.h"
-#include "fastlint/syntax/parser/errors.h"
-#include "fastlint/syntax/parser/errors.h"
-
-using litestl::util::ValueOrError;
-using litestl::util::SuccessOrError;
 
 #include <cstdint>
 
@@ -21,6 +21,42 @@ namespace fastlint::syntax {
 
 /** Sentinel token index (same value as kNoNode, different meaning). */
 constexpr uint32_t kNoToken = 0xffffffffu;
+
+/**
+ * Bracketed or delimited list productions. Each has a sync set: which tokens
+ * start an element and which end the list. The enclosing lists' sets decide
+ * whether an unexpected token is skipped or ends the current list.
+ */
+enum class ListKind : uint8_t {
+  SourceElements,
+  BlockStatements,
+  SwitchClauses,
+  SwitchClauseStatements,
+  ClassMembers,
+  TypeMembers,
+  EnumMembers,
+  ObjectLiteralMembers,
+  ArrayLiteralMembers,
+  Arguments,
+  Parameters,
+  TypeParameters,
+  TypeArguments,
+  TupleElements,
+  ObjectBindingElements,
+  ArrayBindingElements,
+  ImportOrExportSpecifiers,
+  ImportAttributes,
+};
+
+/** How a statement was terminated. */
+enum class Semicolon : uint8_t {
+  /** A `;` token was consumed. */
+  Written,
+  /** Automatic semicolon insertion applied; no token was consumed. */
+  Inserted,
+  /** Neither; a diagnostic was reported. */
+  Missing,
+};
 
 class Parser {
 public:
@@ -63,8 +99,12 @@ private:
   bool eat(TokenKind k);
   /** Consumes and returns the token index, or reports Missing with kNoToken. */
   uint32_t expect(TokenKind k);
-  /** `;` or ASI; returns the semicolon index or kNoToken. */
-  uint32_t expectSemicolon();
+  /** True when ASI may end a statement before the current token. */
+  bool canInsertSemicolon() const;
+  /** Consumes a `;`, applies ASI, or reports that one is missing. */
+  Semicolon expectSemicolon();
+  /** Ends a statement node after its `;` (or ASI), flagging ASI on the node. */
+  NodeId endStatement(NodeId node);
   /** The keyword's spelling as an identifier, in identifier contexts. */
   bool isIdentifierKind(TokenKind k) const;
 
@@ -81,6 +121,31 @@ private:
   /** The kind of the token after the current one, via scanner rewind. */
   TokenKind peekKind();
 
+  // ----------------------------------------------------------------- lists
+
+  /** Parses elements until the list's terminator, recovering in place. */
+  template <typename Fn> void parseList(ListKind list, Fn &&element);
+  /** Comma-separated form of `parseList`; a trailing comma is accepted. */
+  template <typename Fn> void parseDelimitedList(ListKind list, Fn &&element);
+
+  bool isListElement(ListKind list);
+  bool isListTerminator(ListKind list);
+  /** True when a list other than `list` on the stack would take this token. */
+  bool enclosingListAccepts(ListKind list);
+  /** Reports the list's "expected" error, then skips one token or ends the list. */
+  bool skipOrAbort(ListKind list);
+  /** Wraps the current token in an ErrorNode and consumes it. */
+  NodeId skipTokenAsError();
+
+  bool isStartOfStatement();
+  bool isStartOfExpression();
+  bool isStartOfType();
+  bool isStartOfClassMember();
+  bool isStartOfTypeMember();
+  bool isStartOfPropertyName();
+  bool isStartOfBinding();
+  bool isStartOfParameter();
+
   // --------------------------------------------------------------- context
 
   bool m_allowAwait = false;   // top level, module, async bodies
@@ -88,6 +153,8 @@ private:
   bool m_inIteration = false;  // break/continue targets
   bool m_inSwitch = false;
   bool m_ambient = false;      // declare blocks/interfaces
+  /** Bit per `ListKind` currently being parsed. */
+  uint32_t m_lists = 0;
 
   // ---------------------------------------------------------------- helpers
 
@@ -104,7 +171,7 @@ private:
   NodeId parseExpressionStatement();
   NodeId parseVariableStatement(bool declare);
   NodeId parseFunctionDeclaration(bool asyncFlag, bool ambientFlag);
-  ParseClassLikeRet parseClassDeclaration(bool declareFlag, bool abstractFlag);
+  NodeId parseClassDeclaration(bool declareFlag, bool abstractFlag);
   NodeId parseExpressionOrLabeledStatement();
   NodeId parseIfStatement();
   NodeId parseWhileStatement();
@@ -135,29 +202,33 @@ private:
   NodeId parsePostfix();
   NodeId parseCallChain(NodeId expression);
   NodeId parseMemberName(TokenKind propertyKind);
-  ParsePrimaryRet parsePrimary();
+  NodeId parsePrimary();
   NodeId parseParenthesizedOrArrow();
-  NodeId parseArrayLiteral();
   NodeId parseObjectLiteral();
   NodeId parseTemplateLiteral(bool tagged);
   NodeId parseFunctionExpression(bool asyncFlag);
-  ParseClassLikeRet parseClassExpression();
+  NodeId parseClassExpression();
   NodeId parseArguments();
 
   // shared productions
   NodeId parseVariableDeclarationList(TokenKind keyword);
   NodeId parseVariableDeclaration(bool disallowIn);
   NodeId parseBindingPattern();  // identifier or pattern
-  NodeId parseParameterList(bool allowModifiers, bool isConstructor);
+  NodeId parseBindingElement(bool inArrayPattern);
+  /** Appends parameters to the innermost open node; there is no wrapper node. */
+  void parseParameterList(bool allowModifiers, bool isConstructor);
   NodeId parseParameter(bool allowModifiers, bool isConstructor);
   NodeId parseBlock();
   NodeId parseFunctionBody(bool allowAwait, bool allowYield);
   void parseFunctionCommon(NodeId node);
-  ParseClassLikeRet parseClassLike(NodeId node);
+  NodeId parseClassLike(NodeId node);
   NodeId parseHeritageClause(NodeKind kind);
-  ParseClassMethodRet parseClassMember();
+  NodeId parseClassMember();
   NodeId parseObjectMember();
   NodeId parsePropertyName();
+  NodeId parseEnumMember();
+  NodeId parseSwitchClause();
+  NodeId parseImportOrExportSpecifier(bool isImport);
 
   // types (TS)
   NodeId parseType();
@@ -169,8 +240,10 @@ private:
   NodeId parsePrimaryType();
   NodeId parseTypeReference();
   NodeId parseTypeParameters();
+  NodeId parseTypeParameter();
   NodeId parseTypeArguments(bool speculative);
   NodeId parseTypeArgumentList();
+  NodeId parseTupleElement();
   NodeId parseTypeMember(bool isInterface);
   NodeId parseTypeLiteralBody();
   NodeId parseImportTypeRest(uint32_t firstToken);
@@ -179,6 +252,7 @@ private:
   TokenKind peekKind2();
   bool startsTypeAlias();
   bool wordFollows();
+  bool nextHasLineBreak();
   bool letStartsDeclaration();
   NodeId missingNode(NodeKind kind, uint32_t at);
   NodeId parseBreakOrContinue(NodeKind kind, TokenKind keyword);
