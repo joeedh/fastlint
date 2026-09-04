@@ -45,13 +45,18 @@ struct ExprResult {
 
 // The decomposer deliberately compares whatever the test wrote, including a
 // signed value against an unsigned one, and `Decomposer{} << a == b` relies on
-// `<<` outranking the comparison. Both are diagnosed by clang.
+// `<<` outranking the comparison. Both are diagnosed by clang and gcc.
 #ifdef __clang__
 #define FASTLINT_DIAGNOSTIC_PUSH                                                         \
   _Pragma("clang diagnostic push")                                                       \
       _Pragma("clang diagnostic ignored \"-Wsign-compare\"")                             \
           _Pragma("clang diagnostic ignored \"-Woverloaded-shift-op-parentheses\"")
 #define FASTLINT_DIAGNOSTIC_POP _Pragma("clang diagnostic pop")
+#elif defined(__GNUC__)
+#define FASTLINT_DIAGNOSTIC_PUSH                                                         \
+  _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wsign-compare\"")    \
+      _Pragma("GCC diagnostic ignored \"-Wparentheses\"")
+#define FASTLINT_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
 #else
 #define FASTLINT_DIAGNOSTIC_PUSH
 #define FASTLINT_DIAGNOSTIC_POP

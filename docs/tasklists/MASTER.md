@@ -15,6 +15,10 @@ Environment facts (verified 2026-09-04):
   Bundled: cmake, ninja (`Common7/IDE/CommonExtensions/Microsoft/CMake/`),
   clang-format (`VC/Tools/Llvm/x64/bin`), `VC/Auxiliary/Build/vcvarsall.bat`.
   None on PATH — scripts must locate via `vswhere`.
+- Linux/WSL builds with gcc or clang. `make.ts` takes cmake, ninja and
+  clang-format off PATH there and skips vcvars; clang-format must be 20 or
+  newer, since 19 lays out a requires-expression and a wrapped `if` differently
+  and would rewrite committed sources.
 - `@pathtx/prettier` goes in as a local dev dependency (task 1.1); never rely
   on the global `prettier@3.2.5`. `make.ts format` invokes it via the local
   `node_modules/.bin`.

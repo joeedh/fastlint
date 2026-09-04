@@ -2,7 +2,7 @@ import path from "node:path";
 import type { CommandModule } from "yargs";
 import { buildPreset } from "./build.ts";
 import { presetOptions, resolvePreset, type PresetArgs } from "./lib/preset.ts";
-import { buildDir, repoRoot } from "./lib/paths.ts";
+import { buildDir, exeSuffix, repoRoot } from "./lib/paths.ts";
 import { run as spawnRun } from "./lib/spawn.ts";
 import { asanEnv } from "./lib/asan.ts";
 
@@ -27,7 +27,7 @@ export const command: CommandModule<object, Args> = {
   handler: async (argv) => {
     const preset = resolvePreset(argv);
     await buildPreset(preset, { target: "fastlint" });
-    const exe = path.join(buildDir(preset), "bin", "fastlint.exe");
+    const exe = path.join(buildDir(preset), "bin", `fastlint${exeSuffix}`);
     // With `populate--` off, tokens after `--` land in `_` behind the command
     // name rather than in the positional.
     const extra = (argv._ ?? []).slice(1).map(String);

@@ -21,11 +21,7 @@
       "name"          : "release",
       "inherits"      : "base",
       "displayName"   : "Release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE"       : "Release",
-        "CMAKE_CXX_FLAGS_RELEASE": "/O2 /Zi /DNDEBUG",
-        "CMAKE_EXE_LINKER_FLAGS" : "/DEBUG /OPT:REF /OPT:ICF"
-      }
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     },
     {
       "name"          : "relwithdebinfo",
@@ -36,21 +32,20 @@
     {
       "name"          : "asan",
       "inherits"      : "base",
-      "displayName"   : "MSVC AddressSanitizer",
+      "displayName"   : "AddressSanitizer",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE"      : "RelWithDebInfo",
-        "CMAKE_CXX_FLAGS"       : "/DWIN32 /D_WINDOWS /EHsc /fsanitize=address /Zi",
-        "CMAKE_EXE_LINKER_FLAGS": "/DEBUG /INCREMENTAL:NO"
+        "CMAKE_BUILD_TYPE"  : "RelWithDebInfo",
+        "FASTLINT_SANITIZER": "address"
       }
     },
     {
       "name"          : "clang-asan",
       "inherits"      : "base",
-      "displayName"   : "clang-cl AddressSanitizer + UBSan",
+      "displayName"   : "clang AddressSanitizer + UBSan",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE"      : "${sourceDir}/cmake/ClangAsanToolchain.cmake",
         "CMAKE_BUILD_TYPE"          : "RelWithDebInfo",
-        "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /EHsc -fsanitize=address,undefined /Oy- /Zi",
+        "FASTLINT_SANITIZER"        : "address;undefined",
         "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDLL"
       }
     }

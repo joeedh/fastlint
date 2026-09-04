@@ -1,10 +1,10 @@
 import type { CommandModule } from "yargs";
 import { table } from "./lib/log.ts";
-import { toolchain } from "./lib/toolchain.ts";
+import { isWindows, toolchain } from "./lib/toolchain.ts";
 
 export const command: CommandModule<object, { refresh: boolean }> = {
   command : "env",
-  describe: "locate the Visual Studio toolchain and cache it in .cache/env.json",
+  describe: "locate the build toolchain and cache it in .cache/env.json",
   builder: (yargs) =>
     yargs.option("refresh", {
       type    : "boolean",
@@ -13,17 +13,23 @@ export const command: CommandModule<object, { refresh: boolean }> = {
     }),
   handler: (argv) => {
     const tools = toolchain(argv.refresh);
+    const rows: [string, string][] = [];
+    if (isWindows) {
+      rows.push(["visual studio", `${tools.vsDisplayName} (${tools.vsVersion})`]);
+      rows.push(["install", tools.vsInstallPath ?? ""]);
+    } else {
+      rows.push(["platform", process.platform]);
+    }
     table(
       ["tool", "path"],
       [
-        ["visual studio", `${tools.vsDisplayName} (${tools.vsVersion})`],
-        ["install", tools.vsInstallPath],
+        ...rows,
         ["cmake", tools.cmake],
         ["ctest", tools.ctest],
         ["ninja", tools.ninja],
-        ["clang-format", tools.clangFormat],
+        ["clang-format", tools.clangFormat ?? "(not installed)"],
         ["clang-cl", tools.clangCl ?? "(not installed)"],
-        ["vcvarsall", tools.vcvarsall],
+        ...(isWindows ? [["vcvarsall", tools.vcvarsall ?? ""] as [string, string]] : []),
         ["node", tools.node],
       ]
     );

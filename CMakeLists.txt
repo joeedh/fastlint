@@ -33,6 +33,30 @@ else()
   target_compile_options(fastlint_warnings INTERFACE -Wall -Wextra -Werror)
 endif()
 
+# Release keeps debug info so a crash in a shipped build is still readable, and
+# folds identical code the debugger would otherwise duplicate.
+if(MSVC)
+  set(CMAKE_CXX_FLAGS_RELEASE "/O2 /Zi /DNDEBUG")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS_RELEASE " /DEBUG /OPT:REF /OPT:ICF")
+endif()
+
+# FASTLINT_SANITIZER is a semicolon list matching -fsanitize, set by the asan
+# presets. The flags go on every target, vendored ones included, because a
+# partially instrumented binary reports false positives.
+set(FASTLINT_SANITIZER "" CACHE STRING "sanitizers to build with, e.g. address;undefined")
+if(FASTLINT_SANITIZER)
+  string(REPLACE ";" "," FASTLINT_SANITIZER_ARG "${FASTLINT_SANITIZER}")
+  if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(/fsanitize=${FASTLINT_SANITIZER_ARG} /Zi)
+    string(APPEND CMAKE_EXE_LINKER_FLAGS " /DEBUG /INCREMENTAL:NO")
+  else()
+    add_compile_options(-fsanitize=${FASTLINT_SANITIZER_ARG} -fno-omit-frame-pointer -g)
+    if(NOT MSVC)
+      add_link_options(-fsanitize=${FASTLINT_SANITIZER_ARG})
+    endif()
+  endif()
+endif()
+
 # litestl's own CMakeLists pulls in math, io, binding and the vendored eigen and
 # lz4 trees. Its subdirectories are added individually instead so only the parts
 # we use are configured. eigen comes along because util names it as a

@@ -5,7 +5,7 @@ import { buildPreset } from "./build.ts";
 import { asanEnv } from "./lib/asan.ts";
 import { color, fail, info, step } from "./lib/log.ts";
 import { presetOptions, resolvePreset, type PresetArgs } from "./lib/preset.ts";
-import { buildDir, repoRoot } from "./lib/paths.ts";
+import { buildDir, exeSuffix, repoRoot } from "./lib/paths.ts";
 import { run } from "./lib/spawn.ts";
 
 interface Args extends PresetArgs {
@@ -25,7 +25,7 @@ interface TestReport {
   tests: { name: string; status: string; tags: string[]; durationMs: number }[];
 }
 
-/** Every built test executable, which CMake names `<suite>_tests.exe`. */
+/** Every built test executable, which CMake names `<suite>_tests`. */
 function testExecutables(dir: string): string[] {
   const out: string[] = [];
   const walk = (at: string): void => {
@@ -33,7 +33,8 @@ function testExecutables(dir: string): string[] {
     for (const entry of fs.readdirSync(at, { withFileTypes: true })) {
       const full = path.join(at, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (/_tests\.exe$/.test(entry.name)) out.push(full);
+      else if (entry.isFile() && entry.name.endsWith(`_tests${exeSuffix}`))
+        out.push(full);
     }
   };
   walk(dir);
@@ -106,7 +107,7 @@ export async function runCppTests(preset: string, argv: Args): Promise<boolean> 
   let ok = true;
 
   for (const exe of exes) {
-    const suite = path.basename(exe, ".exe").replace(/_tests$/, "");
+    const suite = path.basename(exe, exeSuffix).replace(/_tests$/, "");
     step(`test ${suite}`);
     // The runner writes its report to a file so its own stdout stays readable.
     const reportFile = path.join(dir, `${suite}.report.json`);

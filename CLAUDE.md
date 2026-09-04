@@ -24,6 +24,9 @@ built both as an N-API addon and as WASM.
 
 - Windows 11, VS 18 Community. cmake, ninja, clang-format and `vcvarsall.bat`
   ship with VS and are not on PATH; `make.ts env` locates them with `vswhere`.
+- Linux and WSL build too, with gcc or clang. `make.ts env` takes the tools off
+  PATH there; clang-format must be 20 or newer to match how the sources are
+  committed.
 - Node 24, TypeScript 7.0.2. The native compiler binary is `tsc`; its API
   server is `tsc --api`. The Go source is checked out at C:/dev/TypeScript
   (`tsc/internal/api/proto.go` is the protocol).

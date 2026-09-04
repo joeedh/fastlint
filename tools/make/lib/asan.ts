@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { warn } from "./log.ts";
-import { buildEnv, toolchain } from "./toolchain.ts";
+import { buildEnv, isWindows, toolchain } from "./toolchain.ts";
 
 const asanPresets = new Set(["asan", "clang-asan"]);
 
@@ -10,21 +10,20 @@ export function isAsan(preset: string): boolean {
 }
 
 /**
- * The build environment plus the ASAN runtime defaults, and the directory
- * holding `clang_rt.asan_dynamic-x86_64.dll` on PATH — the MSVC sanitizer
- * links against it dynamically and does not put it anywhere the loader looks.
+ * The build environment plus the ASAN runtime defaults, and on Windows the
+ * directory holding `clang_rt.asan_dynamic-x86_64.dll` on PATH — the MSVC
+ * sanitizer links against it dynamically and does not put it anywhere the
+ * loader looks.
  */
 export function asanEnv(preset: string): NodeJS.ProcessEnv {
-  const env = buildEnv();
+  const env = { ...buildEnv() };
   if (!isAsan(preset)) return env;
 
-  env["ASAN_OPTIONS"] = [
-    "abort_on_error=0",
-    "detect_leaks=0",
-    "print_stats=0",
-    "symbolize=1",
-    "windows_hook_rtl_allocators=1",
-  ].join(":");
+  const options = ["abort_on_error=0", "detect_leaks=0", "print_stats=0", "symbolize=1"];
+  if (isWindows) options.push("windows_hook_rtl_allocators=1");
+  env["ASAN_OPTIONS"] = options.join(":");
+
+  if (!isWindows) return env;
 
   const runtime = findAsanRuntime(preset);
   if (runtime) {
@@ -42,6 +41,7 @@ export function asanEnv(preset: string): NodeJS.ProcessEnv {
  */
 export function findAsanRuntime(preset = "asan"): string | undefined {
   const tools = toolchain();
+  if (!tools.vsInstallPath) return undefined;
   const name = "clang_rt.asan_dynamic-x86_64.dll";
   const llvm = path.join(
     tools.vsInstallPath,

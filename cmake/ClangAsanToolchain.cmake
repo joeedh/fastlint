@@ -1,6 +1,13 @@
-# CMake drives clang-cl links through lld-link directly, so the compiler driver
-# never gets to add the sanitizer runtime itself. This runs before the compiler
-# test, which links an executable and would otherwise fail on __asan_init.
+# Picks the clang driver for the host. On Windows, CMake drives clang-cl links
+# through lld-link directly, so the compiler driver never gets to add the
+# sanitizer runtime itself. This runs before the compiler test, which links an
+# executable and would otherwise fail on __asan_init.
+
+if(NOT CMAKE_HOST_WIN32)
+  set(CMAKE_C_COMPILER clang)
+  set(CMAKE_CXX_COMPILER clang++)
+  return()
+endif()
 
 set(CMAKE_C_COMPILER clang-cl)
 set(CMAKE_CXX_COMPILER clang-cl)

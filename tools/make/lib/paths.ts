@@ -24,6 +24,9 @@ export const presets = [
 ] as const;
 export type Preset = (typeof presets)[number];
 
+/** Executable extension for the host, appended to every built binary name. */
+export const exeSuffix = process.platform === "win32" ? ".exe" : "";
+
 export function buildDir(preset: string): string {
   return path.join(buildRoot, preset);
 }

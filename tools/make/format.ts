@@ -2,7 +2,7 @@ import type { CommandModule } from "yargs";
 import { color, fail, info, step } from "./lib/log.ts";
 import { repoRoot, sourceFiles } from "./lib/paths.ts";
 import { run } from "./lib/spawn.ts";
-import { toolchain } from "./lib/toolchain.ts";
+import { clangFormatMajor, minClangFormatMajor, toolchain } from "./lib/toolchain.ts";
 
 interface Args {
   check: boolean;
@@ -18,6 +18,13 @@ export async function formatAll(check: boolean): Promise<void> {
   step(check ? "clang-format --dry-run" : "clang-format -i");
   if (files.length === 0) {
     info("no C++ sources yet");
+  } else if (!tools.clangFormat) {
+    fail("clang-format not found; install it and re-run `node make.ts env --refresh`");
+  } else if (clangFormatMajor(tools.clangFormat) < minClangFormatMajor) {
+    fail(
+      `${tools.clangFormat} is older than clang-format ${minClangFormatMajor}, ` +
+        "which would reformat sources the newer one leaves alone"
+    );
   } else {
     const args = check ? ["--dry-run", "--Werror", ...files] : ["-i", ...files];
     const result = await run(tools.clangFormat, args, {
