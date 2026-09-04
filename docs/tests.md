@@ -91,6 +91,8 @@ TEST(parser, arrow_vs_paren) {
   ```
   A content line beginning with `### ` is escaped with a leading `\`.
   Entries are sorted by key on write, so updates produce minimal diffs.
+  A value ends at the next key header, so trailing newlines cannot survive
+  the round trip and are stripped before the comparison.
 - Anything with a `describe()` overload can be snapshotted; multi-line
   strings are stored verbatim.
 - Mismatch: unified diff (DTL) with 3 lines of context, colored, `-`
@@ -134,6 +136,8 @@ links `testing/main.cc` and accepts:
 - `--timeout <ms>` per test (isolate mode only, or via a watchdog thread).
 - `--leaks` — print leaked blocks with stack traces (litestl tracker).
 - `-u/--update[=glob]`, `--ci`, `--no-color`, `--verbose`.
+- `--no-summary` — omit the trailing summary line, for `make.ts test` and
+  the children `--isolate` spawns, which print their own.
 - Exit code: 0 pass, 1 failures, 2 usage/crash.
 
 Output: one line per test in verbose mode; otherwise a progress line and

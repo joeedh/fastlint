@@ -1,10 +1,10 @@
 {
   "alignPropertyValues": "group",
-  "trailingComma": "es5",
-  "tabWidth": 2,
-  "semi": true,
-  "singleQuote": false,
-  "quoteProps": "preserve",
-  "printWidth": 90,
-  "endOfLine": "lf"
+  "trailingComma"      : "es5",
+  "tabWidth"           : 2,
+  "semi"               : true,
+  "singleQuote"        : false,
+  "quoteProps"         : "preserve",
+  "printWidth"         : 90,
+  "endOfLine"          : "lf"
 }

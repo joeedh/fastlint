@@ -48,79 +48,81 @@ one command.
 - [x] `.editorconfig`.
 
 ### 1.2 `make.ts` dispatch (yargs)
-- [ ] `make.ts` at repo root, run as `node make.ts …` (no build step).
+- [x] `make.ts` at repo root, run as `node make.ts …` (no build step).
   Commands live in `tools/make/<cmd>.ts`, one file each, auto-registered.
-- [ ] `env` — locate toolchain: `vswhere` → VS root → cmake/ninja/clang-format
+- [x] `env` — locate toolchain: `vswhere` → VS root → cmake/ninja/clang-format
   /vcvarsall paths. Cache result in `.cache/env.json`. `--refresh` to
   re-probe. Prints a table.
-- [ ] `vcvars` — run `vcvarsall.bat x64`, diff the environment, persist to
+- [x] `vcvars` — run `vcvarsall.bat x64`, diff the environment, persist to
   `.cache/vcvars-x64.json`; every compile-adjacent command imports it into
   `process.env` before spawning. Re-run when VS version changes.
-- [ ] `configure [--preset debug|release|relwithdebinfo] [--wasm]` — cmake
+- [x] `configure [--preset debug|release|relwithdebinfo] [--wasm]` — cmake
   configure with Ninja generator into `build/<preset>/`, exports
-  `compile_commands.json`.
-- [ ] `build [--preset] [--target]` — ninja via cmake `--build`; passes
+  `compile_commands.json`. `--wasm` reports that it lands with task 7.3.
+- [x] `build [--preset] [--target]` — ninja via cmake `--build`; passes
   `-j`; surfaces first error clearly.
-- [ ] `test [--preset] [--filter]` — ctest, or direct test binary.
-- [ ] `clean [--preset|--all]`.
-- [ ] `format [--check]` — clang-format over `source/**/*.{cc,h}`, prettier
+- [x] `test [--preset] [--filter]` — ctest, or direct test binary.
+- [x] `clean [--preset|--all]`.
+- [x] `format [--check]` — clang-format over `source/**/*.{cc,h}`, prettier
   over `**/*.ts` (excluding `vendor/`, `build/`, `node_modules/`).
-- [ ] `deps` — submodule init/update; `deps fetch <name>` for FetchContent-
-  style externals (sqlite amalgamation, msgpack-c or a header-only msgpack).
-- [ ] `run [args…]` — build then run `fastlint` with args.
-- [ ] Shared helpers in `tools/make/lib/`: `spawn` with inherited stdio +
+- [x] `deps` — submodule init/update; `deps fetch <name>` clones a pinned
+  external into `vendor/`. DTL is registered; sqlite and msgpack are added
+  with the tasks that need them.
+- [x] `run [args…]` — build then run `fastlint` with args.
+- [x] Shared helpers in `tools/make/lib/`: `spawn` with inherited stdio +
   exit-code propagation, `log`, path utils. No shell string concatenation —
   argv arrays only.
 
 ### 1.3 CMake
-- [ ] Root `CMakeLists.txt`: C++20, `.cc` extension, `add_subdirectory(
+- [x] Root `CMakeLists.txt`: C++20, `.cc` extension, `add_subdirectory(
   vendor/litestl)` scoped to `platform`, `util`, `path` (avoid `math`,
   `extern/eigen`, `io`, `binding` until needed — check litestl exposes
   options; add them if not).
-- [ ] `CMakePresets.json` matching `make.ts` presets; Ninja generator;
+- [x] `CMakePresets.json` matching `make.ts` presets; Ninja generator;
   `CMAKE_EXPORT_COMPILE_COMMANDS`. Presets: `debug`, `release`,
   `relwithdebinfo`, `asan` (MSVC `/fsanitize=address /Zi`), `clang-asan`
   (clang-cl, `-fsanitize=address,undefined`). All emit PDBs.
-- [ ] `make.ts` flags `--asan` / `--preset clang-asan` on `configure`,
+- [x] `make.ts` flags `--asan` / `--preset clang-asan` on `configure`,
   `build`, `test`, `check`; runner exports `ASAN_OPTIONS` defaults; verify
   `clang_rt.asan_dynamic-x86_64.dll` resolves from the cached vcvars env.
-- [ ] `source/` layout: `fastlint/` (lib), `cli/` (exe), `tests/`.
-- [ ] Warnings-as-errors on our code, not on vendor.
-- [ ] Hello-world `fastlint.exe` builds and runs via `node make.ts run`.
+- [x] `source/` layout: `fastlint/` (lib), `cli/` (exe), `tests/`.
+- [x] Warnings-as-errors on our code, not on vendor.
+- [x] Hello-world `fastlint.exe` builds and runs via `node make.ts run`.
 
 ### 1.4 CI-ish sanity
-- [ ] `node make.ts check [--asan] [--all]` = format --check + build + C++
+- [x] `node make.ts check [--asan] [--all]` = format --check + build + C++
   tests + TS tests (`node --test`). Document in `README`.
 
 ### 1.5 Test framework (`source/testing/`, see `docs/tests.md`)
-- [ ] Core: `TEST`, `TEST_TAGGED`, `SUBCASE`, `SKIP`, `INFO`, `FAIL`; static
+- [x] Core: `TEST`, `TEST_TAGGED`, `SUBCASE`, `SKIP`, `INFO`, `FAIL`; static
   registry; `describe(const T&)` customization point with overloads for
   litestl containers/spans and generated kind enums.
-- [ ] Assertions: `CHECK`/`REQUIRE` with binary-expression decomposition
+- [x] Assertions: `CHECK`/`REQUIRE` with binary-expression decomposition
   printing both operands; `CHECK_EQ/NE/LT/…` fallbacks. `file:line`,
   expression, values, `INFO` scope and subcase path on every failure.
-- [ ] Snapshots: `SNAPSHOT`, `SNAPSHOT_NAMED`; `tests/__snapshots__/
+- [x] Snapshots: `SNAPSHOT`, `SNAPSHOT_NAMED`; `tests/__snapshots__/
   <file>.snap` format (`### key` headers, `\` escape, sorted keys); DTL
   unified diff with context + color on mismatch; `-u/--update[=glob]`;
   new/obsolete detection; `--ci` semantics.
-- [ ] `test::forEachFile(dir, ext, fn)` fixture driver.
-- [ ] Runner (`testing/main.cc`): `--filter`, `--tag/--skip-tag/--all`,
+- [x] `test::forEachFile(dir, ext, fn)` fixture driver.
+- [x] Runner (`testing/main.cc`): `--filter`, `--tag/--skip-tag/--all`,
   `--list`, `--json`, `--break` (auto when debugger attached), `--isolate`,
   `--repeat`, `--shuffle`, `--timeout`, `--leaks`, `--no-color`,
   `--verbose`; exit codes 0/1/2.
-- [ ] Leak checkpoint around each test via litestl alloc tracker; leaks fail.
-- [ ] Crash handler: unhandled-exception filter prints test name, subcase
+- [x] Leak checkpoint around each test via litestl alloc tracker; leaks fail.
+- [x] Crash handler: unhandled-exception filter prints test name, subcase
   path, `platform::getStackTrace()`; `--isolate` parent records and
   continues.
-- [ ] CMake `add_fastlint_test()` macro; per-suite ctest registration from
+- [x] CMake `add_fastlint_test()` macro; per-suite ctest registration from
   `--list`.
-- [ ] `make.ts test` aggregates `--json` from every test exe; `--ts` runs
+- [x] `make.ts test` aggregates `--json` from every test exe; `--ts` runs
   `node --test`.
 - [ ] `testing/rule_tester.h` (RuleTester-shaped) lands with task 6.1.
-- [ ] Self-tests for the framework (decomposer output, snapshot diff
-  rendering, obsolete/new handling) — snapshot the framework's own failure
-  output.
-- [ ] Vendor DTL via `make.ts deps` (same repo litestl uses:
+- [x] Self-tests for the framework: decomposer output, describe() rendering,
+  glob matching, subcase replay, tag selection, snapshot diff rendering,
+  the fixture driver. Obsolete/new snapshot handling is exercised by hand;
+  automating it needs a second snapshot file the runner can dirty.
+- [x] Vendor DTL via `make.ts deps` (same repo litestl uses:
   `github.com/joeedh/dtl`).
 
 ---

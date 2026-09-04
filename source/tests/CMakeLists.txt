@@ -1,0 +1,9 @@
+add_fastlint_test(fastlint
+  SOURCES
+    fixture_test.cc
+    framework_test.cc
+    snapshot_test.cc
+    version_test.cc
+  LIBS
+    fastlint_lib
+)

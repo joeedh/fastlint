@@ -111,7 +111,7 @@ async function phaseQueries(exe: string): Promise<void> {
   const checker = (method: string, params: Record<string, Json>): Promise<Json> =>
     rpc.call(method, {
       snapshot: session.snapshot,
-      project: session.project.id,
+      project : session.project.id,
       ...params,
     });
 
@@ -241,8 +241,8 @@ async function phaseCompat(exe: string): Promise<void> {
       try {
         await rpc.call(method, {
           snapshot: session.snapshot,
-          project: session.project.id,
-          [key]: subject.id,
+          project : session.project.id,
+          [key]     : subject.id,
         });
         outcome[key] = "ok";
       } catch (e) {
@@ -417,8 +417,8 @@ async function measureTransport(
     method: "getTypeAtPosition",
     params: {
       snapshot: session.snapshot,
-      project: project.id,
-      file: queryFile,
+      project : project.id,
+      file    : queryFile,
       position,
     },
   }));

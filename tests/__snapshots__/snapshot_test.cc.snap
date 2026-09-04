@@ -1,0 +1,25 @@
+### snapshot.escapes_lines_that_would_look_like_headers headerish
+\### not a key
+plain
+
+### snapshot.numbers_unlabelled_entries_by_call_order #1
+2
+
+### snapshot.numbers_unlabelled_entries_by_call_order #2
+second
+
+### snapshot.renders_a_unified_diff_on_mismatch diff
+@@ -1,4 +1,4 @@
+ alpha
+ beta
+-gamma
++GAMMA
+ delta
+
+### snapshot.renders_non_string_values squares
+[0, 1, 4, 9]
+
+### snapshot.stores_text_verbatim greeting
+hello
+world
+

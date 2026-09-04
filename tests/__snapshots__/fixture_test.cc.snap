@@ -1,0 +1,9 @@
+### fixture.opens_a_subcase_per_file / a.txt #1
+first fixture
+
+### fixture.opens_a_subcase_per_file / b.txt #1
+second fixture
+
+### fixture.opens_a_subcase_per_file / nested/c.txt #1
+nested fixture
+
