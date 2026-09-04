@@ -143,18 +143,27 @@ scanner ──► parser ──► arena AST (per file) ──► rules ──�
 
 - Use `tsgo`'s API mode, not LSP. LSP has no "type at location"; hover is
   stringified markdown.
-- Verified 2026-09-04 against `C:/dev/TypeScript/tsc` (TS 7.0.2 ships the
-  binary as `tsc`): `tsc --api [--pipe <path>] [--async]`. msgpack over
-  stdio/pipe by default, JSON-RPC with `--async`. Protocol in
-  `internal/api/proto.go`; reference client in `packages/typescript/src/api/`.
+- Measured 2026-09-04 against the installed 7.0.2 binary — see
+  docs/tsgo-api.md for the full surface, the numbers, and the spike that
+  produced them.
+- Transport is the default msgpack mode over stdio: a 3-element msgpack
+  envelope around a JSON payload, ~60 lines to implement, no library. Half
+  the bytes of `--async` JSON-RPC and slightly lower per-query latency.
 - Structured, not stringly: `getTypeAtLocation(s)`, `getTypeOfSymbol`,
   `getTypesOfType` (union/intersection members), `getSignaturesOfType`,
   `getReturnTypeOfSignature`, `getParametersOfSignature`,
   `getNonNullableType`, `isTypeAssignableTo`, `isArrayLikeType`,
-  `getSymbolAtLocation` → `declarations` (provenance), `batchRequests`.
-  `TypeResponse` carries `flags`, `objectFlags`, `target`, type parameters,
-  tuple data, literal value. Snapshot/program model: `initialize` →
-  `updateSnapshot` → `createProgram`; handles must be `release`d.
+  `getSymbolAtPosition` → `declarations` (provenance). `TypeResponse` carries
+  `flags`, `objectFlags`, `target`, type parameters, tuple data, literal
+  value. Lifecycle: `initialize` → `updateSnapshot {openProjects}` → queries
+  → `release {snapshot}`. There is no `createProgram` and no `batchRequests`
+  in 7.0.2; the plural endpoints are the batching, and they are worth 10x
+  over sequential singles.
+- Positions address tokens, not expressions, and are UTF-16 offsets. Query by
+  `NodeHandle` instead, synthesizing handles from the flat parse tree
+  `getSourceFile` returns; its node spans are UTF-8 byte offsets like ours.
+- Guard kind-specific calls by flags. The server panics internally on a
+  mismatched type kind, recovers into an error, and answers nothing.
 - One `tsgo` per tsconfig project. CLI mode: cap concurrent instances (2–3),
   run projects sequentially otherwise, kill on completion. Server mode: keep
   warm.
@@ -244,11 +253,19 @@ scanner ──► parser ──► arena AST (per file) ──► rules ──�
   written in TS. Decide before the rule API hardens.
 - **ESLint compatibility surface.** Support `// eslint-disable-*` comments and
   common rule names for adoption? Config format?
-- ~~tsgo API protocol shape~~ — resolved: structured (see Types/Transport).
-  Remaining: transport choice (msgpack stdio vs pipe vs JSON-RPC), and
-  whether the protocol is versioned/stable — task 2 in
-  `docs/tasklists/MASTER.md`.
-- **Structural hash stability** across `tsgo` versions.
+- ~~tsgo API protocol shape~~ — resolved: structured, msgpack over stdio.
+  See docs/tsgo-api.md.
+- ~~Is the protocol versioned or stable?~~ — resolved: neither. It negotiates
+  nothing, ships under `./unstable/*`, and the released 7.0.2 binary differs
+  from the checkout in 31 methods, several parameter names, and the encoded
+  source file version. We pin a tsgo version and refuse others.
+- **Structural hash stability** across `tsgo` versions. The version gate
+  makes this safe (a version change drops the cache) but expensive; whether a
+  hash can survive a tsgo upgrade is open.
+- **Expression coverage of the handle route.** Synthesizing `NodeHandle`s
+  from tsgo's parse tree works, but the node-id side table assumes our tree
+  and tsgo's agree on spans. Error recovery is where they will not; decide
+  what a rule gets when the mapping fails.
 
 ## Risks
 

@@ -130,47 +130,59 @@ one command.
 Goal: know exactly what we get from `tsc --api` before designing the type
 layer. Deliverable: `docs/tsgo-api.md` + a working TS spike.
 
+Done 2026-09-04. Findings in docs/tsgo-api.md; spike at
+`tools/spikes/tsgo-api/` (`node tools/spikes/tsgo-api/main.ts [phase…]`).
+The results that change later tasks:
+- The msgpack transport is a 6-byte envelope around JSON, so no msgpack
+  library is needed (drops the dependency from 5.1).
+- The released 7.0.2 binary serves 111 of the checkout's 142 methods.
+  `createProgram`, `batchRequests` and `updateTemporarySnapshot` are absent,
+  and several endpoints spell their type-id parameter differently.
+- Positions address tokens, not expressions. Expression-level queries need a
+  `NodeHandle`, which we synthesize from the encoded parse tree
+  (`getSourceFile`) — added as a sub-task under 5.1.
+
 ### 2.1 Protocol study (read-only, `C:/dev/TypeScript/tsc`)
-- [ ] Read `internal/api/proto.go`: `Method*` list, `TypeResponse`,
+- [x] Read `internal/api/proto.go`: `Method*` list, `TypeResponse`,
   `SymbolResponse`, `SignatureResponse`, `NodeHandle`, snapshot/project
   model (`initialize`, `updateSnapshot`, `createProgram`,
   `getDefaultProjectForFile`, `release`, `batchRequests`).
-- [ ] Read `internal/ipc/` for framing (msgpack sync vs JSON-RPC async),
+- [x] Read `internal/ipc/` for framing (msgpack sync vs JSON-RPC async),
   `transport_windows.go` for named-pipe specifics.
-- [ ] Read `packages/typescript/src/api/{sync,async,proto.ts}` — the
+- [x] Read `packages/typescript/src/api/{sync,async,proto.ts}` — the
   reference client; note lifecycle and handle-release discipline.
-- [ ] Map `TypeFlags` / `ObjectFlags` / `SymbolFlags` / `CheckFlags` /
+- [x] Map `TypeFlags` / `ObjectFlags` / `SymbolFlags` / `CheckFlags` /
   `ElementFlags` numeric values (`enum_values_generated.go`) — we'll need
   them in C++.
-- [ ] Note protocol-stability signals: any `// unstable` markers, version
+- [x] Note protocol-stability signals: any `// unstable` markers, version
   negotiation in `initialize`.
 
 ### 2.2 Spike (TS, in `tools/spikes/tsgo-api/`)
-- [ ] Spawn `tsc --api --async` (JSON-RPC, easiest to eyeball) against a
+- [x] Spawn `tsc --api --async` (JSON-RPC, easiest to eyeball) against a
   small fixture project; `initialize` → snapshot → `createProgram` →
   `getTypeAtLocation` on a few node positions.
-- [ ] Exercise the queries rules will need: `getTypeAtLocation`,
+- [x] Exercise the queries rules will need: `getTypeAtLocation`,
   `getTypesOfType` (union members), `getSignaturesOfType`,
   `getReturnTypeOfSignature`, `getNonNullableType`, `isTypeAssignableTo`,
   `isArrayLikeType`, `getSymbolAtLocation` → `declarations` (for
   provenance), `typeToString` (for diagnostics text only).
-- [ ] Measure: startup time, `createProgram` time on a mid-size project,
+- [x] Measure: startup time, `createProgram` time on a mid-size project,
   per-query latency, batch (`batchRequests`) throughput.
-- [ ] Measure the same over msgpack sync mode; decide which transport C++
+- [x] Measure the same over msgpack sync mode; decide which transport C++
   uses.
-- [ ] Test `updateSnapshot` with an edited file — does it incrementally
+- [x] Test `updateSnapshot` with an edited file — does it incrementally
   re-check? Cost?
-- [ ] Test FS `--callbacks` — could we serve file contents from our cache?
+- [x] Test FS `--callbacks` — could we serve file contents from our cache?
 
 ### 2.3 Decisions to record in `docs/tsgo-api.md`
-- [ ] Transport: msgpack/stdio vs named pipe vs JSON-RPC.
-- [ ] Which `TypeResponse` fields feed the interned type row; what
+- [x] Transport: msgpack/stdio vs named pipe vs JSON-RPC.
+- [x] Which `TypeResponse` fields feed the interned type row; what
   "one hop" means concretely (which follow-up methods).
-- [ ] Provenance: `SymbolResponse.declarations` → `NodeHandle` → file. Enough
+- [x] Provenance: `SymbolResponse.declarations` → `NodeHandle` → file. Enough
   for v2 invalidation?
-- [ ] Whether we can reuse tsgo's `NodeHandle`s as our node ↔ position key,
+- [x] Whether we can reuse tsgo's `NodeHandle`s as our node ↔ position key,
   or must stay position-based.
-- [ ] Update `docs/STRATEGY.md` open questions accordingly.
+- [x] Update `docs/STRATEGY.md` open questions accordingly.
 
 ---
 
@@ -287,10 +299,21 @@ decisions.
 - [ ] Process management: spawn `tsc --api`, stdio or named pipe (per 2.3),
   lifecycle, crash detection/restart, one per tsconfig project, concurrency
   cap.
-- [ ] Wire protocol: msgpack encode/decode (header-only lib or hand-rolled
-  subset), request/response correlation, `batchRequests`.
-- [ ] Snapshot/program management: `initialize`, snapshot with our file
-  contents, `createProgram`, `getDefaultProjectForFile`, release discipline.
+- [ ] Wire protocol: the msgpack 3-tuple envelope (hand-rolled, ~60 lines —
+  see docs/tsgo-api.md "Transport") plus JSON payloads; request/response
+  correlation. No `batchRequests` in 7.0.2: batch through the plural
+  endpoints (`getTypesAtPositions`, `getTypeAtLocations`).
+- [ ] Version gate: read `tsc --version`, refuse an unpinned version, record
+  it in the cache `meta` table. Per-version parameter-name table beside the
+  client; regenerate with `main.ts compat`.
+- [ ] Snapshot/program management: `initialize`, `updateSnapshot`
+  (`openProjects`/`openFiles`/`fileChanges`), `getDefaultProjectForFile`,
+  `release` per snapshot. `createProgram` does not exist in 7.0.2.
+- [ ] `getSourceFile` decoder (44-byte header + 28-byte flat nodes) and the
+  node-id -> tsgo-index side table, rebuilt on content-hash change, so rules
+  can query expressions by `NodeHandle` rather than by position.
+- [ ] Serve file contents over `--callbacks=readFile,fileExists` from our
+  cache, so the server and our parser see the same bytes.
 - [ ] Typed request wrappers for the query set from 2.2.
 
 ### 5.2 Type facts layer
