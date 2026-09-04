@@ -73,8 +73,13 @@ NodeId Parser::parseStatement()
     NodeId node = m_tree->beginNode(NodeKind::DebuggerStatement, firstToken);
     return m_tree->endNode(node, semi == kNoToken ? pos() : semi + 1);
   }
-  case TokenKind::AtToken:
-    return parseClassDeclaration(false, false);
+  case TokenKind::AtToken: {
+    auto result = parseClassDeclaration(false, false);
+    if (!result) {
+      // XXX properly propagate errors here
+    }
+    return *result;
+  }
   case TokenKind::ImportKeyword:
     return parseImportDeclaration(false);
   case TokenKind::ExportKeyword:
@@ -83,17 +88,28 @@ NodeId Parser::parseStatement()
     break;
   }
 
+  fflush(stdout);
   TokenKind k = kind();
   if (k == TokenKind::AsyncKeyword && !hasPrecedingLineBreak() &&
-      peekKind() == TokenKind::FunctionKeyword) {
+      peekKind() == TokenKind::FunctionKeyword)
+  {
     m_scanner.scanOne();
     return parseFunctionDeclaration(true, false);
   }
+  fflush(stdout);
+
   if (k == TokenKind::AbstractKeyword && peekKind() == TokenKind::ClassKeyword &&
-      !hasPrecedingLineBreak()) {
+      !hasPrecedingLineBreak())
+  {
     m_scanner.scanOne();
-    return parseClassDeclaration(false, true);
+    auto result = parseClassDeclaration(false, true);
+    if (!result) {
+      // XXX properly propagate errors here
+    }
+    return *result;
   }
+  fflush(stdout);
+
   if (k == TokenKind::DeclareKeyword && !hasPrecedingLineBreak()) {
     TokenKind next = peekKind();
     if (next == TokenKind::FunctionKeyword) {
@@ -113,22 +129,31 @@ NodeId Parser::parseStatement()
         if (kind() == TokenKind::AbstractKeyword) {
           m_scanner.scanOne();
         }
-        return parseClassDeclaration(true, false);
+
+        auto result = parseClassDeclaration(true, false);
+        if (!result) {
+          // XXX properly propagate errors here
+        }
+        return *result;
       }
       // `declare` as a plain identifier.
       return parseExpressionOrLabeledStatement();
     }
     if (next == TokenKind::VarKeyword || next == TokenKind::LetKeyword ||
-        next == TokenKind::ConstKeyword) {
+        next == TokenKind::ConstKeyword)
+    {
       m_scanner.scanOne();
       return parseVariableStatement(true);
     }
     if (next == TokenKind::ModuleKeyword || next == TokenKind::NamespaceKeyword ||
-        next == TokenKind::GlobalKeyword) {
+        next == TokenKind::GlobalKeyword)
+    {
       m_scanner.scanOne();
       return parseModuleDeclaration(true);
     }
   }
+  fflush(stdout);
+
   if (k == TokenKind::ConstKeyword && peekKind() == TokenKind::EnumKeyword) {
     m_scanner.scanOne();
     return parseEnumDeclaration(false);
@@ -142,20 +167,30 @@ NodeId Parser::parseStatement()
   if (k == TokenKind::EnumKeyword && wordFollows() && !hasPrecedingLineBreak()) {
     return parseEnumDeclaration(false);
   }
-  if ((k == TokenKind::ModuleKeyword || k == TokenKind::NamespaceKeyword) && wordFollows() &&
-      !hasPrecedingLineBreak()) {
+  if ((k == TokenKind::ModuleKeyword || k == TokenKind::NamespaceKeyword) &&
+      wordFollows() && !hasPrecedingLineBreak())
+  {
     return parseModuleDeclaration(false);
   }
   if (k == TokenKind::ConstKeyword || k == TokenKind::VarKeyword ||
-      (k == TokenKind::LetKeyword && letStartsDeclaration())) {
+      (k == TokenKind::LetKeyword && letStartsDeclaration()))
+  {
     return parseVariableStatement(false);
   }
   if (k == TokenKind::FunctionKeyword) {
     return parseFunctionDeclaration(false, false);
   }
+  fflush(stdout);
+
   if (k == TokenKind::ClassKeyword) {
-    return parseClassDeclaration(false, false);
+    auto result = parseClassDeclaration(false, false);
+    if (!result) {
+      // XXX properly propagate errors here
+    }
+    return *result;
   }
+  fflush(stdout);
+
   return parseExpressionOrLabeledStatement();
 }
 
@@ -164,7 +199,8 @@ NodeId Parser::parseExpressionOrLabeledStatement()
   uint32_t firstToken = pos();
   // `name:` is a label; labels cannot be keywords or `let`/`async` heads.
   if (isAlwaysIdentifier(kind()) && kind() != TokenKind::LetKeyword &&
-      kind() != TokenKind::AsyncKeyword && peekKind() == TokenKind::ColonToken) {
+      kind() != TokenKind::AsyncKeyword && peekKind() == TokenKind::ColonToken)
+  {
     uint32_t nameIndex = pos();
     m_scanner.scanOne();
     NodeId name = m_tree->beginNode(NodeKind::Identifier, nameIndex);
@@ -302,22 +338,24 @@ NodeId Parser::parseForStatement()
   (void)expect(TokenKind::OpenParenToken);
 
   NodeId initializer = kNoNode;
-  if (!is(TokenKind::SemicolonToken) && !is(TokenKind::OfKeyword) && !is(TokenKind::InKeyword)) {
+  if (!is(TokenKind::SemicolonToken) && !is(TokenKind::OfKeyword) &&
+      !is(TokenKind::InKeyword))
+  {
     if (kind() == TokenKind::ConstKeyword || kind() == TokenKind::VarKeyword ||
-        (kind() == TokenKind::LetKeyword && letStartsDeclaration())) {
+        (kind() == TokenKind::LetKeyword && letStartsDeclaration()))
+    {
       initializer = parseVariableDeclarationList(kind());
-    }
-    else if ((kind() == TokenKind::AwaitKeyword &&
-              peekKind() == TokenKind::UsingKeyword) ||
-             (kind() == TokenKind::UsingKeyword && peekKind() == TokenKind::Identifier)) {
+    } else if ((kind() == TokenKind::AwaitKeyword &&
+                peekKind() == TokenKind::UsingKeyword) ||
+               (kind() == TokenKind::UsingKeyword && peekKind() == TokenKind::Identifier))
+    {
       uint32_t listFirst = pos();
       bool awaitFlag = eat(TokenKind::AwaitKeyword);
       (void)awaitFlag;
       initializer = parseVariableDeclarationList(kind());
       m_tree->node(initializer).flags |= FLAG_AMBIENT;
       (void)listFirst;
-    }
-    else {
+    } else {
       initializer = parseExpression(true); // `in` is not allowed in for-init
     }
   }
@@ -342,22 +380,19 @@ NodeId Parser::parseForStatement()
   NodeId node = m_tree->beginNode(NodeKind::ForStatement, firstToken);
   if (initializer != kNoNode) {
     m_tree->addChild(initializer);
-  }
-  else {
+  } else {
     m_tree->addChild(missingNode(NodeKind::OmittedExpression, pos()));
   }
   (void)expect(TokenKind::SemicolonToken);
   if (!is(TokenKind::SemicolonToken)) {
     m_tree->addChild(parseExpression());
-  }
-  else {
+  } else {
     m_tree->addChild(missingNode(NodeKind::OmittedExpression, pos()));
   }
   (void)expect(TokenKind::SemicolonToken);
   if (!is(TokenKind::CloseParenToken)) {
     m_tree->addChild(parseExpression());
-  }
-  else {
+  } else {
     m_tree->addChild(missingNode(NodeKind::OmittedExpression, pos()));
   }
   (void)expect(TokenKind::CloseParenToken);
@@ -409,8 +444,9 @@ NodeId Parser::parseReturnStatement()
   m_scanner.scanOne();
   NodeId node = m_tree->beginNode(NodeKind::ReturnStatement, firstToken);
   // Restricted production: the expression must start on the same line.
-  if (!hasPrecedingLineBreak() && !is(TokenKind::SemicolonToken) && !is(TokenKind::CloseBraceToken) &&
-      !is(TokenKind::EndOfFile)) {
+  if (!hasPrecedingLineBreak() && !is(TokenKind::SemicolonToken) &&
+      !is(TokenKind::CloseBraceToken) && !is(TokenKind::EndOfFile))
+  {
     m_tree->addChild(parseExpression());
   }
   uint32_t semi = expectSemicolon();
@@ -426,7 +462,8 @@ NodeId Parser::parseThrowStatement()
     errorAt(token(), 1392, string("Line break not allowed in throw statement."));
   }
   if (!is(TokenKind::SemicolonToken) && !is(TokenKind::CloseBraceToken) &&
-      !is(TokenKind::EndOfFile)) {
+      !is(TokenKind::EndOfFile))
+  {
     m_tree->addChild(parseExpression());
   }
   uint32_t semi = expectSemicolon();
@@ -480,7 +517,8 @@ NodeId Parser::parseSwitchStatement()
     }
     (void)expect(TokenKind::ColonToken);
     while (!is(TokenKind::CaseKeyword) && !is(TokenKind::DefaultKeyword) &&
-           !is(TokenKind::CloseBraceToken) && !is(TokenKind::EndOfFile)) {
+           !is(TokenKind::CloseBraceToken) && !is(TokenKind::EndOfFile))
+    {
       m_tree->addChild(parseStatement());
     }
     m_tree->addChild(m_tree->endNode(clause, pos()));

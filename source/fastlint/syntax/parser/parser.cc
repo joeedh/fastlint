@@ -110,17 +110,20 @@ void Parser::parseFile(GrammarTree &tree)
   m_allowAwait = true;
   tree.setSourceForBuild(m_scanner.source());
 
-  uint32_t firstToken = pos();
+  // pos() is kNoToken until the first token is scanned
   m_scanner.scanOne();
-  NodeId root = tree.beginNode(NodeKind::SourceFile, firstToken);
+  NodeId root = tree.beginNode(NodeKind::SourceFile, pos());
 
   while (!is(TokenKind::EndOfFile)) {
+    Token startToken = token();
     NodeId statement = parseStatement();
     if (statement != kNoNode) {
       tree.addChild(statement);
+    } else {
+      errorAt(startToken, 1005, string("Statement expected."));
+      break;
     }
   }
-
   tree.endNode(root, m_scanner.tokenIndex() + 1);
   tree.setRoot(root);
 

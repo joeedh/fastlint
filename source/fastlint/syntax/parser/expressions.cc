@@ -1,5 +1,4 @@
 #include "fastlint/syntax/parser.h"
-
 #include "fastlint/syntax/parser/internal.h"
 
 namespace fastlint::syntax {
@@ -37,7 +36,8 @@ NodeId Parser::parseAssignmentExpression()
     }
     if (!hasPrecedingLineBreak() && !is(TokenKind::SemicolonToken) &&
         !is(TokenKind::CloseBraceToken) && !is(TokenKind::CloseParenToken) &&
-        !is(TokenKind::EndOfFile) && !is(TokenKind::ColonToken)) {
+        !is(TokenKind::EndOfFile) && !is(TokenKind::ColonToken))
+    {
       m_tree->addChild(parseAssignmentExpression());
     }
     return m_tree->endNode(node, pos());
@@ -53,8 +53,9 @@ NodeId Parser::parseAssignmentExpression()
     if (isAlwaysIdentifier(next) || next == TokenKind::OpenParenToken) {
       return parseArrowFunction(true);
     }
-  }
-  else if (isAlwaysIdentifier(kind()) && peekKind() == TokenKind::EqualsGreaterThanToken) {
+  } else if (isAlwaysIdentifier(kind()) &&
+             peekKind() == TokenKind::EqualsGreaterThanToken)
+  {
     return parseArrowFunction(false);
   }
 
@@ -92,8 +93,7 @@ NodeId Parser::parseArrowFunction(bool asyncFlag)
     (void)expect(TokenKind::OpenParenToken);
     parseParameterList(false, false);
     (void)expect(TokenKind::CloseParenToken);
-  }
-  else {
+  } else {
     // Single parameter without parens: `x => …`.
     m_tree->addChild(parseBindingPattern());
   }
@@ -107,8 +107,7 @@ NodeId Parser::parseArrowFunction(bool asyncFlag)
   m_allowAwait = asyncFlag || savedAwait;
   if (is(TokenKind::OpenBraceToken)) {
     m_tree->addChild(parseBlock());
-  }
-  else {
+  } else {
     m_tree->addChild(parseAssignmentExpression());
   }
   m_inYieldContext = savedYield;
@@ -182,9 +181,10 @@ NodeId Parser::parseUnary()
   case TokenKind::DeleteKeyword:
   case TokenKind::TypeOfKeyword:
   case TokenKind::VoidKeyword: {
-    NodeKind expressionKind = kind() == TokenKind::DeleteKeyword ? NodeKind::DeleteExpression
-                              : kind() == TokenKind::TypeOfKeyword ? NodeKind::TypeOfExpression
-                                                                  : NodeKind::VoidExpression;
+    NodeKind expressionKind =
+        kind() == TokenKind::DeleteKeyword   ? NodeKind::DeleteExpression
+        : kind() == TokenKind::TypeOfKeyword ? NodeKind::TypeOfExpression
+                                             : NodeKind::VoidExpression;
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(expressionKind, firstToken);
     m_tree->addChild(parseUnary());
@@ -225,9 +225,17 @@ NodeId Parser::parseUnary()
 
 NodeId Parser::parsePostfix()
 {
-  NodeId expression = parseCallChain(parsePrimary());
+  auto result = parsePrimary();
+  if (!result) {
+    // XXX deal with error here
+    fprintf(stderr, "UNHANDLED ERROR %s:%d\n", __FILE__, __LINE__);
+    return kNoNode;
+  }
+
+  NodeId expression = parseCallChain(*result);
   while ((is(TokenKind::PlusPlusToken) || is(TokenKind::MinusMinusToken)) &&
-         !hasPrecedingLineBreak()) {
+         !hasPrecedingLineBreak())
+  {
     uint32_t firstToken = m_tree->node(expression).firstToken;
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::PostfixUnaryExpression, firstToken);
@@ -237,68 +245,67 @@ NodeId Parser::parsePostfix()
   return expression;
 }
 
-NodeId Parser::parsePrimary()
+ParsePrimaryRet Parser::parsePrimary()
 {
   uint32_t firstToken = pos();
   switch (kind()) {
   case TokenKind::ThisKeyword: {
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::ThisExpression, firstToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::SuperKeyword: {
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::SuperExpression, firstToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::NullKeyword: {
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::NullLiteral, firstToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::TrueKeyword:
   case TokenKind::FalseKeyword: {
-    NodeKind literal = is(TokenKind::TrueKeyword) ? NodeKind::TrueLiteral : NodeKind::FalseLiteral;
+    NodeKind literal =
+        is(TokenKind::TrueKeyword) ? NodeKind::TrueLiteral : NodeKind::FalseLiteral;
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(literal, firstToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::NumericLiteral: {
-    NodeKind literal = is(TokenKind::BigIntLiteral) ? NodeKind::BigIntLiteral
-                                                    : NodeKind::NumericLiteral;
+    NodeKind literal =
+        is(TokenKind::BigIntLiteral) ? NodeKind::BigIntLiteral : NodeKind::NumericLiteral;
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(literal, firstToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::StringLiteral: {
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::StringLiteral, firstToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::RegularExpressionLiteral: {
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::RegularExpressionLiteral, firstToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::BacktickToken:
   case TokenKind::TemplateHead:
   case TokenKind::NoSubstitutionTemplateLiteral:
-    return parseTemplateLiteral(false);
+    return ParsePrimaryRet(parseTemplateLiteral(false));
   case TokenKind::OpenParenToken:
-    return parseParenthesizedOrArrow();
+    return ParsePrimaryRet(parseParenthesizedOrArrow());
   case TokenKind::OpenBracketToken: {
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::ArrayLiteralExpression, firstToken);
     while (!is(TokenKind::CloseBracketToken) && !is(TokenKind::EndOfFile)) {
       if (is(TokenKind::CommaToken)) {
         m_tree->addChild(missingNode(NodeKind::OmittedExpression, pos()));
-      }
-      else if (eat(TokenKind::DotDotDotToken)) {
+      } else if (eat(TokenKind::DotDotDotToken)) {
         NodeId spread = m_tree->beginNode(NodeKind::SpreadElement, firstToken);
         m_tree->addChild(parseAssignmentExpression());
         m_tree->addChild(m_tree->endNode(spread, pos()));
-      }
-      else {
+      } else {
         m_tree->addChild(parseAssignmentExpression());
       }
       if (!eat(TokenKind::CommaToken)) {
@@ -306,24 +313,36 @@ NodeId Parser::parsePrimary()
       }
     }
     (void)expect(TokenKind::CloseBracketToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::OpenBraceToken:
-    return parseObjectLiteral();
+    return ParsePrimaryRet(parseObjectLiteral());
   case TokenKind::FunctionKeyword:
-    return parseFunctionExpression(false);
-  case TokenKind::ClassKeyword:
-    return parseClassExpression();
+    return ParsePrimaryRet(parseFunctionExpression(false));
+  case TokenKind::ClassKeyword: {
+    auto result = parseClassExpression();
+    if (result) {
+      return ParsePrimaryRet(*result);
+    }
+    return ParsePrimaryRet::error<ParseFailure>();
+  }
   case TokenKind::NewKeyword: {
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::NewExpression, firstToken);
-    m_tree->addChild(parseCallChain(parsePrimary()));
+    auto result = parsePrimary();
+    if (result) {
+      m_tree->addChild(parseCallChain(*result));
+      return ParsePrimaryRet(m_tree->endNode(node, pos()));
+    } else {
+      return ParsePrimaryRet::error<ParseFailure>();
+    }
+
     if (is(TokenKind::OpenParenToken)) {
       m_tree->addChild(parseArguments());
     }
     // Trailing member accesses and calls belong to the new expression's
     // callee in TS's shape; we keep the outer chain outside for now.
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::ImportKeyword: {
     // `import.meta` / `import("…")`
@@ -336,7 +355,7 @@ NodeId Parser::parsePrimary()
         m_scanner.scanOne();
       }
       m_tree->addChild(m_tree->endNode(name, nameIndex + 1));
-      return m_tree->endNode(node, pos());
+      return ParsePrimaryRet(m_tree->endNode(node, pos()));
     }
     if (is(TokenKind::OpenParenToken)) {
       NodeId node = m_tree->beginNode(NodeKind::CallExpression, firstToken);
@@ -344,27 +363,27 @@ NodeId Parser::parsePrimary()
       callee = m_tree->endNode(callee, pos());
       m_tree->addChild(callee);
       m_tree->addChild(parseArguments());
-      return m_tree->endNode(node, pos());
+      return ParsePrimaryRet(m_tree->endNode(node, pos()));
     }
     errorAt(token(), 1479, string("Expression expected."));
     NodeId node = m_tree->beginNode(NodeKind::ErrorNode, firstToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   case TokenKind::PrivateIdentifier: {
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::PrivateIdentifier, firstToken);
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   default: {
     if (isAlwaysIdentifier(kind())) {
       NodeId node = m_tree->beginNode(NodeKind::Identifier, firstToken);
       m_scanner.scanOne();
-      return m_tree->endNode(node, pos());
+      return ParsePrimaryRet(m_tree->endNode(node, pos()));
     }
     errorAt(token(), 1479, string("Expression expected."));
     NodeId node = m_tree->beginNode(NodeKind::ErrorNode, firstToken);
     m_scanner.scanOne();
-    return m_tree->endNode(node, pos());
+    return ParsePrimaryRet(m_tree->endNode(node, pos()));
   }
   }
 }
@@ -414,7 +433,13 @@ NodeId Parser::parseParenthesizedOrArrow()
 
 NodeId Parser::parseArrayLiteral()
 {
-  return parsePrimary(); // arrays are handled in parsePrimary
+  auto result =parsePrimary(); // arrays are handled in parsePrimary
+  if (!result) {
+    // XXX deal with error here
+    fprintf(stderr, "UNHANDLED ERROR %s:%d\n", __FILE__, __LINE__);
+    return kNoNode;
+  }
+  return *result;
 }
 
 NodeId Parser::parseObjectLiteral()
@@ -440,9 +465,10 @@ NodeId Parser::parseObjectMember()
     m_tree->addChild(parseAssignmentExpression());
     return m_tree->endNode(spread, pos());
   }
-  bool asyncFlag = is(TokenKind::AsyncKeyword) && !hasPrecedingLineBreak() &&
-                   (peekKind() == TokenKind::Identifier || peekKind() == TokenKind::OpenBracketToken ||
-                    isAlwaysIdentifier(peekKind()));
+  bool asyncFlag =
+      is(TokenKind::AsyncKeyword) && !hasPrecedingLineBreak() &&
+      (peekKind() == TokenKind::Identifier || peekKind() == TokenKind::OpenBracketToken ||
+       isAlwaysIdentifier(peekKind()));
   if (eat(TokenKind::AsteriskToken)) {
     // Generator method.
     NodeId member = m_tree->beginNode(NodeKind::MethodDeclaration, firstToken);
@@ -470,8 +496,8 @@ NodeId Parser::parseObjectMember()
     rollback(mark);
     if (memberForm) {
       m_scanner.scanOne();
-      NodeId member = m_tree->beginNode(isGet ? NodeKind::GetAccessor : NodeKind::SetAccessor,
-                                        firstToken);
+      NodeId member = m_tree->beginNode(
+          isGet ? NodeKind::GetAccessor : NodeKind::SetAccessor, firstToken);
       m_tree->addChild(parsePropertyName());
       (void)expect(TokenKind::OpenParenToken);
       parseParameterList(false, false);
@@ -560,16 +586,16 @@ NodeId Parser::parsePropertyName()
     (void)expect(TokenKind::CloseBracketToken);
     return m_tree->endNode(node, pos());
   }
-  NodeKind nameKind = is(TokenKind::StringLiteral)  ? NodeKind::StringLiteral
-                      : is(TokenKind::NumericLiteral) ? NodeKind::NumericLiteral
+  NodeKind nameKind = is(TokenKind::StringLiteral)       ? NodeKind::StringLiteral
+                      : is(TokenKind::NumericLiteral)    ? NodeKind::NumericLiteral
                       : is(TokenKind::PrivateIdentifier) ? NodeKind::PrivateIdentifier
-                                                        : NodeKind::Identifier;
+                                                         : NodeKind::Identifier;
   NodeId node = m_tree->beginNode(nameKind, firstToken);
   if (is(TokenKind::StringLiteral) || is(TokenKind::NumericLiteral) ||
-      is(TokenKind::PrivateIdentifier) || isAlwaysIdentifier(kind())) {
+      is(TokenKind::PrivateIdentifier) || isAlwaysIdentifier(kind()))
+  {
     m_scanner.scanOne();
-  }
-  else {
+  } else {
     errorAt(token(), 1174, string("Property name expected."));
   }
   return m_tree->endNode(node, pos());
@@ -579,14 +605,14 @@ NodeId Parser::parseArguments()
 {
   uint32_t firstToken = pos();
   (void)expect(TokenKind::OpenParenToken);
-  NodeId node = m_tree->beginNode(NodeKind::OmittedExpression, firstToken); // arguments run
+  NodeId node =
+      m_tree->beginNode(NodeKind::OmittedExpression, firstToken); // arguments run
   while (!is(TokenKind::CloseParenToken) && !is(TokenKind::EndOfFile)) {
     if (eat(TokenKind::DotDotDotToken)) {
       NodeId spread = m_tree->beginNode(NodeKind::SpreadElement, firstToken);
       m_tree->addChild(parseAssignmentExpression());
       m_tree->addChild(m_tree->endNode(spread, pos()));
-    }
-    else {
+    } else {
       m_tree->addChild(parseAssignmentExpression());
     }
     if (!eat(TokenKind::CommaToken)) {
@@ -600,7 +626,8 @@ NodeId Parser::parseArguments()
 NodeId Parser::parseTemplateLiteral(bool tagged)
 {
   uint32_t firstToken = pos();
-  NodeKind wrapper = tagged ? NodeKind::TaggedTemplateExpression : NodeKind::TemplateExpression;
+  NodeKind wrapper =
+      tagged ? NodeKind::TaggedTemplateExpression : NodeKind::TemplateExpression;
   // The scanner produced TemplateHead (or NoSubstitution) tokens; the parser
   // drives the rescan boundary after each substitution's `}`.
   if (is(TokenKind::NoSubstitutionTemplateLiteral)) {
@@ -664,9 +691,9 @@ NodeId Parser::parseCallChain(NodeId expression)
       break;
     }
     case TokenKind::OpenParenToken: {
-      NodeKind kind =
-          hasFlags(m_tree->node(expression).flags, FLAG_OPTIONAL_CHAIN) ? NodeKind::OptionalCallExpression
-                                                                       : NodeKind::CallExpression;
+      NodeKind kind = hasFlags(m_tree->node(expression).flags, FLAG_OPTIONAL_CHAIN)
+                          ? NodeKind::OptionalCallExpression
+                          : NodeKind::CallExpression;
       uint32_t firstToken = pos();
       NodeId node = m_tree->beginNode(kind, firstToken);
       m_tree->addChild(expression);
@@ -682,8 +709,7 @@ NodeId Parser::parseCallChain(NodeId expression)
         m_tree->addChild(expression);
         m_tree->addChild(parseArguments());
         expression = m_tree->endNode(node, pos());
-      }
-      else if (is(TokenKind::OpenBracketToken)) {
+      } else if (is(TokenKind::OpenBracketToken)) {
         m_scanner.scanOne();
         NodeId node = m_tree->beginNode(NodeKind::ElementAccessExpression, firstToken);
         m_tree->node(node).flags |= FLAG_OPTIONAL_CHAIN;
@@ -691,8 +717,7 @@ NodeId Parser::parseCallChain(NodeId expression)
         m_tree->addChild(parseAssignmentExpression());
         (void)expect(TokenKind::CloseBracketToken);
         expression = m_tree->endNode(node, pos());
-      }
-      else {
+      } else {
         NodeId node = m_tree->beginNode(NodeKind::PropertyAccessExpression, firstToken);
         m_tree->node(node).flags |= FLAG_OPTIONAL_CHAIN;
         m_tree->addChild(expression);
@@ -724,10 +749,10 @@ NodeId Parser::parseMemberName(TokenKind propertyKind)
   uint32_t firstToken = pos();
   NodeId node = m_tree->beginNode(NodeKind::Identifier, firstToken);
   if (isAlwaysIdentifier(kind()) || is(TokenKind::PrivateIdentifier) ||
-      is(TokenKind::NumericLiteral) || is(TokenKind::StringLiteral)) {
+      is(TokenKind::NumericLiteral) || is(TokenKind::StringLiteral))
+  {
     m_scanner.scanOne();
-  }
-  else {
+  } else {
     errorAt(token(), 1003, string("Identifier expected."));
     m_tree->node(node).flags |= FLAG_MISSING;
     return m_tree->endNode(node, firstToken);

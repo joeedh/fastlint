@@ -9,6 +9,11 @@
 #include "fastlint/syntax/diagnostics.h"
 #include "fastlint/syntax/scanner.h"
 #include "fastlint/syntax/tree.h"
+#include "fastlint/syntax/parser/errors.h"
+#include "fastlint/syntax/parser/errors.h"
+
+using litestl::util::ValueOrError;
+using litestl::util::SuccessOrError;
 
 #include <cstdint>
 
@@ -99,7 +104,7 @@ private:
   NodeId parseExpressionStatement();
   NodeId parseVariableStatement(bool declare);
   NodeId parseFunctionDeclaration(bool asyncFlag, bool ambientFlag);
-  NodeId parseClassDeclaration(bool declareFlag, bool abstractFlag);
+  ParseClassLikeRet parseClassDeclaration(bool declareFlag, bool abstractFlag);
   NodeId parseExpressionOrLabeledStatement();
   NodeId parseIfStatement();
   NodeId parseWhileStatement();
@@ -130,13 +135,13 @@ private:
   NodeId parsePostfix();
   NodeId parseCallChain(NodeId expression);
   NodeId parseMemberName(TokenKind propertyKind);
-  NodeId parsePrimary();
+  ParsePrimaryRet parsePrimary();
   NodeId parseParenthesizedOrArrow();
   NodeId parseArrayLiteral();
   NodeId parseObjectLiteral();
   NodeId parseTemplateLiteral(bool tagged);
   NodeId parseFunctionExpression(bool asyncFlag);
-  NodeId parseClassExpression();
+  ParseClassLikeRet parseClassExpression();
   NodeId parseArguments();
 
   // shared productions
@@ -148,9 +153,9 @@ private:
   NodeId parseBlock();
   NodeId parseFunctionBody(bool allowAwait, bool allowYield);
   void parseFunctionCommon(NodeId node);
-  void parseClassLike(NodeId node);
+  ParseClassLikeRet parseClassLike(NodeId node);
   NodeId parseHeritageClause(NodeKind kind);
-  NodeId parseClassMember();
+  ParseClassMethodRet parseClassMember();
   NodeId parseObjectMember();
   NodeId parsePropertyName();
 

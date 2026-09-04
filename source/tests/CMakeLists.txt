@@ -6,6 +6,8 @@ add_fastlint_test(fastlint
     framework_test.cc
     snapshot_test.cc
     version_test.cc
+    test_sources.cc
+    test_sources.h
   LIBS
     fastlint_lib
 )

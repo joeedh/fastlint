@@ -67,8 +67,7 @@ void Parser::parseFunctionCommon(NodeId node)
   m_allowAwait = false;
   if (is(TokenKind::OpenBraceToken)) {
     m_tree->addChild(parseBlock());
-  }
-  else {
+  } else {
     // Ambient declaration or an error-recovery `;`.
     uint32_t semi = expectSemicolon();
     m_tree->addChild(missingNode(NodeKind::Block, pos()));
@@ -95,8 +94,7 @@ NodeId Parser::parseBindingPattern()
       if (is(TokenKind::CommaToken)) {
         // Hole in the pattern.
         m_tree->addChild(missingNode(NodeKind::OmittedExpression, pos()));
-      }
-      else {
+      } else {
         m_tree->addChild(parseBindingPattern());
       }
       if (eat(TokenKind::ColonToken)) {
@@ -142,14 +140,12 @@ NodeId Parser::parseBindingPattern()
     uint32_t nameFirst = pos();
     if (is(TokenKind::PrivateIdentifier)) {
       name = m_tree->beginNode(NodeKind::PrivateIdentifier, nameFirst);
-    }
-    else {
+    } else {
       name = m_tree->beginNode(NodeKind::Identifier, nameFirst);
     }
     if (isAlwaysIdentifier(kind()) || is(TokenKind::PrivateIdentifier)) {
       m_scanner.scanOne();
-    }
-    else {
+    } else {
       errorAt(token(), 1136, string("Declaration expected."));
     }
     return m_tree->endNode(name, pos());
@@ -181,13 +177,16 @@ NodeId Parser::parseParameter(bool allowModifiers, bool isConstructor)
   // Modifiers on constructor parameters become properties; recorded as flags.
   for (;;) {
     if (is(TokenKind::PublicKeyword) || is(TokenKind::PrivateKeyword) ||
-        is(TokenKind::ProtectedKeyword)) {
-      m_tree->node(parameter).flags |= FLAG_READONLY; // placeholder; visibility has no flag yet
+        is(TokenKind::ProtectedKeyword))
+    {
+      m_tree->node(parameter).flags |=
+          FLAG_READONLY; // placeholder; visibility has no flag yet
       m_scanner.scanOne();
       continue;
     }
     if (is(TokenKind::ReadOnlyKeyword) && peekKind() != TokenKind::CommaToken &&
-        peekKind() != TokenKind::CloseParenToken && peekKind() != TokenKind::ColonToken) {
+        peekKind() != TokenKind::CloseParenToken && peekKind() != TokenKind::ColonToken)
+    {
       m_tree->node(parameter).flags |= FLAG_READONLY;
       m_scanner.scanOne();
       continue;
@@ -210,7 +209,7 @@ NodeId Parser::parseParameter(bool allowModifiers, bool isConstructor)
   return m_tree->endNode(parameter, pos());
 }
 
-NodeId Parser::parseClassDeclaration(bool declareFlag, bool abstractFlag)
+ParseClassLikeRet Parser::parseClassDeclaration(bool declareFlag, bool abstractFlag)
 {
   uint32_t firstToken = pos();
   NodeId node = m_tree->beginNode(NodeKind::ClassDeclaration, firstToken);
@@ -220,28 +219,31 @@ NodeId Parser::parseClassDeclaration(bool declareFlag, bool abstractFlag)
   if (abstractFlag) {
     m_tree->node(node).flags |= FLAG_ABSTRACT;
   }
-  parseClassLike(node);
-  return m_tree->endNode(node, pos());
+  return parseClassLike(node);
 }
 
-NodeId Parser::parseClassExpression()
+ParseClassLikeRet Parser::parseClassExpression()
 {
   NodeId node = m_tree->beginNode(NodeKind::ClassExpression, pos());
-  parseClassLike(node);
-  return m_tree->endNode(node, pos());
+  return parseClassLike(node);
 }
 
 /**
  * From the first decorator (when called at `@`) or `class`, through the body.
  */
-void Parser::parseClassLike(NodeId node)
+ParseClassLikeRet Parser::parseClassLike(NodeId node)
 {
-  (void)node;
   while (is(TokenKind::AtToken)) {
     uint32_t firstToken = pos();
     m_scanner.scanOne();
     NodeId decorator = m_tree->beginNode(NodeKind::Decorator, firstToken);
-    m_tree->addChild(parseCallChain(parsePrimary()));
+    auto result = parsePrimary();
+    if (!result) {
+      m_tree->endNode(decorator, pos());
+      m_tree->endNode(node, pos());
+      return ParseClassLikeRet::error<ParseMethodFailed>();
+    }
+    m_tree->addChild(parseCallChain(*result));
     m_tree->addChild(m_tree->endNode(decorator, pos()));
   }
   (void)expect(TokenKind::ClassKeyword);
@@ -262,9 +264,17 @@ void Parser::parseClassLike(NodeId node)
     if (eat(TokenKind::SemicolonToken)) {
       continue;
     }
-    m_tree->addChild(parseClassMember());
+
+    auto result = parseClassMember();
+    if (result) {
+      m_tree->addChild(*result);
+    } else {
+      m_tree->endNode(node, pos());
+      return ParseClassLikeRet::error<ParseMethodFailed>();
+    }
   }
   (void)expect(TokenKind::CloseBraceToken);
+  return ParseClassLikeRet(m_tree->endNode(node, pos()));
 }
 
 NodeId Parser::parseHeritageClause(NodeKind kind)
@@ -276,9 +286,15 @@ NodeId Parser::parseHeritageClause(NodeKind kind)
   do {
     NodeId type = m_tree->beginNode(NodeKind::ExpressionWithTypeArguments, pos());
     if (keyword == TokenKind::ExtendsKeyword) {
-      m_tree->addChild(parseCallChain(parsePrimary()));
-    }
-    else {
+      auto result = parsePrimary();
+      if (!result) {
+        // XXX deal with error here
+        fprintf(stderr, "UNHANDLED ERROR %s:%d\n", __FILE__, __LINE__);
+        fflush(stdout);
+        return kNoNode;
+      }
+      m_tree->addChild(*result);
+    } else {
       m_tree->addChild(parseTypeReference());
     }
     m_tree->addChild(m_tree->endNode(type, pos()));
@@ -289,8 +305,10 @@ NodeId Parser::parseHeritageClause(NodeKind kind)
 
 // ------------------------------------------------------------- class members
 
-NodeId Parser::parseClassMember()
+ParseClassMethodRet Parser::parseClassMember()
 {
+  uint32_t startPos = m_scanner.state().sourcePos;
+
   uint32_t firstToken = pos();
   uint16_t flags = FLAG_NONE;
 
@@ -302,7 +320,8 @@ NodeId Parser::parseClassMember()
   for (;;) {
     if (is(TokenKind::StaticKeyword) && peekKind() != TokenKind::OpenParenToken &&
         peekKind() != TokenKind::EqualsToken && peekKind() != TokenKind::SemicolonToken &&
-        peekKind() != TokenKind::ColonToken && peekKind() != TokenKind::QuestionToken) {
+        peekKind() != TokenKind::ColonToken && peekKind() != TokenKind::QuestionToken)
+    {
       flags |= FLAG_STATIC;
       m_scanner.scanOne();
       continue;
@@ -349,7 +368,7 @@ NodeId Parser::parseClassMember()
       m_tree->addChild(parseType());
     }
     eat(TokenKind::SemicolonToken);
-    return m_tree->endNode(member, pos());
+    return ParseClassMethodRet(m_tree->endNode(member, pos()));
   }
   if (is(TokenKind::OpenParenToken)) {
     NodeId member = m_tree->beginNode(NodeKind::CallSignature, firstToken);
@@ -363,7 +382,7 @@ NodeId Parser::parseClassMember()
       m_tree->addChild(parseTypeOrTypePredicate());
     }
     eat(TokenKind::SemicolonToken);
-    return m_tree->endNode(member, pos());
+    return ParseClassMethodRet(m_tree->endNode(member, pos()));
   }
   if (is(TokenKind::NewKeyword) && peekKind() == TokenKind::OpenParenToken) {
     m_scanner.scanOne();
@@ -375,14 +394,13 @@ NodeId Parser::parseClassMember()
       m_tree->addChild(parseTypeOrTypePredicate());
     }
     eat(TokenKind::SemicolonToken);
-    return m_tree->endNode(member, pos());
+    return ParseClassMethodRet(m_tree->endNode(member, pos()));
   }
 
   bool isSet = false;
   if (is(TokenKind::ConstructorKeyword)) {
     isConstructor = true;
-  }
-  else if ((is(TokenKind::GetKeyword) || is(TokenKind::SetKeyword)) && wordFollows()) {
+  } else if ((is(TokenKind::GetKeyword) || is(TokenKind::SetKeyword)) && wordFollows()) {
     isGet = is(TokenKind::GetKeyword);
     isSet = !isGet;
   }
@@ -405,27 +423,26 @@ NodeId Parser::parseClassMember()
   }
   if (is(TokenKind::OpenBracketToken)) {
     m_tree->addChild(parsePropertyName());
-  }
-  else {
-    NodeId name = m_tree->beginNode(
-        is(TokenKind::StringLiteral)       ? NodeKind::StringLiteral
-        : is(TokenKind::NumericLiteral)    ? NodeKind::NumericLiteral
-        : is(TokenKind::PrivateIdentifier) ? NodeKind::PrivateIdentifier
-                                           : NodeKind::Identifier,
-        pos());
+  } else {
+    NodeId name =
+        m_tree->beginNode(is(TokenKind::StringLiteral)       ? NodeKind::StringLiteral
+                          : is(TokenKind::NumericLiteral)    ? NodeKind::NumericLiteral
+                          : is(TokenKind::PrivateIdentifier) ? NodeKind::PrivateIdentifier
+                                                             : NodeKind::Identifier,
+                          pos());
     if (is(TokenKind::StringLiteral) || is(TokenKind::NumericLiteral) ||
-        is(TokenKind::PrivateIdentifier) || isAlwaysIdentifier(kind())) {
+        is(TokenKind::PrivateIdentifier) || isAlwaysIdentifier(kind()))
+    {
       m_scanner.scanOne();
-    }
-    else {
+    } else {
       errorAt(token(), 1174, string("Property name expected."));
     }
     m_tree->addChild(m_tree->endNode(name, pos()));
   }
 
   bool methodForm = isConstructor || isGet || isSet ||
-                    memberKind == NodeKind::MethodDeclaration || is(TokenKind::OpenParenToken) ||
-                    is(TokenKind::LessThanToken);
+                    memberKind == NodeKind::MethodDeclaration ||
+                    is(TokenKind::OpenParenToken) || is(TokenKind::LessThanToken);
   if (methodForm && memberKind == NodeKind::PropertyDeclaration) {
     m_tree->node(member).kind = NodeKind::MethodDeclaration;
   }
@@ -451,12 +468,10 @@ NodeId Parser::parseClassMember()
       m_tree->addChild(parseBlock());
       m_inYieldContext = savedYield;
       m_allowAwait = savedAwait;
-    }
-    else {
+    } else {
       m_tree->addChild(missingNode(NodeKind::Block, pos()));
     }
-  }
-  else {
+  } else {
     // Property: optional `?`/`!`, optional type, optional initializer.
     if (eat(TokenKind::QuestionToken)) {
       m_tree->node(member).flags |= FLAG_OPTIONAL;
@@ -472,7 +487,13 @@ NodeId Parser::parseClassMember()
     }
     expectSemicolon();
   }
-  return m_tree->endNode(member, pos());
+  if (m_scanner.state().sourcePos == startPos) {
+    // XXX not sure which code to use
+    // errorAt should really use an enum?
+    errorAt(token(), 1174, string("Class member or property expected"));
+    return ParseClassMethodRet::error<ClassMemberExpected>();
+  }
+  return ParseClassMethodRet(m_tree->endNode(member, pos()));
 }
 
 // -------------------------------------------------------------------- modules
@@ -504,8 +525,7 @@ NodeId Parser::parseImportDeclaration(bool ambientFlag)
       }
       (void)expect(TokenKind::CloseParenToken);
       m_tree->addChild(m_tree->endNode(ref, pos()));
-    }
-    else {
+    } else {
       // Namespace import type: `A.B.C`.
       NodeId type = parseTypeReference();
       m_tree->addChild(type);
@@ -527,8 +547,7 @@ NodeId Parser::parseImportDeclaration(bool ambientFlag)
     NodeId module = m_tree->beginNode(NodeKind::StringLiteral, index);
     m_scanner.scanOne();
     m_tree->addChild(m_tree->endNode(module, index + 1));
-  }
-  else {
+  } else {
     NodeId clause = m_tree->beginNode(NodeKind::ImportClause, pos());
     if (isAlwaysIdentifier(kind())) {
       uint32_t nameIndex = pos();
@@ -538,8 +557,7 @@ NodeId Parser::parseImportDeclaration(bool ambientFlag)
     }
     if (eat(TokenKind::CommaToken)) {
       m_tree->addChild(parseImportOrExportClause(true));
-    }
-    else if (is(TokenKind::AsteriskToken)) {
+    } else if (is(TokenKind::AsteriskToken)) {
       m_tree->addChild(parseNamespaceImportOrExport(true));
     }
     m_tree->addChild(m_tree->endNode(clause, pos()));
@@ -553,8 +571,7 @@ NodeId Parser::parseImportDeclaration(bool ambientFlag)
   }
   if (eat(TokenKind::WithKeyword)) {
     m_tree->addChild(parseImportAttributes());
-  }
-  else if (eat(TokenKind::AssertKeyword)) {
+  } else if (eat(TokenKind::AssertKeyword)) {
     m_tree->addChild(parseImportAttributes());
   }
   uint32_t semi = expectSemicolon();
@@ -594,12 +611,17 @@ NodeId Parser::parseExportDeclaration(bool ambientFlag)
     if (kind() == TokenKind::FunctionKeyword || kind() == TokenKind::AsyncKeyword) {
       bool asyncFlag = eat(TokenKind::AsyncKeyword);
       m_tree->addChild(parseFunctionDeclaration(asyncFlag, false));
-    }
-    else if (kind() == TokenKind::ClassKeyword || kind() == TokenKind::AtToken ||
-             (kind() == TokenKind::AbstractKeyword && peekKind() == TokenKind::ClassKeyword)) {
-      m_tree->addChild(parseClassDeclaration(false, false));
-    }
-    else {
+    } else if (kind() == TokenKind::ClassKeyword || kind() == TokenKind::AtToken ||
+               (kind() == TokenKind::AbstractKeyword &&
+                peekKind() == TokenKind::ClassKeyword))
+    {
+      auto result = parseClassDeclaration(false, false);
+      if (result) {
+        m_tree->addChild(*result);
+      } else {
+        // Handle parse failure for class declaration.
+      }
+    } else {
       m_tree->addChild(parseAssignmentExpression());
     }
     uint32_t semi = expectSemicolon();
@@ -612,11 +634,9 @@ NodeId Parser::parseExportDeclaration(bool ambientFlag)
   }
   if (is(TokenKind::AsteriskToken)) {
     m_tree->addChild(parseNamespaceImportOrExport(false));
-  }
-  else if (is(TokenKind::OpenBraceToken)) {
+  } else if (is(TokenKind::OpenBraceToken)) {
     m_tree->addChild(parseImportOrExportClause(false));
-  }
-  else {
+  } else {
     // A declaration: `export const …`, `export function …`, etc.
     m_tree->addChild(parseStatement());
   }
@@ -641,17 +661,16 @@ NodeId Parser::parseExportDeclaration(bool ambientFlag)
 NodeId Parser::parseImportOrExportClause(bool isImport)
 {
   uint32_t firstToken = pos();
-  NodeId list = m_tree->beginNode(isImport ? NodeKind::NamedImports : NodeKind::NamedExports,
-                                  firstToken);
+  NodeId list = m_tree->beginNode(
+      isImport ? NodeKind::NamedImports : NodeKind::NamedExports, firstToken);
   (void)expect(TokenKind::OpenBraceToken);
   while (!is(TokenKind::CloseBraceToken) && !is(TokenKind::EndOfFile)) {
     uint32_t specFirst = pos();
     if (eat(TokenKind::TypeKeyword) && peekKind() == TokenKind::CommaToken) {
       // `type` in `import { type A }` — treat as the specifier name below.
     }
-    NodeId specifier = m_tree->beginNode(isImport ? NodeKind::ImportSpecifier
-                                                   : NodeKind::ExportSpecifier,
-                                         specFirst);
+    NodeId specifier = m_tree->beginNode(
+        isImport ? NodeKind::ImportSpecifier : NodeKind::ExportSpecifier, specFirst);
     if (isAlwaysIdentifier(kind()) || is(TokenKind::StringLiteral)) {
       uint32_t nameIndex = pos();
       NodeKind nameKind =
@@ -679,8 +698,8 @@ NodeId Parser::parseNamespaceImportOrExport(bool isImport)
   uint32_t firstToken = pos();
   (void)expect(TokenKind::AsteriskToken);
   (void)expect(TokenKind::AsKeyword);
-  NodeId node = m_tree->beginNode(isImport ? NodeKind::NamespaceImport : NodeKind::NamespaceExport,
-                                  firstToken);
+  NodeId node = m_tree->beginNode(
+      isImport ? NodeKind::NamespaceImport : NodeKind::NamespaceExport, firstToken);
   if (isAlwaysIdentifier(kind())) {
     m_scanner.scanOne();
   }
@@ -694,8 +713,7 @@ NodeId Parser::parseModuleDeclaration(bool ambientFlag)
     if (is(TokenKind::StringLiteral)) {
       // `module "…" { … }` — an ambient module.
     }
-  }
-  else {
+  } else {
     (void)eat(TokenKind::NamespaceKeyword);
   }
   NodeId node = m_tree->beginNode(NodeKind::ModuleDeclaration, firstToken);
@@ -707,8 +725,7 @@ NodeId Parser::parseModuleDeclaration(bool ambientFlag)
     NodeId name = m_tree->beginNode(NodeKind::StringLiteral, index);
     m_scanner.scanOne();
     m_tree->addChild(m_tree->endNode(name, index + 1));
-  }
-  else {
+  } else {
     uint32_t nameIndex = pos();
     NodeId name = m_tree->beginNode(NodeKind::Identifier, nameIndex);
     m_scanner.scanOne();
@@ -728,8 +745,7 @@ NodeId Parser::parseModuleDeclaration(bool ambientFlag)
     }
     (void)expect(TokenKind::CloseBraceToken);
     m_tree->addChild(m_tree->endNode(block, pos()));
-  }
-  else {
+  } else {
     (void)expectSemicolon(); // `declare module A;`
   }
   return m_tree->endNode(node, pos());
@@ -776,8 +792,7 @@ NodeId Parser::parseInterfaceDeclaration(bool ambientFlag)
   }
   if (is(TokenKind::OpenBraceToken)) {
     m_tree->addChild(parseTypeLiteralBody());
-  }
-  else {
+  } else {
     (void)expect(TokenKind::OpenBraceToken);
     m_tree->addChild(missingNode(NodeKind::TypeLiteral, pos()));
   }

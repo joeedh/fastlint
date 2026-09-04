@@ -33,6 +33,12 @@ else()
   target_compile_options(fastlint_warnings INTERFACE -Wall -Wextra -Werror)
 endif()
 
+# backtrace() only names a function whose symbol is in the dynamic table, so
+# executables are linked with -rdynamic for readable crash traces.
+if(NOT MSVC)
+  set(CMAKE_ENABLE_EXPORTS ON)
+endif()
+
 # Release keeps debug info so a crash in a shipped build is still readable, and
 # folds identical code the debugger would otherwise duplicate.
 if(MSVC)

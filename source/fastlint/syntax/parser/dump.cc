@@ -24,6 +24,10 @@ struct TreeWriter {
 
     void walk(NodeId id, int depth)
     {
+      if (id == kNoNode) {
+        fprintf(stderr, "Invalid node reference!\n");
+        return;
+      }
       const Node &node = tree.nodes()[id];
       for (int i = 0; i < depth; ++i) {
         text("  ");

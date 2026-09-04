@@ -4,6 +4,7 @@
 #include "fastlint/syntax/tree.h"
 #include "testing/snapshot.h"
 #include "testing/test.h"
+#include "test_sources.h"
 
 using namespace fastlint;
 using namespace fastlint::syntax;
@@ -223,3 +224,19 @@ TEST(parser, generic_call_vs_comparison)
   Parsed p("const a = f<number>(1); const b = a < b > c;");
   CHECK(p.ok());
 }
+
+#if 1
+TEST(parser, real_world_ts_code)
+{
+  fastlint::test::loadTestSources();
+  for (const auto &ts : fastlint::test::tsTestSources) {
+    printf("== parsing %s ==\n", ts.path.c_str());
+    fflush(stdout);
+    Parsed p(ts.source);
+    CHECK(p.ok());
+    //printf("%s\n", ts.source.c_str());
+    fflush(stdout);
+  }
+}
+#endif
+
