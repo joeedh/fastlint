@@ -200,22 +200,64 @@ ergonomic AST (task 4) is a separate layer over it, so the parser can start
 before the AST design is reviewed.
 
 ### 3.1 Scanner
-- [ ] Token kinds table (single source of truth, generated header from a
+
+Done 2026-09-04 (hand-written unit tests; the tsgo token-stream diff below is
+still open). Notes:
+- Rescans rewrite the current token in place (`rescanGreaterThan()` hands out
+  one `>` per call; `scanAll()` auto-rescans a substitution-closing `}` into
+  the CloseBrace token *plus* the following middle/tail token, keeping both).
+- Line starts record `break_offset + 1` (first byte of the terminator), one
+  entry per break, CRLF counted once.
+- Leading trivia of a token excludes a trailing pure-whitespace run.
+
+- [x] Token kinds table (single source of truth, generated header from a
   `.def` or `constexpr` array).
-- [ ] UTF-8 source, byte offsets, line-start table as side product.
-- [ ] Modes: normal, template (head/middle/tail), JSX text, JSX identifier,
+- [x] UTF-8 source, byte offsets, line-start table as side product.
+- [x] Modes: normal, template (head/middle/tail), JSX text, JSX identifier,
   regex. `rescan*` API: slash, template tail, `>`-family, JSX identifier,
   JSX text.
-- [ ] Numeric literals (all bases, separators, bigint), strings with
+- [x] Numeric literals (all bases, separators, bigint), strings with
   escapes, identifiers incl. unicode escapes and `#private`.
-- [ ] Trivia collection: whitespace/newline/comments into the trivia array;
+- [x] Trivia collection: whitespace/newline/comments into the trivia array;
   `precedingLineBreak` flag on tokens for ASI.
-- [ ] Snapshot/rewind.
-- [ ] Unit tests: token stream diffs against tsgo's scanner on a corpus (via
-  a small Go or `tsc --api` helper — decide in 2.x) or against hand-written
-  expectations.
+- [x] Snapshot/rewind.
+- [~] Unit tests: hand-written expectations in `scanner_test.cc` (29 tests)
+  pass. Token stream diffs against tsgo's scanner on a corpus (via a small Go
+  or `tsc --api` helper — decide in 2.x) still open.
 
 ### 3.2 Parser
+
+First working slice done 2026-09-04 (`syntax/parser.{h,cc}` +
+`syntax/parser_test.cc`, 21 tests green; suite 65 passed / 1 skipped).
+Working: statements (all forms incl. for-of/for-in with `using`/`await using`
+heads, ASI), declarations (functions/generators/ambient, classes with
+modifiers + accessors + constructor parameter properties + index/call/construct
+signatures, interfaces, type aliases, enums, namespaces, import/export forms,
+import-equals), expressions (full precedence climbing, arrows via paren
+speculation with diagnostic rollback, call/member chains, object/array
+literals, templates driven through scanner rescans, `import.meta`/`import()`),
+a large slice of the TS type grammar (predicates, unions/intersections,
+operators, tuples, mapped types with `as`, function/constructor types, type
+queries, `infer`, import types, template literal types, references/args), a
+speculation mechanism (`Parser::Mark` = scanner state + tree build state +
+diagnostic count), and error recovery with `ErrorNode`/`Missing` plus progress
+guards in every repetition loop.
+
+Parser notes:
+- Node kinds gained `PropertyAccessExpression` (def had none).
+- `GrammarTree` gained `buildState()/restoreBuild()` (speculation) and
+  `setSourceForBuild()` (token-text dumps).
+- Scanner quirk worked around in the parser: middle-mode `scanTemplate` that
+  runs to the closing backtick reports TemplateMiddle; the parser detects the
+  trailing backtick and calls `rescanTemplateTail(true)`.
+- `dumpTree()` (S-expression with node flags and the node's unowned tokens)
+  is in parser.cc; tests assert exact dumps.
+- Recurring bug class while building this: a helper that appends children
+  directly to the enclosing node must not have its kNoNode return value
+  passed to addChild() (parseParameterList/parseClassLike). Keep those
+  returning void.
+
+Still open in 3.2:
 - [ ] Statements, declarations, expressions with precedence climbing,
   patterns/destructuring, classes (fields, accessors, `accessor`, `static`
   blocks, decorators), modules (`import`/`export` all forms, `import type`,
@@ -225,14 +267,15 @@ before the AST design is reviewed.
   symbol`, abstract constructors, variance annotations).
 - [ ] Contexts: `await`/`yield` flags, ambient (`declare`), strict-mode
   reserved words, `in` operator disallowed in for-init.
-- [ ] Speculation: arrow vs parenthesized expr, generic call vs comparison,
-  type-assertion vs JSX in `.ts` vs `.tsx`.
-- [ ] ASI rules (restricted productions: `return`, `throw`, `break`,
-  `continue`, postfix `++/--`, arrow `=>`, `yield`, `async`).
+- [~] Speculation: arrow vs parenthesized expr (done), generic call vs
+  comparison, type-assertion vs JSX in `.ts` vs `.tsx` (basic `<T>expr` done).
+- [~] ASI rules (restricted productions: `return`, `throw`, `break`,
+  `continue`, postfix `++/--`, arrow `=>`, `yield`, `async`) — done for the
+  productions implemented.
 - [ ] JSX (`.jsx`/`.tsx`), JS mode (`.js` incl. JSDoc *ranges* only, no
   JSDoc parsing yet).
-- [ ] Error recovery: `Error`/`Missing` nodes, sync sets per production,
-  no infinite loops on garbage.
+- [~] Error recovery: `Error`/`Missing` nodes, sync sets per production,
+  no infinite loops on garbage (basic level done).
 - [ ] Diagnostics: TS-compatible codes where practical.
 
 ### 3.3 Grammar tree representation

@@ -1,0 +1,29 @@
+### scanner.snapshot_of_a_small_program #1
+const <lb>
+identifier
+=
+numeric_literal
+;
+export <lb>
+function
+identifier
+(
+identifier
+:
+string
+)
+:
+string
+{
+return <lb>
+template_head
+identifier
+}
+template_tail
+;
+} <lb>
+end_of_file <lb>
+
+### scanner.tokenizes_punctuation_and_operators #1
+identifier + identifier - identifier ** identifier = identifier === identifier !== identifier => ... identifier ?. identifier ?? identifier end_of_file
+
