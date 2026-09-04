@@ -1,5 +1,10 @@
 set(SRC
-  syntax/parser.cc
+  syntax/parser/declarations.cc
+  syntax/parser/dump.cc
+  syntax/parser/expressions.cc
+  syntax/parser/parser.cc
+  syntax/parser/statements.cc
+  syntax/parser/types.cc
   syntax/scanner.cc
   syntax/tokens.cc
   syntax/tree.cc
@@ -9,6 +14,7 @@ set(SRC
   syntax/diagnostics.h
   syntax/node_kind.def
   syntax/parser.h
+  syntax/parser/internal.h
   syntax/scanner.h
   syntax/tokens.def
   syntax/tokens.h

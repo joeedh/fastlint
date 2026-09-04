@@ -227,8 +227,11 @@ still open). Notes:
 
 ### 3.2 Parser
 
-First working slice done 2026-09-04 (`syntax/parser.{h,cc}` +
-`syntax/parser_test.cc`, 21 tests green; suite 65 passed / 1 skipped).
+First working slice done 2026-09-04 (public header `syntax/parser.h`; the
+implementation is split under `syntax/parser/`: `parser.cc` (class plumbing,
+`parseFile`), `statements.cc`, `declarations.cc`, `expressions.cc`,
+`types.cc`, `dump.cc`, with shared helpers inline in `parser/internal.h`.
+Tests in `syntax/parser_test.cc`: 21 tests green; suite 65 passed / 1 skipped).
 Working: statements (all forms incl. for-of/for-in with `using`/`await using`
 heads, ASI), declarations (functions/generators/ambient, classes with
 modifiers + accessors + constructor parameter properties + index/call/construct
@@ -251,7 +254,7 @@ Parser notes:
   runs to the closing backtick reports TemplateMiddle; the parser detects the
   trailing backtick and calls `rescanTemplateTail(true)`.
 - `dumpTree()` (S-expression with node flags and the node's unowned tokens)
-  is in parser.cc; tests assert exact dumps.
+  lives in `syntax/parser/dump.cc`; tests assert exact dumps.
 - Recurring bug class while building this: a helper that appends children
   directly to the enclosing node must not have its kNoNode return value
   passed to addChild() (parseParameterList/parseClassLike). Keep those
