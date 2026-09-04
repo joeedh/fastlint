@@ -1,1 +1,21 @@
-{"devDependencies":{"typescript":"^7.0.2"}}
+{
+  "name": "fastlint",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A fast TypeScript/JavaScript linter written in C++",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "make": "node make.ts"
+  },
+  "devDependencies": {
+    "@pathtx/prettier": "^3.3.0-dev",
+    "@types/node": "^24.0.0",
+    "@types/yargs": "^17.0.33",
+    "typescript": "^7.0.2",
+    "yargs": "^18.0.0"
+  }
+}

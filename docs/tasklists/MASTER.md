@@ -35,17 +35,17 @@ Goal: `node make.ts <cmd>` drives everything; a fresh clone + VS builds with
 one command.
 
 ### 1.1 Repo scaffold
-- [ ] `package.json` (private, `"type": "module"`, pnpm), dev deps: `yargs`,
+- [x] `package.json` (private, `"type": "module"`, pnpm), dev deps: `yargs`,
   `@pathtx/prettier`, `@types/node`, `@types/yargs`.
-- [ ] `tsconfig.json`: `strict`, `strictNullChecks`, `module: nodenext`,
+- [x] `tsconfig.json`: `strict`, `strictNullChecks`, `module: nodenext`,
   `target: es2023`, `noEmit`, `allowImportingTsExtensions`,
   `verbatimModuleSyntax`, `erasableSyntaxOnly` (enforces node-runnable TS:
   no enums, no namespaces, no parameter properties).
-- [ ] `.prettierrc` pointing at the `@pathtx/prettier` fork; `.clang-format`
+- [x] `.prettierrc` pointing at the `@pathtx/prettier` fork; `.clang-format`
   (base: LLVM or Google, 2-space, 100 col — match litestl's style).
-- [ ] `.gitignore`: `build/`, `node_modules/`, `.cache/`. Snapshot files
+- [x] `.gitignore`: `build/`, `node_modules/`, `.cache/`. Snapshot files
   (`tests/__snapshots__/`) are **committed**.
-- [ ] `.editorconfig`.
+- [x] `.editorconfig`.
 
 ### 1.2 `make.ts` dispatch (yargs)
 - [ ] `make.ts` at repo root, run as `node make.ts …` (no build step).
