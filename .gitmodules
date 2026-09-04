@@ -1,0 +1,3 @@
+[submodule "vendor/litestl"]
+	path = vendor/litestl
+	url = https://github.com/joeedh/litestl.git
