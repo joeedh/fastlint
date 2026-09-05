@@ -5,6 +5,7 @@
 #include "util/string.h"
 #include "util/vector.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
@@ -19,6 +20,57 @@ using litestl::util::Vector;
 namespace {
 
 /** Reads a whole file; std::string is the I/O boundary so NUL bytes survive. */
+/** Rewrites a UTF-16 file (detected by its BOM) as UTF-8 in place. */
+void transcodeUtf16(std::string &bytes)
+{
+  if (bytes.size() < 2) {
+    return;
+  }
+  unsigned char b0 = static_cast<unsigned char>(bytes[0]);
+  unsigned char b1 = static_cast<unsigned char>(bytes[1]);
+  bool little = b0 == 0xFF && b1 == 0xFE;
+  bool big = b0 == 0xFE && b1 == 0xFF;
+  if (!little && !big) {
+    return;
+  }
+  std::string out;
+  out.reserve(bytes.size());
+  auto unit = [&](size_t i) {
+    unsigned char lo = static_cast<unsigned char>(bytes[i + (little ? 0 : 1)]);
+    unsigned char hi = static_cast<unsigned char>(bytes[i + (little ? 1 : 0)]);
+    return uint32_t(hi) << 8 | lo;
+  };
+  auto put = [&](uint32_t cp) {
+    if (cp < 0x80) {
+      out.push_back(char(cp));
+    } else if (cp < 0x800) {
+      out.push_back(char(0xC0 | (cp >> 6)));
+      out.push_back(char(0x80 | (cp & 0x3F)));
+    } else if (cp < 0x10000) {
+      out.push_back(char(0xE0 | (cp >> 12)));
+      out.push_back(char(0x80 | ((cp >> 6) & 0x3F)));
+      out.push_back(char(0x80 | (cp & 0x3F)));
+    } else {
+      out.push_back(char(0xF0 | (cp >> 18)));
+      out.push_back(char(0x80 | ((cp >> 12) & 0x3F)));
+      out.push_back(char(0x80 | ((cp >> 6) & 0x3F)));
+      out.push_back(char(0x80 | (cp & 0x3F)));
+    }
+  };
+  for (size_t i = 2; i + 1 < bytes.size(); i += 2) {
+    uint32_t cp = unit(i);
+    if (cp >= 0xD800 && cp < 0xDC00 && i + 3 < bytes.size()) {
+      uint32_t low = unit(i + 2);
+      if (low >= 0xDC00 && low < 0xE000) {
+        cp = 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00);
+        i += 2;
+      }
+    }
+    put(cp);
+  }
+  bytes.swap(out);
+}
+
 bool readFile(const std::filesystem::path &path, std::string &out)
 {
   FILE *file = fopen(path.string().c_str(), "rb");
@@ -34,6 +86,7 @@ bool readFile(const std::filesystem::path &path, std::string &out)
     out.append(buffer, read);
   }
   fclose(file);
+  transcodeUtf16(out);
   return true;
 }
 
@@ -161,25 +214,12 @@ int parseCommand(int argc, char **argv)
   return parsed == clean ? 0 : 1;
 }
 
-/** Prints the grammar-tree S-expression; `--errors` appends diagnostics. */
-int dumpTreeCommand(int argc, char **argv)
+/** Parses one file and prints its dump; `--errors` appends diagnostics. */
+int dumpOne(const std::filesystem::path &file, bool spans, bool errors)
 {
-  const char *file = nullptr;
-  bool errors = false;
-  for (int i = 2; i < argc; i++) {
-    if (std::strcmp(argv[i], "--errors") == 0) {
-      errors = true;
-    } else {
-      file = argv[i];
-    }
-  }
-  if (!file) {
-    std::fprintf(stderr, "usage: fastlint dump-tree [--errors] <file>\n");
-    return 2;
-  }
   std::string bytes;
   if (!readFile(file, bytes)) {
-    std::fprintf(stderr, "%s: cannot read\n", file);
+    std::fprintf(stderr, "%s: cannot read\n", file.string().c_str());
     return 2;
   }
   syntax::Diagnostics diagnostics;
@@ -187,7 +227,7 @@ int dumpTreeCommand(int argc, char **argv)
   syntax::Parser parser(std::string_view(bytes), optionsFor(file), diagnostics);
   parser.parseFile(tree);
   string dump;
-  syntax::dumpTree(tree, dump);
+  syntax::dumpTree(tree, dump, spans);
   std::fputs(dump.c_str(), stdout);
   if (errors) {
     for (const syntax::Diagnostic &d : diagnostics.items()) {
@@ -196,6 +236,65 @@ int dumpTreeCommand(int argc, char **argv)
     }
   }
   return diagnostics.empty() ? 0 : 1;
+}
+
+int dumpTreeCommand(int argc, char **argv)
+{
+  const char *file = nullptr;
+  const char *batch = nullptr;
+  bool errors = false;
+  bool spans = false;
+  for (int i = 2; i < argc; i++) {
+    if (std::strcmp(argv[i], "--errors") == 0) {
+      errors = true;
+    } else if (std::strcmp(argv[i], "--spans") == 0) {
+      spans = true;
+    } else if (std::strcmp(argv[i], "--batch") == 0 && i + 1 < argc) {
+      batch = argv[++i];
+    } else {
+      file = argv[i];
+    }
+  }
+  if (!file && !batch) {
+    std::fprintf(
+        stderr,
+        "usage: fastlint dump-tree [--errors] [--spans] (<file> | --batch <list>)\n");
+    return 2;
+  }
+  if (!batch) {
+    return dumpOne(file, spans, errors);
+  }
+  // Batch mode reads one path per line and prints `#file <path>` before each
+  // dump so a consumer can stream thousands of files from one process.
+  std::string list;
+  if (!readFile(batch, list)) {
+    std::fprintf(stderr, "%s: cannot read\n", batch);
+    return 2;
+  }
+  int worst = 0;
+  size_t at = 0;
+  while (at < list.size()) {
+    size_t end = list.find('\n', at);
+    if (end == std::string::npos) {
+      end = list.size();
+    }
+    std::string line = list.substr(at, end - at);
+    at = end + 1;
+    while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) {
+      line.pop_back();
+    }
+    if (line.empty()) {
+      continue;
+    }
+    std::printf("#file %s\n", line.c_str());
+    int code = dumpOne(line, spans, errors);
+    if (code == 2) {
+      std::printf("#error cannot read\n");
+    }
+    worst = std::max(worst, code);
+  }
+  std::fflush(stdout);
+  return worst;
 }
 
 } // namespace

@@ -1,4 +1,5 @@
 #include "fastlint/syntax/parser.h"
+#include <algorithm>
 
 #include "fastlint/syntax/parser/internal.h"
 
@@ -16,24 +17,76 @@ namespace {
 struct TreeWriter {
   GrammarTree &tree;
   std::string &out;
+  bool spans = false;
 
   void text(std::string_view t)
   {
     out.append(t);
   }
 
-  void walk(NodeId id, int depth)
+  // Indentation stops growing past this depth so a long left-associative
+  // chain does not make the dump quadratic in size.
+  static constexpr int maxIndent = 64;
+
+  void indent(int depth)
+  {
+    for (int i = 0; i < std::min(depth, maxIndent); ++i) {
+      text("  ");
+    }
+  }
+
+  struct Frame {
+    NodeId id;
+    uint32_t next; // index of the next child to open
+    int depth;
+  };
+
+  // Iterative so a deep tree cannot overflow the stack.
+  void walk(NodeId root)
+  {
+    litestl::util::Vector<Frame, 64> stack;
+    open(root, 0);
+    stack.append({root, 0, 0});
+    while (stack.size() > 0) {
+      Frame &top = stack[int(stack.size()) - 1];
+      auto children = tree.children(top.id);
+      if (top.next < uint32_t(children.size())) {
+        NodeId child = children[top.next++];
+        int depth = top.depth + 1;
+        open(child, depth);
+        stack.append({child, 0, depth});
+        continue;
+      }
+      indent(top.depth);
+      text(")\n");
+      stack.pop_back();
+    }
+  }
+
+  /** Prints a node's opening line: kind, span, flags and unowned tokens. */
+  void open(NodeId id, int depth)
   {
     if (id == kNoNode) {
       fprintf(stderr, "Invalid node reference!\n");
       return;
     }
     const Node &node = tree.nodes()[id];
-    for (int i = 0; i < depth; ++i) {
-      text("  ");
-    }
+    indent(depth);
     text("(");
     text(nodeKindName(node.kind));
+    if (spans) {
+      uint32_t start = 0;
+      uint32_t end = 0;
+      if (node.tokenCount > 0) {
+        const Token &first = tree.tokenAt(node.firstToken);
+        const Token &last = tree.tokenAt(node.firstToken + node.tokenCount - 1);
+        start = first.offset;
+        end = last.offset + last.length;
+      }
+      char buf[48];
+      snprintf(buf, sizeof(buf), "@%u-%u", start, end);
+      text(buf);
+    }
     if (node.flags) {
       text(" :");
       if (node.flags & FLAG_MISSING) {
@@ -107,7 +160,9 @@ struct TreeWriter {
       }
     }
     // Tokens not owned by any child belong to this node directly.
-    uint32_t tokenEnd = node.firstToken + node.tokenCount;
+    // Spans mode is for machine diffing, so token text (which may span
+    // lines) stays out of it.
+    uint32_t tokenEnd = spans ? node.firstToken : node.firstToken + node.tokenCount;
     auto children = tree.children(id);
     for (uint32_t i = node.firstToken; i < tokenEnd; ++i) {
       if (tree.tokenAt(i).kind == TokenKind::EndOfFile) {
@@ -129,26 +184,19 @@ struct TreeWriter {
       text("\"");
     }
     text("\n");
-    for (NodeId child : tree.children(id)) {
-      walk(child, depth + 1);
-    }
-    for (int i = 0; i < depth; ++i) {
-      text("  ");
-    }
-    text(")\n");
   }
 };
 
 } // namespace
-void dumpTree(GrammarTree &tree, litestl::util::string &out)
+void dumpTree(GrammarTree &tree, litestl::util::string &out, bool spans)
 {
   std::string buffer;
   // S-expression dump: (Kind flags? "token" children…). Tokens print their
   // source text; nodes recurse. Used by parser tests and debugging.
 
-  TreeWriter writer{tree, buffer};
+  TreeWriter writer{tree, buffer, spans};
   if (tree.root() != kNoNode) {
-    writer.walk(tree.root(), 0);
+    writer.walk(tree.root());
   }
   out += buffer;
 }

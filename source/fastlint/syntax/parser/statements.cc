@@ -528,10 +528,12 @@ NodeId Parser::parseTryStatement()
     uint32_t catchFirst = pos() - 1;
     NodeId clause = m_tree->beginNode(NodeKind::CatchClause, catchFirst);
     if (eat(TokenKind::OpenParenToken)) {
+      NodeId variable = m_tree->beginNode(NodeKind::VariableDeclaration, pos());
       m_tree->addChild(parseBindingPattern());
       if (eat(TokenKind::ColonToken)) {
         m_tree->addChild(parseType());
       }
+      m_tree->addChild(m_tree->endNode(variable, pos()));
       (void)expect(TokenKind::CloseParenToken);
     }
     m_tree->addChild(parseBlock());

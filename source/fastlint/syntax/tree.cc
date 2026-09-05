@@ -58,7 +58,7 @@ uint32_t GrammarTree::lineOf(uint32_t offset) const
   size_t hi = m_lineStarts.size();
   while (lo < hi) {
     size_t mid = (lo + hi) / 2;
-    if (m_lineStarts[mid] <= offset) {
+    if (m_lineStarts[int(mid)] <= offset) {
       lo = mid + 1;
     } else {
       hi = mid;

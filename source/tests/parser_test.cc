@@ -194,7 +194,7 @@ class A {
   size_t prop3 = p.text().find("(Identifier \"prop3\"");
   CHECK(prop1 < prop2);
   CHECK(prop2 < prop3);
-  size_t number = p.text().find("(QualifiedName \"number\"");
+  size_t number = p.text().find("(KeywordType \"number\"");
   CHECK(prop1 < number);
   CHECK(number < prop2);
   // prop2: a negated literal initializer.
@@ -820,8 +820,7 @@ TEST(parser, import_and_export_assignments)
   CHECK(fs < require);
   // An entity name alias is a qualified name.
   size_t x = p.text().find("(Identifier \"X\"");
-  size_t abc = p.text().find("(TypeReference\n      (QualifiedName \"A\" \".\" \"B\" "
-                             "\".\" \"C\"");
+  size_t abc = p.text().find("(QualifiedName \".\" \".\"\n      (Identifier \"A\"");
   CHECK(x < abc);
   CHECK(abc < p.text().find("(Identifier \"Y\""));
   // `export import` nests the alias in the export.
@@ -854,13 +853,13 @@ TEST(parser, type_assertions_and_other_non_erasable_syntax)
   // The angle-bracket assertion owns its type and operand.
   CHECK_EQ(count(p.text(), "(TypeAssertionExpression \"<\" \">\""), size_t(3));
   CHECK(p.text().find("(TypeAssertionExpression \"<\" \">\"\n          (TypeReference\n"
-                      "            (QualifiedName \"T\"\n            )\n          )\n"
+                      "            (Identifier \"T\"\n            )\n          )\n"
                       "          (Identifier \"y\"") != std::string::npos);
   CHECK(p.text().find("(TypeAssertionExpression \"<\" \">\"\n          (ArrayType") !=
         std::string::npos);
   // `<const>` is a reference to the `const` marker type, as in `as const`.
   CHECK(p.text().find("(TypeAssertionExpression \"<\" \">\"\n          (TypeReference\n"
-                      "            (QualifiedName \"const\"") != std::string::npos);
+                      "            (Identifier \"const\"") != std::string::npos);
   // Abstract classes and members carry the flag and own the keyword.
   CHECK(p.text().find("(ClassDeclaration : abstract \"abstract\" \"class\"") !=
         std::string::npos);
@@ -883,10 +882,11 @@ TEST(parser, export_star_forms)
   Parsed p(
       "export * from './a';\nexport * as ns from './b';\nimport * as m from './c';\n");
   CHECK(p.ok());
-  CHECK_EQ(count(p.text(), "(ExportDeclaration : exported \"export\" \"from\""),
-           size_t(2));
-  // Only the aliased forms carry a name child.
-  CHECK(p.text().find("(NamespaceExport \"*\"\n    )") != std::string::npos);
+  CHECK_EQ(count(p.text(), "(ExportDeclaration : exported \"export\""), size_t(2));
+  // `export *` without an alias owns its star; only aliased forms get a node.
+  CHECK(p.text().find("(ExportDeclaration : exported \"export\" \"*\" \"from\"") !=
+        std::string::npos);
+  CHECK_EQ(count(p.text(), "(NamespaceExport"), size_t(1));
   CHECK(p.text().find("(NamespaceExport \"*\" \"as\"\n      (Identifier \"ns\"") !=
         std::string::npos);
   CHECK(p.text().find("(NamespaceImport \"*\" \"as\"\n        (Identifier \"m\"") !=
@@ -905,10 +905,11 @@ TEST(parser, tuple_element_forms)
         std::string::npos);
   CHECK_EQ(count(p.text(), "(RestType \"...\""), size_t(2));
   CHECK_EQ(count(p.text(), "(NamedTupleMember"), size_t(3));
-  CHECK(p.text().find("(NamedTupleMember : optional \"q\" \"?\" \":\"") !=
+  CHECK(p.text().find(
+            "(NamedTupleMember : optional \"?\" \":\"\n        (Identifier \"q\"") !=
         std::string::npos);
-  CHECK(p.text().find("(RestType \"...\"\n        (NamedTupleMember \"rest\" \":\"") !=
-        std::string::npos);
+  CHECK(p.text().find("(RestType \"...\"\n        (NamedTupleMember \":\"\n          "
+                      "(Identifier \"rest\"") != std::string::npos);
 }
 
 TEST(parser, bigint_keyword_and_literals)
@@ -918,7 +919,7 @@ TEST(parser, bigint_keyword_and_literals)
            "type S = `${bigint}.${bigint}`;\n"
            "type L = 2n | -1n;\n");
   CHECK(p.ok());
-  CHECK_EQ(count(p.text(), "(QualifiedName \"bigint\""), size_t(3));
+  CHECK_EQ(count(p.text(), "(KeywordType \"bigint\""), size_t(3));
   CHECK_EQ(count(p.text(), "(BigIntLiteral \"1n\""), size_t(1));
   CHECK(p.text().find("(FunctionDeclaration \"function\"") != std::string::npos);
   CHECK(p.text().find("(Identifier \"bigint\"") != std::string::npos);
@@ -1027,7 +1028,8 @@ TEST(parser, mapped_type_modifiers)
   CHECK(p.text().find(
             "(MappedType : readonly optional \"{\" \"readonly\" \"[\" \"as\" \"]\" "
             "\"-\" \"?\" \":\" \";\" \"}\"") != std::string::npos);
-  CHECK_EQ(count(p.text(), "(TypeParameter \"P\" \"in\""), size_t(3));
+  CHECK_EQ(count(p.text(), "(TypeParameter \"in\"\n        (Identifier \"P\""),
+           size_t(3));
   CHECK(p.text().find("(TemplateLiteralType") != std::string::npos);
   CHECK_EQ(count(p.text(), "(TypeParameter"), size_t(4));
 }

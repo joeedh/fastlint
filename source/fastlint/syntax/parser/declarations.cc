@@ -265,7 +265,10 @@ NodeId Parser::parseClassLike(NodeId node)
 {
   parseDecorators();
   (void)expect(TokenKind::ClassKeyword);
-  if (isAlwaysIdentifier(kind())) {
+  // `class implements A {}` and `class extends B {}` are anonymous.
+  if (isAlwaysIdentifier(kind()) && !is(TokenKind::ImplementsKeyword) &&
+      !is(TokenKind::ExtendsKeyword))
+  {
     uint32_t nameIndex = pos();
     m_scanner.scanOne();
     NodeId name = m_tree->beginNode(NodeKind::Identifier, nameIndex);
@@ -528,7 +531,6 @@ NodeId Parser::parseClassMember()
     }
     return endStatement(member);
   }
-  return m_tree->endNode(member, pos());
 }
 
 // -------------------------------------------------------------------- modules
@@ -562,16 +564,14 @@ NodeId Parser::parseImportDeclaration(bool ambientFlag)
       (void)expect(TokenKind::OpenParenToken);
       if (is(TokenKind::StringLiteral)) {
         uint32_t index = pos();
-        NodeId name = m_tree->beginNode(NodeKind::StringLiteral, index);
+        NodeId literal = m_tree->beginNode(NodeKind::StringLiteral, index);
         m_scanner.scanOne();
-        m_tree->addChild(m_tree->endNode(name, index + 1));
+        m_tree->addChild(m_tree->endNode(literal, index + 1));
       }
       (void)expect(TokenKind::CloseParenToken);
       m_tree->addChild(m_tree->endNode(ref, pos()));
     } else {
-      // Namespace import type: `A.B.C`.
-      NodeId type = parseTypeReference();
-      m_tree->addChild(type);
+      m_tree->addChild(parseEntityName()); // `A.B.C`
     }
     return endStatement(node);
   }
@@ -705,8 +705,10 @@ NodeId Parser::parseExportDeclaration(bool ambientFlag)
     m_scanner.scanOne();
     m_tree->node(node).flags |= FLAG_TYPE_ONLY;
   }
-  if (is(TokenKind::AsteriskToken)) {
+  if (is(TokenKind::AsteriskToken) && peekKind() == TokenKind::AsKeyword) {
     m_tree->addChild(parseNamespaceImportOrExport(false));
+  } else if (eat(TokenKind::AsteriskToken)) {
+    // `export * from "m"` re-exports without a binding, so no node.
   } else if (is(TokenKind::OpenBraceToken)) {
     m_tree->addChild(parseImportOrExportClause(false));
   } else {

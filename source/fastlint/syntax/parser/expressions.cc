@@ -75,8 +75,52 @@ NodeId Parser::parseAssignmentExpression()
   return left;
 }
 
-bool Parser::isArrowHead()
+bool Parser::mayBeArrowHead()
 {
+  if (!is(TokenKind::OpenParenToken)) {
+    return true;
+  }
+  Mark mark = begin();
+  m_scanner.scanOne();
+  bool result = true;
+  if (is(TokenKind::CloseParenToken)) {
+    m_scanner.scanOne();
+    result = is(TokenKind::EqualsGreaterThanToken) || is(TokenKind::ColonToken) ||
+             is(TokenKind::OpenBraceToken);
+  } else if (is(TokenKind::OpenBracketToken) || is(TokenKind::OpenBraceToken) ||
+             is(TokenKind::DotDotDotToken))
+  {
+    result = true;
+  } else if (is(TokenKind::PublicKeyword) || is(TokenKind::PrivateKeyword) ||
+             is(TokenKind::ProtectedKeyword) || is(TokenKind::ReadOnlyKeyword) ||
+             is(TokenKind::OverrideKeyword))
+  {
+    // A modifier before a name is a parameter property; `(readonly as …)` is not.
+    m_scanner.scanOne();
+    result = isAlwaysIdentifier(kind()) && !is(TokenKind::AsKeyword);
+  } else if (!isAlwaysIdentifier(kind()) && !is(TokenKind::ThisKeyword)) {
+    result = false;
+  } else {
+    m_scanner.scanOne();
+    if (is(TokenKind::QuestionToken)) {
+      m_scanner.scanOne();
+      result = is(TokenKind::ColonToken) || is(TokenKind::CommaToken) ||
+               is(TokenKind::EqualsToken) || is(TokenKind::CloseParenToken);
+    } else {
+      result = is(TokenKind::ColonToken) || is(TokenKind::CommaToken) ||
+               is(TokenKind::EqualsToken) || is(TokenKind::CloseParenToken);
+    }
+  }
+  rollback(mark);
+  return result;
+}
+
+bool Parser::isArrowHead(bool typeContext)
+{
+  uint32_t key = pos() * 2 + (typeContext ? 1 : 0);
+  if (!mayBeArrowHead() || m_notArrowHead.contains(key)) {
+    return false;
+  }
   Mark mark = begin();
   // Parameters attach to the innermost open node, so the probe needs one.
   (void)m_tree->beginNode(NodeKind::ArrowFunction, pos());
@@ -94,6 +138,9 @@ bool Parser::isArrowHead()
   ok = ok && is(TokenKind::EqualsGreaterThanToken) && !hasPrecedingLineBreak() &&
        m_diagnostics.size() == mark.diagnostics;
   rollback(mark);
+  if (!ok) {
+    m_notArrowHead.add(key);
+  }
   return ok;
 }
 
@@ -117,7 +164,9 @@ NodeId Parser::parseArrowFunction(bool asyncFlag)
     (void)expect(TokenKind::CloseParenToken);
   } else {
     // Single parameter without parens: `x => …`.
+    NodeId parameter = m_tree->beginNode(NodeKind::Parameter, pos());
     m_tree->addChild(parseBindingPattern());
+    m_tree->addChild(m_tree->endNode(parameter, pos()));
   }
   if (eat(TokenKind::ColonToken)) {
     m_tree->addChild(parseTypeOrTypePredicate());
@@ -373,8 +422,12 @@ NodeId Parser::parsePrimary()
       m_tree->addChild(m_tree->endNode(name, pos()));
       return m_tree->endNode(node, pos());
     }
+    // The callee is a member chain; the first `(` belongs to the `new`.
     NodeId node = m_tree->beginNode(NodeKind::NewExpression, firstToken);
-    m_tree->addChild(parseCallChain(parsePrimary()));
+    m_tree->addChild(parseCallChain(parsePrimary(), true));
+    if (is(TokenKind::OpenParenToken)) {
+      m_tree->addChild(parseArguments());
+    }
     return m_tree->endNode(node, pos());
   }
   case TokenKind::ImportKeyword: {
@@ -682,7 +735,7 @@ bool Parser::tryParseTypeArguments(NodeId &typeArguments)
   return true;
 }
 
-NodeId Parser::parseCallChain(NodeId expression)
+NodeId Parser::parseCallChain(NodeId expression, bool stopAtCall)
 {
   for (;;) {
     switch (kind()) {
@@ -731,6 +784,9 @@ NodeId Parser::parseCallChain(NodeId expression)
       break;
     }
     case TokenKind::OpenParenToken: {
+      if (stopAtCall) {
+        return expression;
+      }
       NodeKind kind = hasFlags(m_tree->node(expression).flags, FLAG_OPTIONAL_CHAIN)
                           ? NodeKind::OptionalCallExpression
                           : NodeKind::CallExpression;
@@ -787,7 +843,9 @@ NodeId Parser::parseMemberName(TokenKind propertyKind)
 {
   (void)propertyKind;
   uint32_t firstToken = pos();
-  NodeId node = m_tree->beginNode(NodeKind::Identifier, firstToken);
+  NodeKind nameKind = is(TokenKind::PrivateIdentifier) ? NodeKind::PrivateIdentifier
+                                                       : NodeKind::Identifier;
+  NodeId node = m_tree->beginNode(nameKind, firstToken);
   if (isAlwaysIdentifier(kind()) || tokenIsKeyword(kind()) ||
       is(TokenKind::PrivateIdentifier) || is(TokenKind::NumericLiteral) ||
       is(TokenKind::StringLiteral))

@@ -24,7 +24,7 @@ NodeId Parser::parseTypeOrTypePredicate()
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::TypePredicate, firstToken);
     m_tree->node(node).flags |= FLAG_READONLY; // `asserts` marker (no dedicated flag)
-    m_tree->addChild(parseTypeReference());
+    m_tree->addChild(parsePredicateName());
     if (eat(TokenKind::IsKeyword)) {
       m_tree->addChild(parseType());
     }
@@ -35,7 +35,7 @@ NodeId Parser::parseTypeOrTypePredicate()
       peekKind() == TokenKind::IsKeyword && !nextHasLineBreak())
   {
     NodeId node = m_tree->beginNode(NodeKind::TypePredicate, firstToken);
-    m_tree->addChild(parseTypeReference());
+    m_tree->addChild(parsePredicateName());
     (void)expect(TokenKind::IsKeyword);
     m_tree->addChild(parseType());
     return m_tree->endNode(node, pos());
@@ -142,7 +142,7 @@ NodeId Parser::parsePrimaryType()
   uint32_t firstToken = pos();
   switch (kind()) {
   case TokenKind::OpenParenToken: {
-    if (isArrowHead()) {
+    if (isArrowHead(true)) {
       return parseFunctionType(NodeKind::FunctionType, firstToken);
     }
     m_scanner.scanOne();
@@ -187,7 +187,7 @@ NodeId Parser::parsePrimaryType()
       (void)expect(TokenKind::OpenBracketToken);
       uint32_t paramIndex = pos();
       NodeId param = m_tree->beginNode(NodeKind::TypeParameter, paramIndex);
-      m_scanner.scanOne(); // the key type parameter name
+      m_tree->addChild(parseTypeParameterName());
       (void)expect(TokenKind::InKeyword);
       m_tree->addChild(parseType());
       m_tree->addChild(m_tree->endNode(param, pos()));
@@ -236,7 +236,10 @@ NodeId Parser::parsePrimaryType()
       return m_tree->endNode(node, pos());
     }
     NodeId node = m_tree->beginNode(NodeKind::TypeQuery, firstToken);
-    m_tree->addChild(parseTypeReference());
+    m_tree->addChild(parseEntityName());
+    if (is(TokenKind::LessThanToken)) {
+      m_tree->addChild(parseTypeArgumentList());
+    }
     return m_tree->endNode(node, pos());
   }
   case TokenKind::ImportKeyword: {
@@ -250,9 +253,7 @@ NodeId Parser::parsePrimaryType()
     NodeId node = m_tree->beginNode(NodeKind::InferType, firstToken);
     uint32_t paramIndex = pos();
     NodeId param = m_tree->beginNode(NodeKind::TypeParameter, paramIndex);
-    if (isAlwaysIdentifier(kind())) {
-      m_scanner.scanOne();
-    }
+    m_tree->addChild(parseTypeParameterName());
     if (is(TokenKind::ExtendsKeyword)) {
       // `infer U extends C ? …` outside a conditional's extends operand is
       // the conditional's own `extends`, so the constraint is dropped then.
@@ -279,6 +280,26 @@ NodeId Parser::parsePrimaryType()
     NodeId node = m_tree->beginNode(NodeKind::KeywordType, firstToken);
     return m_tree->endNode(node, pos());
   }
+  case TokenKind::AnyKeyword:
+  case TokenKind::UnknownKeyword:
+  case TokenKind::NumberKeyword:
+  case TokenKind::BigIntKeyword:
+  case TokenKind::ObjectKeyword:
+  case TokenKind::BooleanKeyword:
+  case TokenKind::StringKeyword:
+  case TokenKind::SymbolKeyword:
+  case TokenKind::UndefinedKeyword:
+  case TokenKind::NeverKeyword:
+  case TokenKind::IntrinsicKeyword: {
+    // `string.x` is a dotted reference to a namespace named `string`, so the
+    // keyword form needs no dot after it (tsgo: parseKeywordAndNoDot).
+    if (peekKind() == TokenKind::DotToken) {
+      break;
+    }
+    m_scanner.scanOne();
+    NodeId node = m_tree->beginNode(NodeKind::KeywordType, firstToken);
+    return m_tree->endNode(node, pos());
+  }
   case TokenKind::MinusToken: {
     // `-1` numeric literal type.
     m_scanner.scanOne();
@@ -296,7 +317,15 @@ NodeId Parser::parsePrimaryType()
   case TokenKind::FalseKeyword:
   case TokenKind::NullKeyword: {
     NodeId node = m_tree->beginNode(NodeKind::LiteralType, firstToken);
+    NodeKind literalKind = is(TokenKind::StringLiteral)    ? NodeKind::StringLiteral
+                           : is(TokenKind::NumericLiteral) ? NodeKind::NumericLiteral
+                           : is(TokenKind::BigIntLiteral)  ? NodeKind::BigIntLiteral
+                           : is(TokenKind::TrueKeyword)    ? NodeKind::TrueLiteral
+                           : is(TokenKind::FalseKeyword)   ? NodeKind::FalseLiteral
+                                                           : NodeKind::NullLiteral;
+    NodeId literal = m_tree->beginNode(literalKind, firstToken);
     m_scanner.scanOne();
+    m_tree->addChild(m_tree->endNode(literal, pos()));
     return m_tree->endNode(node, pos());
   }
   case TokenKind::BacktickToken:
@@ -366,8 +395,8 @@ NodeId Parser::parseTupleElement()
     if (isAlwaysIdentifier(kind()) && peekKind() == TokenKind::ColonToken) {
       // `...name: T`
       NodeId member = m_tree->beginNode(NodeKind::NamedTupleMember, pos());
-      m_scanner.scanOne();
-      m_scanner.scanOne();
+      m_tree->addChild(parseTypeParameterName());
+      m_scanner.scanOne(); // `:`
       m_tree->addChild(parseType());
       m_tree->addChild(m_tree->endNode(member, pos()));
     } else {
@@ -382,7 +411,7 @@ NodeId Parser::parseTupleElement()
   {
     // named tuple member: `name: T` / `name?: T`
     NodeId member = m_tree->beginNode(NodeKind::NamedTupleMember, firstToken);
-    m_scanner.scanOne();
+    m_tree->addChild(parseTypeParameterName());
     if (eat(TokenKind::QuestionToken)) {
       m_tree->node(member).flags |= FLAG_OPTIONAL;
     }
@@ -430,28 +459,62 @@ void Parser::parseImportTypeRest()
   }
 }
 
-NodeId Parser::parseTypeReference()
+NodeId Parser::parseEntityName()
 {
   uint32_t firstToken = pos();
-  NodeId node = m_tree->beginNode(NodeKind::TypeReference, firstToken);
-  // Name: `A.B.C`.
-  NodeId name = m_tree->beginNode(NodeKind::QualifiedName, firstToken);
+  NodeId first = m_tree->beginNode(NodeKind::Identifier, firstToken);
   if (isAlwaysIdentifier(kind()) || is(TokenKind::ThisKeyword) ||
       is(TokenKind::ConstKeyword))
   {
     m_scanner.scanOne();
   } else {
     errorAt(token(), 1110, string("Type expected."));
+    m_tree->node(first).flags |= FLAG_MISSING;
   }
-  while (is(TokenKind::DotToken)) {
-    m_scanner.scanOne();
+  first = m_tree->endNode(first, pos());
+  if (!is(TokenKind::DotToken)) {
+    return first;
+  }
+  NodeId name = m_tree->beginNode(NodeKind::QualifiedName, firstToken);
+  m_tree->addChild(first);
+  while (eat(TokenKind::DotToken)) {
+    NodeId part = m_tree->beginNode(NodeKind::Identifier, pos());
     if (isAlwaysIdentifier(kind()) || tokenIsKeyword(kind())) {
       m_scanner.scanOne();
     } else {
       errorAt(token(), 1003, string("Identifier expected."));
+      m_tree->node(part).flags |= FLAG_MISSING;
     }
+    m_tree->addChild(m_tree->endNode(part, pos()));
   }
-  m_tree->addChild(m_tree->endNode(name, pos()));
+  return m_tree->endNode(name, pos());
+}
+
+NodeId Parser::parsePredicateName()
+{
+  NodeKind kind = is(TokenKind::ThisKeyword) ? NodeKind::ThisType : NodeKind::Identifier;
+  NodeId name = m_tree->beginNode(kind, pos());
+  m_scanner.scanOne();
+  return m_tree->endNode(name, pos());
+}
+
+NodeId Parser::parseTypeParameterName()
+{
+  NodeId name = m_tree->beginNode(NodeKind::Identifier, pos());
+  if (isAlwaysIdentifier(kind())) {
+    m_scanner.scanOne();
+  } else {
+    errorAt(token(), 1003, string("Identifier expected."));
+    m_tree->node(name).flags |= FLAG_MISSING;
+  }
+  return m_tree->endNode(name, pos());
+}
+
+NodeId Parser::parseTypeReference()
+{
+  uint32_t firstToken = pos();
+  NodeId node = m_tree->beginNode(NodeKind::TypeReference, firstToken);
+  m_tree->addChild(parseEntityName());
   if (is(TokenKind::LessThanToken)) {
     m_tree->addChild(parseTypeArgumentList());
   }
@@ -478,11 +541,7 @@ NodeId Parser::parseTypeParameter()
   while (is(TokenKind::InKeyword) || (is(TokenKind::OutKeyword) && wordFollows())) {
     m_scanner.scanOne();
   }
-  if (isAlwaysIdentifier(kind())) {
-    m_scanner.scanOne();
-  } else {
-    errorAt(token(), 1003, string("Identifier expected."));
-  }
+  m_tree->addChild(parseTypeParameterName());
   if (eat(TokenKind::ExtendsKeyword)) {
     m_tree->addChild(parseType());
   }

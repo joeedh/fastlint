@@ -76,7 +76,7 @@ void Parser::error(uint32_t code, uint32_t offset, uint32_t length, string messa
   // Recovery can fail several productions at one token; the first report
   // there is the useful one.
   const Vector<Diagnostic> &items = m_diagnostics.items();
-  if (!items.isEmpty() && items[items.size() - 1].offset == offset) {
+  if (!items.isEmpty() && items[int(items.size()) - 1].offset == offset) {
     return;
   }
   m_diagnostics.report(code, offset, length, std::move(message));

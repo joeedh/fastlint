@@ -63,10 +63,14 @@ and the test framework itself are in `tests.md`.
 - `fastlint dump-tokens <file> [--trivia]` — token stream with kinds, spans,
   flags (`precedingLineBreak`), optional trivia. First stop for "wrong token
   kind" bugs; check regex/divide and template mode transitions here.
-- `fastlint dump-tree <file> [--spans] [--tokens] [--errors]` — grammar-tree
-  S-expression, the same dump the snapshots use. `--errors` lists
-  diagnostics with the recovery sync point taken. (`--errors` is
-  implemented; `--spans`/`--tokens` are not yet.)
+- `fastlint dump-tree [--spans] [--errors] (<file> | --batch <list>)` —
+  grammar-tree S-expression, the same dump the snapshots use. `--errors`
+  lists diagnostics after the tree. `--spans` prints `Kind@start-end` and
+  no token text, the form the differential harness diffs. `--batch` reads
+  one path per line and prints `#file <path>` before each dump.
+- `node make.ts parse-diff --filter <name> --show 5` — diff one or a few
+  files against tsgo; `--raw` skips the normalizer so both raw shapes show.
+  The tsgo dumper alone: `echo <path> | .cache/parse-diff/tsgo-dump.exe`.
 - `fastlint parse [--summary] [--limit N] <file|dir>...` — parses every
   `.ts`/`.tsx`/`.mts`/`.cts` file under the given paths and prints each
   diagnostic as `path:line:col: TSnnnn message`, then a summary line with

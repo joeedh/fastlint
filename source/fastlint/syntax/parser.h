@@ -14,6 +14,7 @@
 #include "fastlint/syntax/diagnostics.h"
 #include "fastlint/syntax/scanner.h"
 #include "fastlint/syntax/tree.h"
+#include "util/set.h"
 
 #include <cstdint>
 
@@ -123,7 +124,10 @@ private:
   /** The kind of the token after the current one, via scanner rewind. */
   TokenKind peekKind();
   /** True when `<T>(params): R =>` or `(params) =>` starts here. */
-  bool isArrowHead();
+  /** `typeContext` probes for a function type instead of an arrow function. */
+  bool isArrowHead(bool typeContext = false);
+  /** Rejects a `(` by its first tokens before the speculative parse in isArrowHead. */
+  bool mayBeArrowHead();
   /** Parses `<…>` in expression position when what follows allows it. */
   bool tryParseTypeArguments(NodeId &typeArguments);
   bool canFollowTypeArguments();
@@ -166,6 +170,9 @@ private:
   bool m_disallowIn = false;
   /** Bit per `ListKind` currently being parsed. */
   uint32_t m_lists = 0;
+  /** Probe keys (token position, context) where isArrowHead failed, so nested probes do
+   * not repeat it. */
+  litestl::util::Set<uint32_t> m_notArrowHead;
 
   // ---------------------------------------------------------------- helpers
 
@@ -212,7 +219,8 @@ private:
   NodeId parseBinary(int minPrecedence);
   NodeId parseUnary();
   NodeId parsePostfix();
-  NodeId parseCallChain(NodeId expression);
+  /** Member, call and template suffixes; `stopAtCall` leaves `(` for a `new`. */
+  NodeId parseCallChain(NodeId expression, bool stopAtCall = false);
   NodeId parseMemberName(TokenKind propertyKind);
   NodeId parsePrimary();
   NodeId parseParenthesizedOrArrow();
@@ -254,6 +262,12 @@ private:
   NodeId parsePrimaryType();
   NodeId parseFunctionType(NodeKind kind, uint32_t firstToken);
   NodeId parseTypeReference();
+  /** `A` as Identifier, `A.B.C` as QualifiedName over Identifiers. */
+  NodeId parseEntityName();
+  /** The name of a type parameter, `infer` binding or mapped-type key. */
+  NodeId parseTypeParameterName();
+  /** `x` or `this` before `is` in a type predicate. */
+  NodeId parsePredicateName();
   NodeId parseTypeParameters();
   NodeId parseTypeParameter();
   NodeId parseTypeArguments(bool speculative);
@@ -292,6 +306,8 @@ private:
 };
 
 /** S-expression debug dump of a grammar tree (task 3.3's debugging aid). */
-void dumpTree(GrammarTree &tree, litestl::util::string &out);
+/** S-expression dump; with `spans` each node prints as `Kind@start-end` (byte offsets).
+ */
+void dumpTree(GrammarTree &tree, litestl::util::string &out, bool spans = false);
 
 } // namespace fastlint::syntax

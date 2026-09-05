@@ -264,20 +264,21 @@ TEST(scanner, leading_trivia_attaches_to_the_next_token)
   std::string_view source = "/* lead */ x";
   Scanned scan(source);
   const syntax::Token &x = scan.token(0);
-  CHECK_EQ(x.leadingTriviaCount, 1);
+  CHECK_EQ(x.leadingTriviaCount, 1u);
   CHECK_EQ(scan.scanner.trivia()[x.leadingTriviaStart].kind,
            syntax::Trivia::Kind::MultiLineComment);
 }
 
 TEST(scanner, line_start_table_tracks_every_line_kind)
 {
-  std::string_view source = "a\nb\r\nc\u2028d";
+  std::string_view source = "a\nb\r\nc\xE2\x80\xA8"
+                            "d";
   Scanned scan(source);
   span<const uint32_t> starts = scan.scanner.lineStarts();
-  CHECK_EQ(starts.size(), 4);
-  CHECK_EQ(starts[1], 2);
-  CHECK_EQ(starts[2], 4);
-  CHECK_EQ(starts[3], 7); // U+2028 is 3 bytes
+  CHECK_EQ(starts.size(), 4u);
+  CHECK_EQ(starts[1], 2u);
+  CHECK_EQ(starts[2], 4u);
+  CHECK_EQ(starts[3], 7u); // U+2028 is 3 bytes
 }
 
 span<const syntax::Token> treeTokens(syntax::GrammarTree &tree)
@@ -423,8 +424,8 @@ TEST(scanner, invalid_characters_report_without_losing_sync)
 TEST(scanner, merge_conflict_markers_are_diagnostics_and_trivia)
 {
   Scanned scan("<<<<<<< head\nx");
-  CHECK_EQ(scan.diagnostics.size(), 1);
-  CHECK_EQ(scan.diagnostics.items()[0].code, 1402);
+  CHECK_EQ(scan.diagnostics.size(), 1u);
+  CHECK_EQ(scan.diagnostics.items()[0].code, 1402u);
 }
 
 TEST(scanner, snapshot_of_a_small_program)

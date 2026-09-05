@@ -254,7 +254,25 @@ Parser notes:
   runs to the closing backtick reports TemplateMiddle; the parser detects the
   trailing backtick and calls `rescanTemplateTail(true)`.
 - `dumpTree()` (S-expression with node flags and the node's unowned tokens)
-  lives in `syntax/parser/dump.cc`; tests assert exact dumps.
+  lives in `syntax/parser/dump.cc`; tests assert exact dumps. The walk is
+  iterative: a 40 KB left-associative `+` chain overflowed the recursive one.
+- Status 2026-09-05: parser mostly finished. Validated on all of
+  C:/dev/visualnovel including node_modules (about 4000 files) and against
+  tsgo over the TypeScript test corpus (3.4). Shape changes made for the
+  harness: entity names are `Identifier` or a flat `QualifiedName` over
+  `Identifier` children (type references, `typeof`, import-equals); type
+  keywords are `KeywordType`; `TypeParameter`, `NamedTupleMember` and
+  `TypePredicate` name their binding with a child node; `LiteralType` holds
+  its literal node; a bare arrow parameter gets a `Parameter`; `new X()`
+  owns its arguments (`new X().y()` was mis-nested); `catch (e)` wraps the
+  binding in `VariableDeclaration`; `#x` after `.` is `PrivateIdentifier`;
+  `export * from` has no `NamespaceExport` node; `class implements X {}` is
+  anonymous.
+- Speculation cost: `isArrowHead` first rejects by the two tokens after `(`
+  (tsgo's `isParenthesizedArrowFunctionExpression`) and memoizes failed
+  probe positions in `m_notArrowHead`; without both, `(a = (a = (a = …`
+  was exponential (a 9 KB corpus file never finished).
+- The CLI transcodes UTF-16 sources (by BOM) to UTF-8 before parsing.
 - Recurring bug class while building this: a helper that appends children
   directly to the enclosing node must not have its kNoNode return value
   passed to addChild() (parseParameterList/parseClassLike). Keep those
@@ -341,19 +359,57 @@ Still open in 3.2:
 - [ ] Diagnostics: TS-compatible codes where practical.
 
 ### 3.3 Grammar tree representation
-- [ ] Flat per-file arena; `uint32` node ids; `{kind, flags, parent,
+- [x] Flat per-file arena; `uint32` node ids; `{kind, flags, parent,
   first_child, child_count, first_token, token_count}`; shared child-id
   vector; token and trivia arrays (see docs/STRATEGY.md "AST").
-- [ ] Debug dump (S-expression) for tests and diffing.
+- [x] Debug dump (S-expression) for tests and diffing; `--spans` prints
+  `Kind@start-end` without token text for machine diffing, `--batch <list>`
+  dumps many files in one process.
 
 ### 3.4 Differential harness
-- [ ] `node make.ts parse-diff [--corpus <path>]`: parse every file in
-  `C:/dev/TypeScript/tsc/testdata` conformance/compiler cases (locate the
-  actual path in the Go repo) + our own fixtures; compare against tsgo's
-  AST (via `tsc --api` `getSourceFile`, or a tiny Go program linking
-  `internal/parser` that dumps S-exprs — likely faster and richer).
-- [ ] Normalization layer for known, intentional shape differences.
-- [ ] Track pass-rate in `docs/parser-conformance.md`; grind to ~100%.
+- [x] `node make.ts parse-diff [--corpus <path>] [--limit N] [--filter s]
+  [--top N] [--show N] [--spans] [--raw] [--jsx] [--no-build] [--no-report]`
+  (tools/make/parse-diff.ts): corpus is
+  `C:/dev/TypeScript/tsc/testdata/tests/cases` (12484 `.ts`, 350 `.tsx`)
+  plus `source/tests/ts_sources`; `FASTLINT_TYPESCRIPT_REPO` overrides the
+  checkout. Full run is about 10 s.
+  - [x] tsgo side: tools/parse-diff/tsgo-dump.go, built with
+    `go build -overlay` as a virtual `cmd/fastlint-dump` inside the tsc
+    module so it can import `internal/parser` without touching that
+    checkout; binary cached at `.cache/parse-diff/tsgo-dump.exe`. Reads
+    paths on stdin, prints `(Kind start end` per node via `ForEachChild`
+    with `SkipTrivia` starts.
+  - [x] Our side: `fastlint dump-tree --spans --batch <list>`; both dumps
+    stream through tools/parse-diff/sexp.ts.
+  - [x] tools/parse-diff/compare.ts reports one first mismatch per file,
+    bucketed by `Parent > Expected != Actual` signature; full list in
+    `.cache/parse-diff/mismatches.txt`.
+- [x] Normalization layer (tools/parse-diff/normalize.ts) for the
+  intentional differences: tsgo token/keyword children and list wrappers
+  dropped; our `TypeParameters`/`TypeArguments`/argument-run wrappers,
+  `ExportDeclaration` around exported declarations, interface
+  `TypeLiteral` bodies and `ExpressionWithTypeArguments` under calls
+  spliced; flat `QualifiedName` and `module A.B.C` nested; missing bodies,
+  `ErrorNode`s and `for (;;)` holes dropped; `implements` and interface
+  `extends` entries turned into `TypeReference` the way tsgo does.
+- [~] Track pass-rate in `docs/parser-conformance.md`; grind to ~100%.
+  2026-09-05: 11303/12527 (90.2%), up from 15% before the shape fixes
+  above. Largest remaining buckets, in order:
+  - [ ] `import("m")` types: tsgo `ImportType(LiteralType(StringLiteral),
+    qualifier…)`, ours a bare `StringLiteral` and `QualifiedName`.
+  - [ ] Template literal types: tsgo wraps each `${T}` in
+    `TemplateLiteralTypeSpan`; ours hangs the types directly.
+  - [ ] Import attributes: `ImportAttribute` entries, ours
+    `PropertyAssignment`.
+  - [ ] `declare module "*.x" with { … }` parses as `WithStatement`.
+  - [ ] Class `static { }` blocks (SourceFile gains a stray `Block`).
+  - [ ] Interface accessors (`get x(): T` as `GetAccessor`), optional index
+    signatures, shorthand properties with modifiers.
+  - [ ] JS-mode files (`// @filename: x.js` sections): `export =` in JS,
+    `require` calls, JSDoc-only constructs. About 200 files.
+  - [ ] Error-recovery shape differences in deliberately invalid tests
+    (extra `ExpressionStatement`/`Block`, missing identifiers). Not a goal
+    to match exactly; count them but do not chase.
 - [ ] Perf benchmark: MB/s on a large real-world corpus (e.g. the TS repo's
   own `src/`), in CI-ish `node make.ts bench`.
 
