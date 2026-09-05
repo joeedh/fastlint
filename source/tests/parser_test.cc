@@ -73,7 +73,7 @@ TEST(parser, assignment_is_right_associative)
 {
   Parsed p("a = b = c");
   CHECK(p.ok());
-  // `a = (b = c)`: the right operand of the first assignment is itself one.
+  // Assignment is right-associative, so the right operand is itself an assignment
   CHECK(p.text().find("(BinaryExpression \"=\"") != std::string::npos);
   CHECK(p.text().find("(BinaryExpression \"=\"",
                       p.text().find("(BinaryExpression \"=\"") + 1) != std::string::npos);

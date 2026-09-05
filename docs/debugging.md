@@ -168,6 +168,8 @@ and the test framework itself are in `tests.md`.
 
 ## `make.ts` itself
 
+- `node make.ts lint` runs the prose linter over comments and markdown;
+  `node make.ts lint:prose -- --json` for machine-readable findings.
 - `--verbose` on any command prints every spawned argv and cwd.
 - `node --inspect-brk make.ts <cmd>` to debug the tooling in Chrome DevTools
   or VS Code.

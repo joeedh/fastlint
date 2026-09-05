@@ -34,14 +34,25 @@ built both as an N-API addon and as WASM.
 
 ## Build and run
 
-`node make.ts <command>` is the single entry point (yargs, commands in
-`tools/make/<cmd>.ts`). The build is CMake + Ninja with presets `debug`,
-`release`, `relwithdebinfo`, `asan`, `clang-asan`. Until `make.ts` exists,
-see MASTER.md task 1 for the intended commands: `env`, `vcvars`, `configure`,
-`build`, `test`, `format`, `deps`, `run`, `check`. Parser gates:
-`parse-diff` (tsgo differential), `fuzz` (ASAN mutation fuzz), `bench`
-(parse MB/s), `lint` (linting, currently just prose style linting, see
-`lint:prose`).
+`node make.ts <command>` is the single entry point (yargs, one command per
+file in `tools/make/`). The build is CMake + Ninja with presets `debug`,
+`release`, `relwithdebinfo`, `asan`, `clang-asan`. Commands: `env`, `vcvars`,
+`configure`, `build`, `test`, `format`, `lint`, `deps`, `run`, `check`,
+`clean`. Parser gates: `parse-diff` (tsgo differential), `fuzz` (ASAN
+mutation fuzz), `bench` (parse MB/s). MASTER.md task 1 lists the options of
+each.
+
+## Prose linting
+
+Prose in code comments and markdown files is linted with commentlint
+(`comment-lint`, a dev dependency). `node make.ts lint` runs it; `node make.ts
+lint:prose -- <args>` passes arguments through, `--json` for machine output.
+The rules it scores are the ones under Comments and Prose below. Config is
+.commentlintrc.jsonc at the root: markdown files are scanned, rule P15
+(paired dashes) is on, `source/tests/ts_sources/` and `vendor/litestl/` are
+skipped. Markdown findings use the code-comment model and are marked
+experimental; wrap a block in `<!-- commentlint-off -->` /
+`<!-- commentlint-on -->` to exempt it, as the rule text in this file is.
 
 ## C++ conventions
 
@@ -61,7 +72,8 @@ see MASTER.md task 1 for the intended commands: `env`, `vcvars`, `configure`,
   SBO containers, pointers, or virtual dispatch inside nodes; children are
   ranges into shared arena arrays. SBO containers belong in scratch and
   rule-local state.
-- Format with clang-format (`node make.ts format`).
+- Format with clang-format (`node make.ts format`, which also runs prettier
+  over the TypeScript).
 
 ## TypeScript conventions
 

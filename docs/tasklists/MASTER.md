@@ -73,6 +73,17 @@ one command.
   external into `vendor/`. DTL is registered; sqlite and msgpack are added
   with the tasks that need them.
 - [x] `run [args…]` — build then run `fastlint` with args.
+- [x] `parse-diff [--corpus …] [--filter x] [--limit N] [--jsx] [--top N]
+  [--show N] [--no-build] [--no-report]` — tsgo differential harness
+  (task 3.4).
+- [x] `fuzz [--preset asan|clang-asan] [--iterations N] [--seed S]
+  [--batch N] [--timeout S] [--no-minimize] [--corpus …]` — ASAN mutation
+  fuzz (task 3.5).
+- [x] `bench [--preset release] [--repeat N] [--save name] [--compare name]
+  [--corpus …]` — parse MB/s with JSON baselines under .cache/bench/.
+- [x] `lint` and `lint:prose [--json] -- <commentlint args>` — prose
+  linting of comments and markdown with comment-lint
+  (.commentlintrc.jsonc).
 - [x] Shared helpers in `tools/make/lib/`: `spawn` with inherited stdio +
   exit-code propagation, `log`, path utils. No shell string concatenation —
   argv arrays only.

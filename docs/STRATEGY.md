@@ -175,7 +175,7 @@ scanner ──► parser ──► arena AST (per file) ──► rules ──�
 - Not ours to fix — the checker's instantiation cache is GBs on large programs.
   Schedule around it as above.
 
-### What we hold — don't mirror the type graph
+### Type facts held locally, not the type graph
 
 - Pull types lazily, only for nodes rules ask about (calls, member accesses,
   `await` operands, conditions, assignment RHS). Nothing else is fetched.

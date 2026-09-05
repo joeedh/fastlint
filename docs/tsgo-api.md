@@ -211,12 +211,12 @@ plus exactly these follow-ups, issued only when the flags say they exist:
 
 Anything deeper materializes on demand, as planned.
 
-**Guard every kind-specific call by flags.** The server is not defensive:
+Guard every kind-specific call by flags. The server is not defensive:
 `getTargetOfType` on a union panics inside Go (`Unhandled case in Type.Target`),
 `getFreshTypeOfType` on a non-freshable type panics on an interface
 conversion, and `getTypeParametersOfType` dereferences nil. The panic is
-recovered into an error response and the connection survives — the spike kept
-issuing requests afterwards — but a rule that trips one gets nothing back.
+recovered into an error response and the connection survives (the spike kept
+issuing requests afterwards), but a rule that trips one gets nothing back.
 
 ## Node handles
 
@@ -226,10 +226,10 @@ index and path are read back; the kind is informational. The index is the
 node's position in the file's node index table
 (tsc/internal/api/session.go, `nodeHandleFrom` / `resolveNodeHandle`).
 
-This matters because **positions do not address expressions.**
+This matters because positions do not address expressions.
 `getTypeAtPosition` runs `astnav.GetTouchingPropertyName`, which lands on the
 token at that offset. Asking at the start of `fetchUser(id)` yields the type
-of `fetchUser` — `(id: string) => Promise<User>` — not the call's
+of `fetchUser` (`(id: string) => Promise<User>`), not the call's
 `Promise<User>`. Rules like `no-floating-promises` need the latter.
 
 Two routes, both verified:
@@ -246,15 +246,15 @@ Two routes, both verified:
 
 Route 2 is the one to build. The encoded format suits us: a 44-byte header
 (protocol version, an xxh3 content hash, section offsets) then 28 bytes per
-node — `{kind, pos, end, nextSibling, parent, data, flags}` — flat, in source
+node (`{kind, pos, end, nextSibling, parent, data, flags}`), flat, in source
 order, indexed by exactly the number a handle carries. `pos`/`end` are UTF-8
 byte offsets, matching our scanner. The fixture's 747-byte file encodes to
 7127 bytes over 201 nodes; `getSourceFile` costs 0.5–1.3ms for it. Node-list
 pseudo-nodes appear in the table with kind `0xFFFFFFFF` and must be skipped.
 Full format documentation is in tsc/internal/api/encoder/encoder.go.
 
-Handles survive `updateSnapshot` for an unchanged file — the spike mints one
-against snapshot 1 and resolves it against snapshot 2 — because the retained
+Handles survive `updateSnapshot` for an unchanged file (the spike mints one
+against snapshot 1 and resolves it against snapshot 2) because the retained
 program keeps the same `SourceFile` and therefore the same index table. An
 edited file gets a fresh table, so its handles must be re-derived.
 
@@ -333,8 +333,8 @@ The response's `changes` field is exactly the invalidation input we want:
 {"changedProjects": {"…/tsconfig.json": {"changedFiles": ["…/src/scratch.ts"]}}}
 ```
 
-per project, plus `removedProjects`. Re-checking is lazy — an untouched file
-still answers from the retained program — so watch mode costs a few
+per project, plus `removedProjects`. Re-checking is lazy (an untouched file
+still answers from the retained program), so watch mode costs a few
 milliseconds per edit plus whatever the rules re-query.
 
 `updateTemporarySnapshot`, which layers new text over one file without

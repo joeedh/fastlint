@@ -107,7 +107,7 @@ NodeId Parser::parseBindingPattern()
     } else {
       name = m_tree->beginNode(NodeKind::Identifier, nameFirst);
     }
-    // `this` is only a parameter name, but that is the callers' business.
+    // `this` is accepted as a parameter name here; callers reject it where it is invalid
     if (isBindingIdentifier(kind()) || is(TokenKind::PrivateIdentifier) ||
         is(TokenKind::ThisKeyword))
     {

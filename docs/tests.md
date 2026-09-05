@@ -199,11 +199,14 @@ then all failures in full, then a summary (`412 passed, 2 failed, 3 skipped,
 - Error recovery: fixtures of broken code snapshot both the tree (with
   `Error`/`Missing`) and diagnostics. Invariant: parser always terminates and
   consumes all tokens.
-- Fuzz (`[slow]`, ASAN): mutate corpus files (delete/duplicate/swap random
-  tokens, truncate) N times; assert no crash, no hang (watchdog), round-trip
-  still holds. Seeds recorded; failures minimized and promoted to fixtures.
-- Bench (`[bench]`): MB/s over the real-world corpus; `make.ts bench` stores
-  results and flags regressions > 5%.
+- Fuzz (`node make.ts fuzz`, ASAN): `fastlint fuzz` mutates corpus files
+  at token level and with random bytes, parses each mutant and checks tree
+  invariants; the driver pins a crash, hang or invariant failure to its
+  seed, replays it under build/<preset>/fuzz-failures/ and minimizes it.
+  Promoting minimized cases to fixtures is still manual.
+- Bench (`node make.ts bench`): parse MB/s over a corpus with file I/O
+  excluded, best of `--repeat`; `--save`/`--compare` keep baselines under
+  .cache/bench/. Regressions are not flagged automatically yet.
 
 ### AST layer, fixers, printer
 - View accessors: one test per node kind family against fixtures — exercised
