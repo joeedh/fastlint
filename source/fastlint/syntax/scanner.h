@@ -97,12 +97,16 @@ public:
 
   /**
    * Reinterprets the current token as JSX text: rewinds to its start and
-   * lexes text up to the next `<` or `{`.
+   * lexes text up to the next `<` or `{`; a `}` or `>` inside is text with an error.
    */
   void rescanJsxText();
 
   /** Reinterprets the current token as a JSX element-name identifier. */
   void rescanJsxIdentifier();
+
+  /** Reinterprets the current string token as a JSX attribute value: newlines allowed, no
+   * escapes. */
+  void rescanJsxAttributeString();
 
   // ---------------------------------------------------------- backtracking
 
@@ -197,6 +201,8 @@ private:
   /** Skips whitespace, newlines and comments; records them as trivia. */
   void skipTrivia(bool &sawLineBreak);
   void scanIdentifier(uint32_t start, bool isPrivate);
+  /** Advances over identifier characters and `\u` escapes, consuming nothing if none. */
+  void scanIdentifierChars();
   void scanNumber(uint32_t start);
   void scanString(uint32_t start);
   void scanTemplate(uint32_t start, ScanMode mode);

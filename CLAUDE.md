@@ -38,7 +38,9 @@ built both as an N-API addon and as WASM.
 `tools/make/<cmd>.ts`). The build is CMake + Ninja with presets `debug`,
 `release`, `relwithdebinfo`, `asan`, `clang-asan`. Until `make.ts` exists,
 see MASTER.md task 1 for the intended commands: `env`, `vcvars`, `configure`,
-`build`, `test`, `format`, `deps`, `run`, `check`.
+`build`, `test`, `format`, `deps`, `run`, `check`. Parser gates:
+`parse-diff` (tsgo differential), `fuzz` (ASAN mutation fuzz), `bench`
+(parse MB/s).
 
 ## C++ conventions
 

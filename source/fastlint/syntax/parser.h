@@ -228,6 +228,19 @@ private:
   NodeId parsePrimary();
   NodeId parseParenthesizedOrArrow();
   NodeId parseObjectLiteral();
+
+  // JSX (jsx.cc)
+  /** Scans one token in `mode`, then restores Normal mode. */
+  void scanNext(ScanMode mode);
+  NodeId parseJsxElementOrFragment(bool inChildren);
+  void parseJsxChildren();
+  NodeId parseJsxTagName();
+  NodeId parseJsxMemberChain(NodeId expression, uint32_t firstToken);
+  NodeId parseJsxIdentifier();
+  NodeId parseJsxAttributes();
+  NodeId parseJsxExpression(bool inChildren);
+  bool isJsxGenericArrowHead();
+
   NodeId parseTemplateLiteral();
   NodeId parseFunctionExpression(bool asyncFlag);
   NodeId parseClassExpression();

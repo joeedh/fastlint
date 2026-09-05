@@ -45,9 +45,13 @@ and the test framework itself are in `tests.md`.
 - UBSan (MSVC has none): preset `clang-asan` uses clang-cl with
   `-fsanitize=address,undefined`. Slower to build; use for suspected UB
   (signed overflow, misaligned reads in the arena, bad enum values).
-- Fuzz runs are ASAN-only. A fuzz failure prints its seed and the mutated
-  input path under `build/<preset>/fuzz-failures/`; promote the minimized
-  case to a fixture.
+- Fuzz: `node make.ts fuzz [--iterations N] [--seed S] [--filter x]
+  [--limit N] [--corpus dir...]` (asan preset by default). A failure is
+  pinned to a seed, replayed to `build/<preset>/fuzz-failures/<n>-<name>`
+  and minimized to `<n>-<name>.min.<ext>`; `<n>.txt` holds the report.
+  Reproduce by hand: `fastlint fuzz --check <input>` (parse + invariants),
+  `fastlint fuzz --replay <seed> --out <path> <file>` (regenerate a
+  mutant). Promote the minimized case to a fixture.
 
 ## Leaks
 
@@ -68,6 +72,7 @@ and the test framework itself are in `tests.md`.
   lists diagnostics after the tree. `--spans` prints `Kind@start-end` and
   no token text, the form the differential harness diffs. `--batch` reads
   one path per line and prints `#file <path>` before each dump.
+- `node make.ts parse-diff --jsx --filter .tsx` — the `.tsx` corpus (JSX).
 - `node make.ts parse-diff --filter <name> --show 5` — diff one or a few
   files against tsgo; `--raw` skips the normalizer so both raw shapes show.
   The tsgo dumper alone: `echo <path> | .cache/parse-diff/tsgo-dump.exe`.
@@ -150,8 +155,9 @@ and the test framework itself are in `tests.md`.
 - `--trace-json <file>` writes Chrome trace-event format; open in
   `chrome://tracing` or Perfetto. Spans per file/phase/rule plus tsgo
   request spans, so cross-process waits are visible.
-- `node make.ts bench [--compare <baseline.json>]` for regressions; run on a
-  quiet machine, `--repeat 5`, takes the median.
+- `node make.ts bench [--save <name>] [--compare <name>] [--corpus dir...]`
+  for parse throughput; results under .cache/bench/. Run on a quiet
+  machine; `--repeat 5` (default) keeps the best pass.
 - Native profiling: Visual Studio's CPU Usage tool on `fastlint.exe` with the
   `relwithdebinfo` preset; or Windows Performance Recorder + WPA for
   wall-clock/blocking analysis (useful for the tsgo pipe waits).

@@ -2,6 +2,7 @@ set(SRC
   syntax/parser/declarations.cc
   syntax/parser/dump.cc
   syntax/parser/expressions.cc
+  syntax/parser/jsx.cc
   syntax/parser/lists.cc
   syntax/parser/parser.cc
   syntax/parser/statements.cc

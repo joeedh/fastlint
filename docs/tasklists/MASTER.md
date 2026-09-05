@@ -328,7 +328,7 @@ Still open in 3.2:
     function-type return types may be conditional inside an `extends`
     operand; `TypeParameters`/`TypeArguments` list nodes.
   - [ ] `unique symbol` node, variance annotations recorded (parsed and
-    dropped today), JSX.
+    dropped today).
 - [~] Contexts: `await`/`yield` flags, ambient (`declare`), strict-mode
   reserved words, `in` operator disallowed in for-init.
   - [x] `await`/`yield` follow the enclosing function's `async`/`*` flags
@@ -342,14 +342,29 @@ Still open in 3.2:
     name, keyword or literal follows on the same line (tsgo's rule).
 - [~] Speculation: arrow vs parenthesized expr (done), generic call vs
   comparison, type-assertion vs JSX in `.ts` vs `.tsx` (basic `<T>expr` done).
+  - [x] In `.tsx`, `<` starts JSX unless `<T,>` or `<T extends U>` (not
+    followed by `=`, `>` or `/`) makes it a generic arrow
+    (`isJsxGenericArrowHead`); no type assertions in `.tsx`.
 - [~] ASI rules (restricted productions: `return`, `throw`, `break`,
   `continue`, postfix `++/--`, arrow `=>`, `yield`, `async`) — done for the
   productions implemented.
   - [x] `do … while (x)` takes ASI after `)` without a line break.
   - [x] Statements ended by ASI carry `FLAG_ASI`, so rules can tell a
     written `;` from an inserted one from a missing one (diagnostic).
-- [ ] JSX (`.jsx`/`.tsx`), JS mode (`.js` incl. JSDoc *ranges* only, no
+- [~] JSX (`.jsx`/`.tsx`), JS mode (`.js` incl. JSDoc *ranges* only, no
   JSDoc parsing yet).
+  - [x] JSX (parser/jsx.cc, 2026-09-05): elements, self-closing elements,
+    fragments, namespaced and member tag names, type arguments on tags,
+    attributes (string, `{expr}`, element, spread), children (text,
+    `{expr}`, `{...expr}`, nested). Shapes follow tsgo: `JsxAttributes`
+    always present, whitespace-only `JsxText` kept, `JsxNamespacedName`,
+    `JsxOpeningFragment`/`JsxClosingFragment`. The parser drives scanner
+    modes itself (`scanNext`): `SingleGreaterThan` inside tags, `JsxText`
+    in children; attribute strings are rescanned to allow newlines
+    (`rescanJsxAttributeString`); `}`/`>` in text are text with an error.
+    `parse-diff --jsx`: 335/350 `.tsx` files match, every miss is a
+    deliberately invalid input.
+  - [ ] JS mode.
 - [~] Error recovery: `Error`/`Missing` nodes, sync sets per production,
   no infinite loops on garbage (basic level done).
   - [x] Every repetition goes through `parseList`/`parseDelimitedList`
@@ -422,8 +437,15 @@ Still open in 3.2:
   - [ ] Error-recovery shape differences in deliberately invalid tests
     (tagged `[invalid input]` in mismatches.txt). Not a goal to match
     exactly; count them but do not chase.
-- [ ] Perf benchmark: MB/s on a large real-world corpus (e.g. the TS repo's
-  own `src/`), in CI-ish `node make.ts bench`.
+- [x] Perf benchmark: `node make.ts bench` runs `fastlint bench` (release
+  preset, files read up front, best of `--repeat`), stores JSON under
+  .cache/bench/, `--save <name>` / `--compare <name>` for baselines.
+  2026-09-05, tsgo test corpus (12874 files, 8.3 MB): 28 MB/s. The corpus
+  is small files (650 bytes on average) so per-file setup dominates;
+  C:/dev/visualnovel incl. node_modules (11183 files, 82 MB, larger
+  `.d.ts` files) runs at 56 MB/s.
+  - [ ] Profile and speed up: per-file arena allocation, keyword lookup,
+    speculation rollbacks. Target 100+ MB/s.
 
 ---
 
@@ -614,9 +636,21 @@ WASM, over the same flat AST.
   component: `dump-tokens`, `dump-tree`, `dump-ast`, `--trace-parser`,
   `--trace-tsgo`, `--trace-fixes`, `cache inspect/verify`, `--explain`,
   `--timing`, `--trace-json`, `--alloc-stats`).
-- [ ] Fuzz harness for the parser (`[slow]`, ASAN-only): token-level
-  mutations of the corpus, seed logging, failure minimization to fixtures.
-- [ ] `make.ts bench` with JSON baselines and `--compare`.
+- [x] Fuzz harness for the parser (2026-09-05): `fastlint fuzz` mutates
+  files at token level (delete/duplicate/replace/swap tokens, insert
+  fragments, truncate, flip bytes), parses each mutant and checks tree
+  invariants (token order and bounds, node token ranges, parent links).
+  `node make.ts fuzz` drives it under the `asan` preset in batches, pins
+  a crash/hang/invariant failure to its seed from the `# file seed`
+  progress lines, replays the seed to build/asan/fuzz-failures/ and
+  ddmin-minimizes it. First run over the corpus (50 mutants per file)
+  found three bugs, all fixed: async arrow `firstToken` one token early
+  (underflow at file start); unterminated `` `${ `` left an orphan
+  `TemplateSpan`; a multibyte character cut off by EOF produced a token
+  past the end of the source. Second run after the fixes: 643850
+  mutants, no failures, 375 s.
+  - [ ] Promote minimized cases to fixtures automatically.
+- [x] `make.ts bench` with JSON baselines and `--compare`.
 - [ ] `README.md` — what/why, quickstart, `make.ts` commands.
 - [ ] `CLAUDE.md` — repo conventions (build, style, layout), pointing at
   docs/STRATEGY.md and this list.

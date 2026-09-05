@@ -2,6 +2,7 @@
 
 #include "fastlint/syntax/unicode.h"
 #include "util/string.h"
+#include <algorithm>
 
 namespace fastlint::syntax {
 
@@ -20,6 +21,7 @@ constexpr uint32_t kCodeOctalDigitExpected = 1178;
 constexpr uint32_t kCodeBinaryDigitExpected = 1177;
 constexpr uint32_t kCodeConflictMarker = 1402;
 constexpr uint32_t kCodeIdentifierAfterNumber = 1499;
+constexpr uint32_t kCodeJsxUnexpectedToken = 1381;
 constexpr uint32_t kCodeCommentNotTerminated = 0;
 constexpr uint32_t kCodeSeparator = 0;
 
@@ -131,7 +133,8 @@ size_t Scanner::charLength() const
 
 void Scanner::advanceChar()
 {
-  m_pos += charLength();
+  // A multibyte sequence cut off by the end of the file still ends there.
+  m_pos = std::min(m_pos + charLength(), m_source.size());
 }
 
 void Scanner::error(uint32_t code, uint32_t offset, uint32_t length, string message)
@@ -406,7 +409,7 @@ void Scanner::skipTrivia(bool &sawLineBreak)
   }
 }
 
-void Scanner::scanIdentifier(uint32_t start, bool isPrivate)
+void Scanner::scanIdentifierChars()
 {
   for (;;) {
     if (atEnd())
@@ -470,6 +473,11 @@ void Scanner::scanIdentifier(uint32_t start, bool isPrivate)
     }
     break;
   }
+}
+
+void Scanner::scanIdentifier(uint32_t start, bool isPrivate)
+{
+  scanIdentifierChars();
 
   // A non-ASCII character that cannot start a name; every token must
   // consume something or the parser never advances.
@@ -815,10 +823,22 @@ bool Scanner::scanRegex(uint32_t) /* start */
 
 void Scanner::scanJsxText(uint32_t start)
 {
-  while (!atEnd() && byte(m_pos) != '<' && byte(m_pos) != '{' && byte(m_pos) != '}') {
-    if (byte(m_pos) == '\n') {
+  if (atEnd()) {
+    addToken(TokenKind::EndOfFile, start);
+    return;
+  }
+  while (!atEnd() && byte(m_pos) != '<' && byte(m_pos) != '{') {
+    char c = byte(m_pos);
+    if (c == '\n') {
       m_lineStarts.append(uint32_t(m_pos) + 1);
       m_sawLineBreak = true;
+    } else if (c == '}' || c == '>') {
+      // Text as in tsgo, but the character must be written as an entity.
+      error(kCodeJsxUnexpectedToken,
+            uint32_t(m_pos),
+            1,
+            string(c == '}' ? "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?"
+                            : "Unexpected token. Did you mean `{'>'}` or `&gt;`?"));
     }
     m_pos += 1;
   }
@@ -827,19 +847,21 @@ void Scanner::scanJsxText(uint32_t start)
 
 void Scanner::scanJsxIdentifier(uint32_t start)
 {
-  if (!atEnd() &&
-      (isAsciiIdentifierStart(uint32_t(byte(m_pos))) || uint32_t(byte(m_pos)) >= 0x80))
-  {
-    advanceChar();
-  }
-  while (!atEnd()) {
-    char c = byte(m_pos);
-    if (isAsciiIdentifierPart(uint32_t(c)) || c == '-' || c == ':' || uint32_t(c) >= 0x80)
-    {
-      advanceChar();
+  // Identifier segments joined by `-`; escapes scan as in plain identifiers.
+  for (;;) {
+    scanIdentifierChars();
+    if (!atEnd() && byte(m_pos) == '-') {
+      m_pos += 1;
       continue;
     }
     break;
+  }
+  if (m_pos == start) {
+    advanceChar();
+    error(kCodeInvalidCharacter,
+          start,
+          uint32_t(m_pos - start),
+          string("Invalid character."));
   }
   addToken(TokenKind::JsxIdentifier, start);
 }
@@ -1117,6 +1139,40 @@ void Scanner::rescanJsxIdentifier()
   uint32_t offset = m_current.offset;
   m_pos = offset;
   scanJsxIdentifier(offset);
+  m_tokens[m_currentIndex] = m_current;
+}
+
+void Scanner::rescanJsxAttributeString()
+{
+  uint32_t offset = m_current.offset;
+  m_pos = offset;
+  // The first scan stopped at a line break and reported the string unterminated.
+  while (m_diagnostics->size() > 0 &&
+         m_diagnostics->items()[int(m_diagnostics->size()) - 1].offset >= offset)
+  {
+    m_diagnostics->resize(m_diagnostics->size() - 1);
+  }
+  char quote = byte(m_pos);
+  m_pos += 1;
+  bool terminated = false;
+  while (!atEnd()) {
+    char c = byte(m_pos);
+    if (c == '\n') {
+      m_lineStarts.append(uint32_t(m_pos) + 1);
+    }
+    m_pos += 1;
+    if (c == quote) {
+      terminated = true;
+      break;
+    }
+  }
+  if (!terminated) {
+    error(kCodeUnterminatedString,
+          offset,
+          uint32_t(m_pos - offset),
+          string("Unterminated string constant."));
+  }
+  addToken(TokenKind::StringLiteral, offset, !terminated);
   m_tokens[m_currentIndex] = m_current;
 }
 

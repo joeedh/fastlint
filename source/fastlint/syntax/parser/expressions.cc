@@ -62,7 +62,9 @@ NodeId Parser::parseAssignmentExpression()
              peekKind() == TokenKind::EqualsGreaterThanToken)
   {
     return parseArrowFunction(false);
-  } else if (is(TokenKind::LessThanToken) && !m_options.jsx && isArrowHead()) {
+  } else if (is(TokenKind::LessThanToken) &&
+             (m_options.jsx ? isJsxGenericArrowHead() : isArrowHead()))
+  {
     return parseArrowFunction(false);
   }
 
@@ -164,7 +166,7 @@ bool Parser::isArrowHead(bool typeContext)
 /** From `async`, `<`, `(` or the lone parameter through the body. */
 NodeId Parser::parseArrowFunction(bool asyncFlag)
 {
-  uint32_t firstToken = pos() - (asyncFlag ? 1 : 0);
+  uint32_t firstToken = pos();
   if (asyncFlag) {
     m_scanner.scanOne(); // `async`
   }
@@ -343,6 +345,11 @@ NodeId Parser::parsePrimary()
   uint32_t firstToken = pos();
   detail::FlagScope allowIn(m_disallowIn, false); // brackets reset the `for` head ban
   switch (kind()) {
+  case TokenKind::LessThanToken:
+    if (m_options.jsx) {
+      return parseJsxElementOrFragment(false);
+    }
+    break;
   case TokenKind::AtToken:
     return parseClassExpression();
   case TokenKind::ThisKeyword: {
@@ -714,6 +721,7 @@ NodeId Parser::parseTemplateLiteral()
       continue;
     }
     errorAt(token(), 1109, string("Expression expected."));
+    m_tree->addChild(m_tree->endNode(span, pos()));
     break;
   }
   return m_tree->endNode(node, pos());

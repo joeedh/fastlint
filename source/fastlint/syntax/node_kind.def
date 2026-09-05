@@ -42,6 +42,9 @@ FASTLINT_NODE(JsxAttribute)
 FASTLINT_NODE(JsxSpreadAttribute)
 FASTLINT_NODE(JsxExpression)
 FASTLINT_NODE(JsxText)
+FASTLINT_NODE(JsxNamespacedName)
+FASTLINT_NODE(JsxOpeningFragment)
+FASTLINT_NODE(JsxClosingFragment)
 
 // Expressions.
 FASTLINT_NODE(ArrayLiteralExpression)

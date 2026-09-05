@@ -1108,3 +1108,71 @@ TEST(parser, conditional_return_type_inside_extends_operand)
   size_t trueBranch = p.text().find("(LiteralType\n          (TrueLiteral");
   CHECK(outer < trueBranch);
 }
+
+// ------------------------------------------------------------------- JSX
+
+static Parser::Options jsxOptions()
+{
+  Parser::Options options;
+  options.jsx = true;
+  return options;
+}
+
+TEST(parser, jsx_element_attributes_and_children)
+{
+  Parsed p("const a = <div className=\"x\" {...p} b={1} c>hi {x} <br/></div>;\n",
+           jsxOptions());
+  CHECK(p.ok());
+  CHECK_EQ(count(p.text(), "(JsxElement"), size_t(1));
+  CHECK_EQ(count(p.text(), "(JsxOpeningElement"), size_t(1));
+  CHECK_EQ(count(p.text(), "(JsxClosingElement"), size_t(1));
+  CHECK_EQ(count(p.text(), "(JsxAttribute "), size_t(2)); // the `=` ones
+  CHECK_EQ(count(p.text(), "(JsxAttribute\n"), size_t(1));
+  CHECK_EQ(count(p.text(), "(JsxSpreadAttribute"), size_t(1));
+  CHECK_EQ(count(p.text(), "(JsxSelfClosingElement"), size_t(1));
+  // "hi ", " " between `{x}` and `<br/>`: whitespace-only runs are kept.
+  CHECK_EQ(count(p.text(), "(JsxText"), size_t(2));
+  CHECK_EQ(count(p.text(), "(JsxExpression"), size_t(2));
+  // The self-closing `<br/>` still owns an (empty) attribute list.
+  CHECK_EQ(count(p.text(), "(JsxAttributes"), size_t(2));
+}
+
+TEST(parser, jsx_fragment_names_and_type_arguments)
+{
+  Parsed p("const a = <><A.B<T> d=\"1\"/><ns:tag/><this.x/></>;\n", jsxOptions());
+  CHECK(p.ok());
+  CHECK_EQ(count(p.text(), "(JsxFragment"), size_t(1));
+  CHECK_EQ(count(p.text(), "(JsxOpeningFragment"), size_t(1));
+  CHECK_EQ(count(p.text(), "(JsxClosingFragment"), size_t(1));
+  CHECK_EQ(count(p.text(), "(JsxNamespacedName"), size_t(1));
+  CHECK_EQ(count(p.text(), "(PropertyAccessExpression"), size_t(2));
+  CHECK_EQ(count(p.text(), "(ThisExpression"), size_t(1));
+  CHECK_EQ(count(p.text(), "(TypeArguments"), size_t(1));
+}
+
+TEST(parser, jsx_generic_arrow_versus_element)
+{
+  Parsed p("const f = <T,>(x: T) => x;\nconst g = <T extends U>(x: T) => x;\n"
+           "const h = <T>text</T>;\n",
+           jsxOptions());
+  CHECK(p.ok());
+  CHECK_EQ(count(p.text(), "(ArrowFunction"), size_t(2));
+  CHECK_EQ(count(p.text(), "(JsxElement"), size_t(1));
+  CHECK_EQ(count(p.text(), "(TypeAssertionExpression"), size_t(0));
+}
+
+TEST(parser, jsx_multiline_attribute_string_and_hyphenated_names)
+{
+  Parsed p("const a = <my-el data-x=\"\nfoo: 1\n\" />;\n", jsxOptions());
+  CHECK(p.ok());
+  CHECK_EQ(count(p.text(), "(JsxSelfClosingElement"), size_t(1));
+  CHECK_EQ(count(p.text(), "(StringLiteral"), size_t(1));
+}
+
+TEST(parser, jsx_unclosed_element_reports_and_stops)
+{
+  Parsed p("const a = <div>text", jsxOptions());
+  CHECK(!p.ok());
+  CHECK_EQ(count(p.text(), "(JsxElement"), size_t(1));
+  CHECK_EQ(count(p.text(), "(JsxText"), size_t(1));
+}
