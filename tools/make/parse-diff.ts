@@ -197,6 +197,8 @@ interface Bucket {
 interface Summary {
   passed: number;
   failed: number;
+  /** Differing files tsgo itself reports parse errors on (deliberately invalid tests). */
+  failedInvalid: number;
   missing: number;
   buckets: Bucket[];
   lines: string[];
@@ -212,6 +214,7 @@ function diffAll(
   const lines: string[] = [];
   let passed = 0;
   let failed = 0;
+  let failedInvalid = 0;
   let missing = 0;
   for (const file of files) {
     const a = theirs.get(file);
@@ -231,9 +234,11 @@ function diffAll(
       continue;
     }
     failed++;
+    if (a.diagnostics) failedInvalid++;
     const where = `${file}:${found.offset}`;
+    const tag = a.diagnostics ? " [invalid input]" : "";
     lines.push(
-      `${where}: ${found.signature} — ${found.detail} (in ${found.path.join("/")})`
+      `${where}: ${found.signature} — ${found.detail} (in ${found.path.join("/")})${tag}`
     );
     let bucket = buckets.get(found.signature);
     if (!bucket) {
@@ -245,7 +250,7 @@ function diffAll(
       bucket.examples.push(`${where} ${found.detail}`);
   }
   const sorted = [...buckets.values()].sort((x, y) => y.count - x.count);
-  return { passed, failed, missing, buckets: sorted, lines };
+  return { passed, failed, failedInvalid, missing, buckets: sorted, lines };
 }
 
 function printSummary(summary: Summary, argv: Args, seconds: string): void {
@@ -253,7 +258,8 @@ function printSummary(summary: Summary, argv: Args, seconds: string): void {
   const rate = total === 0 ? 0 : (100 * summary.passed) / total;
   console.log(
     `parse-diff: ${summary.passed}/${total} match (${rate.toFixed(2)}%), ` +
-      `${summary.failed} differ, ${summary.missing} without dumps, ${seconds}s`
+      `${summary.failed} differ (${summary.failed - summary.failedInvalid} on files tsgo ` +
+      `parses cleanly), ${summary.missing} without dumps, ${seconds}s`
   );
   for (const bucket of summary.buckets.slice(0, argv.top)) {
     console.log(`${String(bucket.count).padStart(6)}  ${bucket.signature}`);
@@ -277,7 +283,7 @@ function writeReport(summary: Summary, total: number, argv: Args): void {
     `- Date: ${date}`,
     `- Files: ${total}${argv.jsx ? " (including .tsx)" : " (.ts only; .tsx excluded)"}`,
     `- Match: ${summary.passed} (${rate.toFixed(2)}%)`,
-    `- Differ: ${summary.failed}`,
+    `- Differ: ${summary.failed}, of which ${summary.failed - summary.failedInvalid} are files tsgo parses without diagnostics; the rest are deliberately invalid inputs where only error recovery differs`,
     `- No dump: ${summary.missing}`,
     `- Spans compared: ${argv.spans ? "yes" : "no"}`,
     "",

@@ -267,7 +267,7 @@ TEST(parser, union_and_mapped_types)
 
 TEST(parser, error_recovery_reports_and_continues)
 {
-  Parsed p("let = 5; let b = 2;");
+  Parsed p("let a = ; let b = 2;");
   CHECK(!p.ok());
   // The parser recovered and still parsed the second statement.
   CHECK(p.text().find("(NumericLiteral \"2\"") != std::string::npos);
@@ -903,13 +903,14 @@ TEST(parser, tuple_element_forms)
   CHECK_EQ(count(p.text(), "(OptionalType \"?\""), size_t(2));
   CHECK(p.text().find("(OptionalType \"?\"\n        (ParenthesizedType") !=
         std::string::npos);
-  CHECK_EQ(count(p.text(), "(RestType \"...\""), size_t(2));
+  CHECK_EQ(count(p.text(), "(RestType \"...\""), size_t(1));
   CHECK_EQ(count(p.text(), "(NamedTupleMember"), size_t(3));
   CHECK(p.text().find(
             "(NamedTupleMember : optional \"?\" \":\"\n        (Identifier \"q\"") !=
         std::string::npos);
-  CHECK(p.text().find("(RestType \"...\"\n        (NamedTupleMember \":\"\n          "
-                      "(Identifier \"rest\"") != std::string::npos);
+  CHECK(p.text().find(
+            "(NamedTupleMember : rest \"...\" \":\"\n        (Identifier \"rest\"") !=
+        std::string::npos);
 }
 
 TEST(parser, bigint_keyword_and_literals)
@@ -967,17 +968,18 @@ TEST(parser, import_types_with_qualifiers_and_arguments)
            "type W = import('./x');\n");
   CHECK(p.ok());
   CHECK_EQ(count(p.text(), "(ImportType"), size_t(4));
-  CHECK(
-      p.text().find("(ImportType \"import\" \"(\" \")\"\n      (StringLiteral \"'./x'\"\n"
-                    "      )\n      (QualifiedName \".\" \"Y\"\n      )\n"
-                    "      (TypeArguments \"<\" \">\"") != std::string::npos);
-  CHECK(p.text().find("(QualifiedName \".\" \"Y\" \".\" \"Z\"") != std::string::npos);
+  CHECK(p.text().find("(ImportType \"import\" \"(\" \")\" \".\"\n      (LiteralType\n"
+                      "        (StringLiteral \"'./x'\"\n        )\n      )\n"
+                      "      (Identifier \"Y\"\n      )\n"
+                      "      (TypeArguments \"<\" \">\"") != std::string::npos);
+  CHECK(p.text().find("(QualifiedName \".\"\n        (Identifier \"Y\"\n        )\n"
+                      "        (Identifier \"Z\"") != std::string::npos);
+  CHECK(p.text().find("(Identifier \"default\"") != std::string::npos);
   CHECK(p.text().find("(ImportType \"typeof\" \"import\" \"(\" \")\"") !=
         std::string::npos);
-  CHECK(p.text().find("(QualifiedName \".\" \"default\"") != std::string::npos);
-  CHECK(
-      p.text().find("(ImportType \"import\" \"(\" \")\"\n      (StringLiteral \"'./x'\"\n"
-                    "      )\n    )") != std::string::npos);
+  CHECK(p.text().find("(ImportType \"import\" \"(\" \")\"\n      (LiteralType\n"
+                      "        (StringLiteral \"'./x'\"\n        )\n      )\n    )") !=
+        std::string::npos);
 }
 
 TEST(parser, global_augmentation_in_ambient_module)

@@ -11,6 +11,7 @@ const keywordNodes: Record<string, string> = {
   NullKeyword     : "NullLiteral",
   TrueKeyword     : "TrueLiteral",
   FalseKeyword    : "FalseLiteral",
+  ImportKeyword   : "ImportKeyword", // the callee of `import(…)`
   AnyKeyword      : "KeywordType",
   UnknownKeyword  : "KeywordType",
   NumberKeyword   : "KeywordType",
@@ -62,9 +63,6 @@ export function normalizeTsgo(node: TreeNode): TreeNode {
   return { ...node, kind: keywordNodes[node.kind] ?? node.kind, children };
 }
 
-/** Children of an ExportDeclaration that make it a re-export rather than an assignment. */
-const exportClauses = new Set(["NamedExports", "NamespaceExport", "StringLiteral"]);
-
 /** Declarations we wrap in ExportDeclaration where tsgo sets a modifier. */
 const exportedDeclarations = new Set([
   "VariableStatement",
@@ -75,6 +73,7 @@ const exportedDeclarations = new Set([
   "EnumDeclaration",
   "ModuleDeclaration",
   "ImportEqualsDeclaration",
+  "ImportDeclaration", // `export import x from "m"` is an error tsgo keeps as an import
 ]);
 
 /**
@@ -131,6 +130,11 @@ function isOurPlaceholder(parent: TreeNode, child: TreeNode): boolean {
  */
 function heritageEntry(node: TreeNode, isInterface: boolean): TreeNode {
   if (node.kind !== "ExpressionWithTypeArguments") return node;
+  // `extends A<T>`: the call chain already built one wrapper for the `<T>`.
+  if (node.children[0]?.kind === "ExpressionWithTypeArguments") {
+    const inner = node.children[0];
+    node = { ...node, children: [...inner.children, ...node.children.slice(1)] };
+  }
   const [expression, ...rest] = node.children;
   if (expression?.kind === "TypeReference") {
     return { ...expression, children: [...expression.children, ...rest] };
@@ -181,15 +185,8 @@ function nestQualifiedName(node: TreeNode, parts: TreeNode[]): TreeNode {
 
 function renameOurs(parent: TreeNode | undefined, node: TreeNode): string {
   if (node.kind === "Block" && parent?.kind === "ModuleDeclaration") return "ModuleBlock";
-  // `export default expr` and `export = expr` are ExportAssignment in tsgo.
-  if (
-    node.kind === "ExportDeclaration" &&
-    node.children.length === 1 &&
-    !exportedDeclarations.has(node.children[0].kind) &&
-    !exportClauses.has(node.children[0].kind)
-  ) {
-    return "ExportAssignment";
-  }
+  // `export default expr` is an ExportAssignment in tsgo (`export = expr` already is).
+  if (node.kind === "ExportDeclaration" && node.isDefault) return "ExportAssignment";
   return ourRenames[node.kind] ?? node.kind;
 }
 

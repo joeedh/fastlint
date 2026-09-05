@@ -10,6 +10,8 @@ export interface TreeNode {
   end: number;
   /** Set on fastlint nodes flagged `missing` (a required node that was absent). */
   missing?: boolean;
+  /** Set on fastlint nodes flagged `default` (`export default …`). */
+  isDefault?: boolean;
   children: TreeNode[];
 }
 
@@ -17,11 +19,14 @@ export interface FileResult {
   path: string;
   root: TreeNode | undefined;
   error: string | undefined;
+  /** Parse diagnostics the dumper reported, when it reports them (tsgo does). */
+  diagnostics?: number;
 }
 
 // `(Kind start end` from tsgo, `(Kind@start-end ...` from fastlint.
 const openLine = /^\s*\((\S+?)(?:@(\d+)-(\d+)| (\d+) (\d+))?(?:\s|$)/;
 const missingFlag = /^\s*\(\S+ :[^"]* missing(?: |$)/;
+const defaultFlag = /^\s*\(\S+ :[^"]* default(?: |$)/;
 
 /** Parses every file in a dump stream; resolves when the stream ends. */
 export async function readDumps(
@@ -53,6 +58,10 @@ export async function readDumps(
       if (current) current.error = line.slice(7).trim();
       continue;
     }
+    if (line.startsWith("#diagnostics ")) {
+      if (current) current.diagnostics = Number(line.slice(13));
+      continue;
+    }
     if (!current) continue;
     const trimmed = line.trimStart();
     if (trimmed.startsWith(")")) {
@@ -69,6 +78,7 @@ export async function readDumps(
       children: [],
     };
     if (missingFlag.test(line)) node.missing = true;
+    if (defaultFlag.test(line)) node.isDefault = true;
     if (stack.length > 0) stack[stack.length - 1].children.push(node);
     stack.push(node);
   }

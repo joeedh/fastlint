@@ -339,6 +339,7 @@ NodeId Parser::parsePrimaryType()
     }
     m_scanner.scanOne(); // the head
     for (;;) {
+      NodeId span = m_tree->beginNode(NodeKind::TemplateLiteralTypeSpan, pos());
       m_tree->addChild(parseType());
       if (is(TokenKind::CloseBraceToken)) {
         m_scanner.rescanTemplateTail(false);
@@ -348,12 +349,14 @@ NodeId Parser::parsePrimaryType()
           m_scanner.rescanTemplateTail(true);
         }
         m_scanner.scanOne();
+        m_tree->addChild(m_tree->endNode(span, pos()));
         if (tail) {
           break;
         }
         continue;
       }
       errorAt(token(), 1110, string("Type expected."));
+      m_tree->addChild(m_tree->endNode(span, pos()));
       break;
     }
     return m_tree->endNode(node, pos());
@@ -390,18 +393,19 @@ NodeId Parser::parseFunctionType(NodeKind kind, uint32_t firstToken)
 NodeId Parser::parseTupleElement()
 {
   if (is(TokenKind::DotDotDotToken)) {
-    NodeId rest = m_tree->beginNode(NodeKind::RestType, pos());
+    uint32_t dots = pos();
     m_scanner.scanOne();
     if (isAlwaysIdentifier(kind()) && peekKind() == TokenKind::ColonToken) {
-      // `...name: T`
-      NodeId member = m_tree->beginNode(NodeKind::NamedTupleMember, pos());
+      // `...name: T` is a rest-flagged named member, as in tsgo.
+      NodeId member = m_tree->beginNode(NodeKind::NamedTupleMember, dots);
+      m_tree->node(member).flags |= FLAG_REST;
       m_tree->addChild(parseTypeParameterName());
       m_scanner.scanOne(); // `:`
       m_tree->addChild(parseType());
-      m_tree->addChild(m_tree->endNode(member, pos()));
-    } else {
-      m_tree->addChild(parseType());
+      return m_tree->endNode(member, pos());
     }
+    NodeId rest = m_tree->beginNode(NodeKind::RestType, dots);
+    m_tree->addChild(parseType());
     return m_tree->endNode(rest, pos());
   }
   uint32_t firstToken = pos();
@@ -435,36 +439,29 @@ void Parser::parseImportTypeRest()
   (void)expect(TokenKind::OpenParenToken);
   if (is(TokenKind::StringLiteral)) {
     uint32_t index = pos();
+    NodeId literalType = m_tree->beginNode(NodeKind::LiteralType, index);
     NodeId module = m_tree->beginNode(NodeKind::StringLiteral, index);
     m_scanner.scanOne();
     m_tree->addChild(m_tree->endNode(module, index + 1));
+    m_tree->addChild(m_tree->endNode(literalType, index + 1));
   } else {
     errorAt(token(), 1141, string("String literal expected."));
   }
   (void)expect(TokenKind::CloseParenToken);
-  if (is(TokenKind::DotToken)) {
-    NodeId qualifier = m_tree->beginNode(NodeKind::QualifiedName, pos());
-    while (eat(TokenKind::DotToken)) {
-      if (isAlwaysIdentifier(kind()) || tokenIsKeyword(kind())) {
-        m_scanner.scanOne();
-      } else {
-        errorAt(token(), 1003, string("Identifier expected."));
-        break;
-      }
-    }
-    m_tree->addChild(m_tree->endNode(qualifier, pos()));
+  if (eat(TokenKind::DotToken)) {
+    m_tree->addChild(parseEntityName(true)); // `.A.B`, `.default`
   }
   if (is(TokenKind::LessThanToken)) {
     m_tree->addChild(parseTypeArgumentList());
   }
 }
 
-NodeId Parser::parseEntityName()
+NodeId Parser::parseEntityName(bool keywordFirst)
 {
   uint32_t firstToken = pos();
   NodeId first = m_tree->beginNode(NodeKind::Identifier, firstToken);
   if (isAlwaysIdentifier(kind()) || is(TokenKind::ThisKeyword) ||
-      is(TokenKind::ConstKeyword))
+      is(TokenKind::ConstKeyword) || (keywordFirst && tokenIsKeyword(kind())))
   {
     m_scanner.scanOne();
   } else {
@@ -583,7 +580,7 @@ NodeId Parser::parseTypeMember(bool isInterface)
     m_scanner.scanOne();
   }
   // `[name: T]` is an index signature; any other `[` opens a computed name.
-  if (is(TokenKind::OpenBracketToken) && peekKind2() == TokenKind::ColonToken) {
+  if (isIndexSignatureStart()) {
     m_scanner.scanOne();
     NodeId member = m_tree->beginNode(NodeKind::IndexSignature, firstToken);
     m_tree->node(member).flags |= flags;
@@ -627,7 +624,8 @@ NodeId Parser::parseTypeMember(bool isInterface)
   NodeKind memberKind = isGet   ? NodeKind::GetAccessorSignature
                         : isSet ? NodeKind::SetAccessorSignature
                                 : NodeKind::PropertySignature;
-  if (is(TokenKind::OpenParenToken) || is(TokenKind::LessThanToken)) {
+  if (!isGet && !isSet && (is(TokenKind::OpenParenToken) || is(TokenKind::LessThanToken)))
+  {
     memberKind = NodeKind::MethodSignature;
   }
   NodeId member = m_tree->beginNode(memberKind, firstToken);

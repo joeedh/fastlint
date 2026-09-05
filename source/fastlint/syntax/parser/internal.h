@@ -72,6 +72,10 @@ inline int binaryPrecedence(TokenKind kind, bool disallowIn)
 }
 
 /** Keyword kinds that may always stand where an identifier is wanted. */
+/** Names that are only reserved in strict mode or by context (`let`, `yield`, `public`,
+ * …). */
+inline bool isBindingIdentifier(TokenKind kind);
+
 inline bool isAlwaysIdentifier(TokenKind kind)
 {
   switch (kind) {
@@ -120,6 +124,14 @@ inline bool isAlwaysIdentifier(TokenKind kind)
   default:
     return false;
   }
+}
+
+inline bool isBindingIdentifier(TokenKind kind)
+{
+  return isAlwaysIdentifier(kind) || kind == TokenKind::LetKeyword ||
+         kind == TokenKind::YieldKeyword || kind == TokenKind::AbstractKeyword ||
+         kind == TokenKind::PublicKeyword || kind == TokenKind::PrivateKeyword ||
+         kind == TokenKind::ProtectedKeyword;
 }
 
 /** Sets a context flag for the enclosing scope and restores it on exit. */

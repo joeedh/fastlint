@@ -8,6 +8,7 @@ using litestl::util::string;
 
 using detail::binaryPrecedence;
 using detail::isAlwaysIdentifier;
+using detail::isBindingIdentifier;
 
 // ------------------------------------------------------------------ lookahead
 
@@ -22,7 +23,7 @@ bool Parser::startsTypeAlias()
 /** True when a name follows the current contextual keyword on the same line. */
 bool Parser::wordFollows()
 {
-  return !nextHasLineBreak() && isAlwaysIdentifier(peekKind());
+  return !nextHasLineBreak() && isBindingIdentifier(peekKind());
 }
 
 bool Parser::nextStartsPropertyName()
@@ -58,7 +59,7 @@ bool Parser::nextHasLineBreak()
 bool Parser::letStartsDeclaration()
 {
   TokenKind next = peekKind();
-  return isAlwaysIdentifier(next) || next == TokenKind::OpenBracketToken ||
+  return isBindingIdentifier(next) || next == TokenKind::OpenBracketToken ||
          next == TokenKind::OpenBraceToken;
 }
 
@@ -190,7 +191,8 @@ NodeId Parser::parseStatement()
       return parseExpressionOrLabeledStatement();
     }
     if (next == TokenKind::VarKeyword || next == TokenKind::LetKeyword ||
-        next == TokenKind::ConstKeyword)
+        next == TokenKind::ConstKeyword || next == TokenKind::UsingKeyword ||
+        next == TokenKind::AwaitKeyword)
     {
       m_scanner.scanOne();
       return parseVariableStatement(true);
@@ -216,7 +218,8 @@ NodeId Parser::parseStatement()
     return parseEnumDeclaration(false);
   }
   if ((k == TokenKind::ModuleKeyword || k == TokenKind::NamespaceKeyword) &&
-      wordFollows())
+      (wordFollows() ||
+       (k == TokenKind::ModuleKeyword && peekKind() == TokenKind::StringLiteral)))
   {
     return parseModuleDeclaration(false);
   }

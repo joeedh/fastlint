@@ -8,8 +8,8 @@ normalizer, not this file.
 
 - Date: 2026-09-05
 - Files: 12527 (.ts only; .tsx excluded)
-- Match: 11303 (90.23%)
-- Differ: 1224
+- Match: 11766 (93.93%)
+- Differ: 761, of which 279 are files tsgo parses without diagnostics; the rest are deliberately invalid inputs where only error recovery differs
 - No dump: 0
 - Spans compared: no
 
@@ -20,33 +20,33 @@ child of A where tsgo has B and we have C.
 
 | Count | First disagreement                                                            |
 | ----- | ----------------------------------------------------------------------------- |
-| 85    | `SourceFile extra ExpressionStatement`                                        |
-| 80    | `CallExpression > StringLiteral != Identifier`                                |
-| 63    | `SourceFile extra Block`                                                      |
-| 41    | `ImportType > LiteralType != StringLiteral`                                   |
+| 72    | `SourceFile extra ExpressionStatement`                                        |
 | 31    | `SourceFile missing ExpressionStatement`                                      |
-| 31    | `TemplateLiteralType > TemplateLiteralTypeSpan != TypeReference`              |
-| 27    | `SourceFile > ExportAssignment != ExportDeclaration`                          |
-| 26    | `SourceFile > VariableStatement != ExpressionStatement`                       |
-| 23    | `Block extra ExpressionStatement`                                             |
-| 20    | `HeritageClause > TypeReference != ExpressionWithTypeArguments`               |
-| 20    | `TemplateLiteralType > TemplateLiteralTypeSpan != KeywordType`                |
-| 18    | `ImportAttributes > ImportAttribute != PropertyAssignment`                    |
-| 17    | `SourceFile > ClassDeclaration != Block`                                      |
+| 27    | `SourceFile extra Block`                                                      |
+| 18    | `SourceFile > VariableStatement != ExpressionStatement`                       |
 | 17    | `VariableDeclarationList extra VariableDeclaration`                           |
 | 17    | `ObjectLiteralExpression > PropertyAssignment != ShorthandPropertyAssignment` |
-| 16    | `SourceFile > ExpressionStatement != Block`                                   |
 | 14    | `BinaryExpression missing Identifier`                                         |
-| 13    | `SourceFile > FunctionDeclaration != ExpressionStatement`                     |
-| 13    | `SourceFile > VariableStatement != Block`                                     |
 | 12    | `ElementAccessExpression missing Identifier`                                  |
-| 11    | `InterfaceDeclaration > IndexSignature != PropertySignature`                  |
-| 11    | `SourceFile > ForOfStatement != ForStatement`                                 |
-| 10    | `SourceFile > ModuleDeclaration != WithStatement`                             |
-| 10    | `SourceFile > Block != ExpressionStatement`                                   |
-| 10    | `SourceFile > ModuleDeclaration != ExpressionStatement`                       |
-| 9     | `SourceFile > InterfaceDeclaration != ExpressionStatement`                    |
+| 11    | `SourceFile > ExpressionStatement != Block`                                   |
+| 10    | `SourceFile > VariableStatement != Block`                                     |
+| 10    | `Block extra ExpressionStatement`                                             |
+| 10    | `SourceFile > FunctionDeclaration != ExpressionStatement`                     |
 | 9     | `ClassDeclaration extra PropertyDeclaration`                                  |
-| 9     | `InterfaceDeclaration > GetAccessor != MethodSignature`                       |
-| 9     | `TemplateLiteralType > TemplateLiteralTypeSpan != InferType`                  |
-| 9     | `SourceFile > ExportDeclaration != WithStatement`                             |
+| 9     | `InterfaceDeclaration > IndexSignature != PropertySignature`                  |
+| 8     | `SourceFile > TypeAliasDeclaration != Block`                                  |
+| 8     | `SourceFile > EmptyStatement != ExpressionStatement`                          |
+| 7     | `SourceFile > ImportDeclaration != ExpressionStatement`                       |
+| 7     | `BinaryExpression > RegularExpressionLiteral != PrefixUnaryExpression`        |
+| 7     | `SourceFile > ClassDeclaration != Block`                                      |
+| 6     | `SourceFile missing ImportDeclaration`                                        |
+| 6     | `SourceFile > ClassDeclaration != ExpressionStatement`                        |
+| 6     | `SourceFile > ExportAssignment != ExpressionStatement`                        |
+| 6     | `SourceFile missing VariableStatement`                                        |
+| 6     | `SourceFile missing Block`                                                    |
+| 6     | `InterfaceDeclaration extra PropertySignature`                                |
+| 6     | `SourceFile > ExpressionStatement != ModuleDeclaration`                       |
+| 6     | `SourceFile extra EmptyStatement`                                             |
+| 6     | `BindingElement missing Identifier`                                           |
+| 6     | `SourceFile > FunctionDeclaration != Identifier`                              |
+| 6     | `Block missing ExpressionStatement`                                           |

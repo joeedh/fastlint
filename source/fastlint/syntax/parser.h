@@ -128,6 +128,9 @@ private:
   bool isArrowHead(bool typeContext = false);
   /** Rejects a `(` by its first tokens before the speculative parse in isArrowHead. */
   bool mayBeArrowHead();
+  /** A name, keyword or literal follows on the same line (tsgo's test for `await`/`yield`
+   * outside their contexts). */
+  bool operandFollowsOnLine();
   /** Parses `<…>` in expression position when what follows allows it. */
   bool tryParseTypeArguments(NodeId &typeArguments);
   bool canFollowTypeArguments();
@@ -238,8 +241,9 @@ private:
   /** Appends parameters to the innermost open node; there is no wrapper node. */
   void parseParameterList(bool allowModifiers, bool isConstructor);
   NodeId parseParameter(bool allowModifiers, bool isConstructor);
+  /** `[name:` or `[name,` (optionally `name?`), the head of an index signature. */
+  bool isIndexSignatureStart();
   NodeId parseBlock();
-  NodeId parseFunctionBody(bool allowAwait, bool allowYield);
   void parseFunctionCommon(NodeId node);
   NodeId parseClassLike(NodeId node);
   NodeId parseHeritageClause(NodeKind kind);
@@ -262,8 +266,9 @@ private:
   NodeId parsePrimaryType();
   NodeId parseFunctionType(NodeKind kind, uint32_t firstToken);
   NodeId parseTypeReference();
-  /** `A` as Identifier, `A.B.C` as QualifiedName over Identifiers. */
-  NodeId parseEntityName();
+  /** `A` as Identifier, `A.B.C` as QualifiedName over Identifiers; `keywordFirst` admits
+   * `default`. */
+  NodeId parseEntityName(bool keywordFirst = false);
   /** The name of a type parameter, `infer` binding or mapped-type key. */
   NodeId parseTypeParameterName();
   /** `x` or `this` before `is` in a type predicate. */

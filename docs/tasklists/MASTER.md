@@ -306,7 +306,8 @@ Still open in 3.2:
     a zero-length token), now Unicode whitespace is trivia and other such
     characters are one-character error tokens; a `#!` shebang line is
     trivia.
-  - [ ] Class `static` blocks.
+  - [x] Class `static` blocks (`ClassStaticBlockDeclaration` over a
+    `Block`, await/yield context cleared).
 - [~] Types: full TS type grammar (conditional, mapped, template literal,
   indexed access, `infer`, `satisfies`, `asserts`, predicates, `unique
   symbol`, abstract constructors, variance annotations).
@@ -334,7 +335,11 @@ Still open in 3.2:
     (functions, methods, object literal methods); `in` is banned in a `for`
     head and re-allowed inside brackets, arguments and blocks
     (`detail::FlagScope`).
-  - [ ] Ambient bodies, strict-mode reserved words as names.
+  - [~] Ambient bodies, strict-mode reserved words as names:
+    `isBindingIdentifier` admits `let`, `yield`, `abstract`, `public`,
+    `private`, `protected` as binding, declaration and expression names;
+    `await`/`yield` outside their contexts are still expressions when a
+    name, keyword or literal follows on the same line (tsgo's rule).
 - [~] Speculation: arrow vs parenthesized expr (done), generic call vs
   comparison, type-assertion vs JSX in `.ts` vs `.tsx` (basic `<T>expr` done).
 - [~] ASI rules (restricted productions: `return`, `throw`, `break`,
@@ -393,23 +398,30 @@ Still open in 3.2:
   `ErrorNode`s and `for (;;)` holes dropped; `implements` and interface
   `extends` entries turned into `TypeReference` the way tsgo does.
 - [~] Track pass-rate in `docs/parser-conformance.md`; grind to ~100%.
-  2026-09-05: 11303/12527 (90.2%), up from 15% before the shape fixes
-  above. Largest remaining buckets, in order:
-  - [ ] `import("m")` types: tsgo `ImportType(LiteralType(StringLiteral),
-    qualifier…)`, ours a bare `StringLiteral` and `QualifiedName`.
-  - [ ] Template literal types: tsgo wraps each `${T}` in
-    `TemplateLiteralTypeSpan`; ours hangs the types directly.
-  - [ ] Import attributes: `ImportAttribute` entries, ours
-    `PropertyAssignment`.
-  - [ ] `declare module "*.x" with { … }` parses as `WithStatement`.
-  - [ ] Class `static { }` blocks (SourceFile gains a stray `Block`).
-  - [ ] Interface accessors (`get x(): T` as `GetAccessor`), optional index
-    signatures, shorthand properties with modifiers.
-  - [ ] JS-mode files (`// @filename: x.js` sections): `export =` in JS,
-    `require` calls, JSDoc-only constructs. About 200 files.
+  2026-09-05: 11766/12527 (93.9%), up from 15% before the shape fixes
+  above. The tsgo dumper reports its diagnostic count per file, so the
+  summary separates mismatches on files tsgo parses cleanly (279) from
+  deliberately invalid inputs where only error recovery differs (482).
+  Fixed in the second pass: `import("m")` types as
+    `ImportType(LiteralType(StringLiteral), qualifier, TypeArguments)`;
+    `TemplateLiteralTypeSpan` per `${T}`; `ImportAttribute` entries and
+    attributes on `export … from`; `declare module "*.x" with { … }`;
+    static blocks; interface `get`/`set` accessors; `[x?: T]` index
+    signatures; `...name: T` as a rest-flagged `NamedTupleMember`; nested
+    `module "x" {}`; the `import(…)` callee as an `ImportKeyword` node;
+    NEL (U+0085) as whitespace; bigint enum member names; `await` in
+    parameter defaults following the function's own context.
+  Remaining, all small:
+  - [ ] Clean-file long tail (279 files, no bucket above 30): `let` as a
+    for-of binding, `declare export`, `@dec default class`, JSDoc types
+    in `.ts` (`foo<?string>`), object literal members with modifiers,
+    duplicate modifiers. Inspect with
+    `grep -v "invalid input" .cache/parse-diff/mismatches.txt`.
+  - [ ] JS-mode files (`// @filename: x.js` sections) and JSON sections:
+    `export =` in JS, `require` calls, JSDoc-only constructs.
   - [ ] Error-recovery shape differences in deliberately invalid tests
-    (extra `ExpressionStatement`/`Block`, missing identifiers). Not a goal
-    to match exactly; count them but do not chase.
+    (tagged `[invalid input]` in mismatches.txt). Not a goal to match
+    exactly; count them but do not chase.
 - [ ] Perf benchmark: MB/s on a large real-world corpus (e.g. the TS repo's
   own `src/`), in CI-ish `node make.ts bench`.
 

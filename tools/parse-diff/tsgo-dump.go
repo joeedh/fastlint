@@ -5,7 +5,8 @@
 //
 // stdin: one file path per line. stdout: for each file, `#file <path>` then
 // `(Kind start end` / `)` lines, two-space indented, where start skips leading
-// trivia and both are UTF-8 byte offsets. A file that cannot be read emits
+// trivia and both are UTF-8 byte offsets. `#diagnostics <n>` gives the parse
+// diagnostic count before the tree. A file that cannot be read emits
 // `#error <message>` after its header.
 package main
 
@@ -48,6 +49,7 @@ func main() {
 			Path:     tspath.ToPath(abs, "", true),
 		}
 		sf := parser.ParseSourceFile(opts, text, core.GetScriptKindFromFileName(abs))
+		fmt.Fprintf(out, "#diagnostics %d\n", len(sf.Diagnostics()))
 		dump(out, text, sf.AsNode(), 0)
 	}
 }

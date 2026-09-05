@@ -273,6 +273,7 @@ void Scanner::scanOne()
 static bool isUnicodeWhiteSpace(uint32_t cp)
 {
   switch (cp) {
+  case 0x0085: // NEL, single-line whitespace as in tsgo
   case 0x00a0:
   case 0x1680:
   case 0x202f:

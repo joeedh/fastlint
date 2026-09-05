@@ -7,6 +7,7 @@ using litestl::util::string;
 
 using detail::binaryPrecedence;
 using detail::isAlwaysIdentifier;
+using detail::isBindingIdentifier;
 
 // ----------------------------------------------------------------- expressions
 
@@ -27,7 +28,9 @@ NodeId Parser::parseExpression(bool disallowComma)
 
 NodeId Parser::parseAssignmentExpression()
 {
-  if (m_inYieldContext && is(TokenKind::YieldKeyword)) {
+  // Outside a generator `yield x` is still a yield expression (an error),
+  // as in tsgo; a bare `yield` is a name.
+  if (is(TokenKind::YieldKeyword) && (m_inYieldContext || operandFollowsOnLine())) {
     uint32_t firstToken = pos();
     m_scanner.scanOne();
     NodeId node = m_tree->beginNode(NodeKind::YieldExpression, firstToken);
@@ -73,6 +76,20 @@ NodeId Parser::parseAssignmentExpression()
     return m_tree->endNode(node, pos());
   }
   return left;
+}
+
+bool Parser::operandFollowsOnLine()
+{
+  Mark mark = begin();
+  m_scanner.scanOne();
+  bool result =
+      !hasPrecedingLineBreak() &&
+      (isAlwaysIdentifier(kind()) || tokenIsKeyword(kind()) ||
+       is(TokenKind::NumericLiteral) || is(TokenKind::StringLiteral) ||
+       is(TokenKind::BigIntLiteral) || is(TokenKind::NoSubstitutionTemplateLiteral) ||
+       is(TokenKind::TemplateHead));
+  rollback(mark);
+  return result;
 }
 
 bool Parser::mayBeArrowHead()
@@ -274,7 +291,7 @@ NodeId Parser::parseUnary()
     return m_tree->endNode(node, pos());
   }
   case TokenKind::AwaitKeyword: {
-    if (m_allowAwait || m_options.javaScript) {
+    if (m_allowAwait || m_options.javaScript || operandFollowsOnLine()) {
       m_scanner.scanOne();
       NodeId node = m_tree->beginNode(NodeKind::AwaitExpression, firstToken);
       m_tree->addChild(parseUnary());
@@ -445,7 +462,7 @@ NodeId Parser::parsePrimary()
     }
     if (is(TokenKind::OpenParenToken)) {
       NodeId node = m_tree->beginNode(NodeKind::CallExpression, firstToken);
-      NodeId callee = m_tree->beginNode(NodeKind::Identifier, firstToken);
+      NodeId callee = m_tree->beginNode(NodeKind::ImportKeyword, firstToken);
       callee = m_tree->endNode(callee, pos());
       m_tree->addChild(callee);
       m_tree->addChild(parseArguments());
@@ -463,7 +480,7 @@ NodeId Parser::parsePrimary()
   default:
     break;
   }
-  if (isAlwaysIdentifier(kind())) {
+  if (isBindingIdentifier(kind())) {
     NodeId node = m_tree->beginNode(NodeKind::Identifier, firstToken);
     m_scanner.scanOne();
     return m_tree->endNode(node, pos());
@@ -628,12 +645,13 @@ NodeId Parser::parsePropertyName()
   }
   NodeKind nameKind = is(TokenKind::StringLiteral)       ? NodeKind::StringLiteral
                       : is(TokenKind::NumericLiteral)    ? NodeKind::NumericLiteral
+                      : is(TokenKind::BigIntLiteral)     ? NodeKind::BigIntLiteral
                       : is(TokenKind::PrivateIdentifier) ? NodeKind::PrivateIdentifier
                                                          : NodeKind::Identifier;
   NodeId node = m_tree->beginNode(nameKind, firstToken);
   if (is(TokenKind::StringLiteral) || is(TokenKind::NumericLiteral) ||
-      is(TokenKind::PrivateIdentifier) || isAlwaysIdentifier(kind()) ||
-      tokenIsKeyword(kind()))
+      is(TokenKind::BigIntLiteral) || is(TokenKind::PrivateIdentifier) ||
+      isAlwaysIdentifier(kind()) || tokenIsKeyword(kind()))
   {
     m_scanner.scanOne();
   } else {

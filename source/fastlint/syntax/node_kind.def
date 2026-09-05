@@ -130,6 +130,7 @@ FASTLINT_NODE(ExportAssignment)
 FASTLINT_NODE(NamespaceExportDeclaration)
 FASTLINT_NODE(ExternalModuleReference)
 FASTLINT_NODE(ImportAttributes)
+FASTLINT_NODE(ImportAttribute)
 
 // Class, interface and object members.
 FASTLINT_NODE(PropertyDeclaration)
@@ -138,6 +139,7 @@ FASTLINT_NODE(GetAccessor)
 FASTLINT_NODE(SetAccessor)
 FASTLINT_NODE(ConstructorNode)
 FASTLINT_NODE(SemicolonClassElement)
+FASTLINT_NODE(ClassStaticBlockDeclaration)
 FASTLINT_NODE(IndexSignature)
 FASTLINT_NODE(CallSignature)
 FASTLINT_NODE(ConstructSignature)
@@ -175,6 +177,8 @@ FASTLINT_NODE(TypePredicate)
 FASTLINT_NODE(ThisType)
 FASTLINT_NODE(TypeLiteral)
 FASTLINT_NODE(ImportType)
+// The callee of a dynamic `import(…)` call, as in tsgo.
+FASTLINT_NODE(ImportKeyword)
 FASTLINT_NODE(KeywordType)
 
 // Error recovery.

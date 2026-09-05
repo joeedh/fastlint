@@ -8,6 +8,7 @@ using litestl::util::string;
 
 using detail::binaryPrecedence;
 using detail::isAlwaysIdentifier;
+using detail::isBindingIdentifier;
 
 // ------------------------------------------------- functions, classes, modules
 
@@ -47,7 +48,7 @@ void Parser::parseFunctionCommon(NodeId node)
   if (eat(TokenKind::AsteriskToken)) {
     m_tree->node(node).flags |= FLAG_GENERATOR;
   }
-  if (isAlwaysIdentifier(kind())) {
+  if (isBindingIdentifier(kind())) {
     uint32_t nameIndex = pos();
     m_scanner.scanOne();
     NodeId name = m_tree->beginNode(NodeKind::Identifier, nameIndex);
@@ -56,15 +57,17 @@ void Parser::parseFunctionCommon(NodeId node)
   if (is(TokenKind::LessThanToken)) {
     m_tree->addChild(parseTypeParameters());
   }
+  // Parameter defaults already follow the function's own async/generator
+  // context, so `function f(await = await)` reads `await` as a name.
+  uint32_t flags = m_tree->node(node).flags;
+  detail::FlagScope allowYield(m_inYieldContext, hasFlags(flags, FLAG_GENERATOR));
+  detail::FlagScope allowAwait(m_allowAwait, hasFlags(flags, FLAG_ASYNC));
   (void)expect(TokenKind::OpenParenToken);
   parseParameterList(false, false);
   (void)expect(TokenKind::CloseParenToken);
   if (eat(TokenKind::ColonToken)) {
     m_tree->addChild(parseTypeOrTypePredicate());
   }
-  uint32_t flags = m_tree->node(node).flags;
-  detail::FlagScope allowYield(m_inYieldContext, hasFlags(flags, FLAG_GENERATOR));
-  detail::FlagScope allowAwait(m_allowAwait, hasFlags(flags, FLAG_ASYNC));
   if (is(TokenKind::OpenBraceToken)) {
     m_tree->addChild(parseBlock());
   } else {
@@ -105,7 +108,7 @@ NodeId Parser::parseBindingPattern()
       name = m_tree->beginNode(NodeKind::Identifier, nameFirst);
     }
     // `this` is only a parameter name, but that is the callers' business.
-    if (isAlwaysIdentifier(kind()) || is(TokenKind::PrivateIdentifier) ||
+    if (isBindingIdentifier(kind()) || is(TokenKind::PrivateIdentifier) ||
         is(TokenKind::ThisKeyword))
     {
       m_scanner.scanOne();
@@ -266,7 +269,7 @@ NodeId Parser::parseClassLike(NodeId node)
   parseDecorators();
   (void)expect(TokenKind::ClassKeyword);
   // `class implements A {}` and `class extends B {}` are anonymous.
-  if (isAlwaysIdentifier(kind()) && !is(TokenKind::ImplementsKeyword) &&
+  if (isBindingIdentifier(kind()) && !is(TokenKind::ImplementsKeyword) &&
       !is(TokenKind::ExtendsKeyword))
   {
     uint32_t nameIndex = pos();
@@ -287,10 +290,30 @@ NodeId Parser::parseClassLike(NodeId node)
 }
 
 /** `name: KeyType]: ValueType`, after the `[`; the key is a Parameter child. */
+bool Parser::isIndexSignatureStart()
+{
+  if (!is(TokenKind::OpenBracketToken)) {
+    return false;
+  }
+  Mark mark = begin();
+  m_scanner.scanOne();
+  bool result = false;
+  if (isAlwaysIdentifier(kind())) {
+    m_scanner.scanOne();
+    (void)eat(TokenKind::QuestionToken); // `[x?: T]` is an error tsgo still parses
+    result = is(TokenKind::ColonToken) || is(TokenKind::CommaToken);
+  }
+  rollback(mark);
+  return result;
+}
+
 void Parser::parseIndexSignatureRest()
 {
   NodeId key = m_tree->beginNode(NodeKind::Parameter, pos());
   m_tree->addChild(parseBindingPattern());
+  if (eat(TokenKind::QuestionToken)) {
+    m_tree->node(key).flags |= FLAG_OPTIONAL;
+  }
   if (eat(TokenKind::ColonToken)) {
     m_tree->addChild(parseType());
   }
@@ -330,6 +353,14 @@ NodeId Parser::parseClassMember()
   uint32_t firstToken = pos();
   if (eat(TokenKind::SemicolonToken)) {
     NodeId node = m_tree->beginNode(NodeKind::SemicolonClassElement, firstToken);
+    return m_tree->endNode(node, pos());
+  }
+  if (is(TokenKind::StaticKeyword) && peekKind() == TokenKind::OpenBraceToken) {
+    m_scanner.scanOne();
+    NodeId node = m_tree->beginNode(NodeKind::ClassStaticBlockDeclaration, firstToken);
+    detail::FlagScope allowYield(m_inYieldContext, false);
+    detail::FlagScope allowAwait(m_allowAwait, false);
+    m_tree->addChild(parseBlock());
     return m_tree->endNode(node, pos());
   }
 
@@ -403,7 +434,7 @@ NodeId Parser::parseClassMember()
   }
 
   // Index signatures, call and construct signatures.
-  if (is(TokenKind::OpenBracketToken) && peekKind2() == TokenKind::ColonToken) {
+  if (isIndexSignatureStart()) {
     m_scanner.scanOne();
     m_tree->node(member).kind = NodeKind::IndexSignature;
     m_tree->node(member).flags |= flags;
@@ -631,7 +662,7 @@ NodeId Parser::parseImportAttributes()
   (void)expect(TokenKind::OpenBraceToken);
   NodeId attributes = m_tree->beginNode(NodeKind::ImportAttributes, firstToken);
   parseDelimitedList(ListKind::ImportAttributes, [&] {
-    NodeId attribute = m_tree->beginNode(NodeKind::PropertyAssignment, pos());
+    NodeId attribute = m_tree->beginNode(NodeKind::ImportAttribute, pos());
     m_tree->addChild(parsePropertyName());
     (void)expect(TokenKind::ColonToken);
     uint32_t valueIndex = pos();
@@ -726,6 +757,9 @@ NodeId Parser::parseExportDeclaration(bool ambientFlag)
       NodeId module = m_tree->beginNode(NodeKind::StringLiteral, index);
       m_scanner.scanOne();
       m_tree->addChild(m_tree->endNode(module, index + 1));
+    }
+    if (eat(TokenKind::WithKeyword) || eat(TokenKind::AssertKeyword)) {
+      m_tree->addChild(parseImportAttributes());
     }
   }
   (void)fromClause;
@@ -822,6 +856,11 @@ NodeId Parser::parseModuleDeclaration(bool ambientFlag)
     NodeId name = m_tree->beginNode(NodeKind::StringLiteral, index);
     m_scanner.scanOne();
     m_tree->addChild(m_tree->endNode(name, index + 1));
+    // `declare module "*.css" with { type: "css" } { … }` attributes, a
+    // type literal as in tsgo.
+    if (eat(TokenKind::WithKeyword)) {
+      m_tree->addChild(parseType());
+    }
   } else {
     uint32_t nameIndex = pos();
     NodeId name = m_tree->beginNode(NodeKind::Identifier, nameIndex);
