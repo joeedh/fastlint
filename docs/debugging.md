@@ -45,6 +45,7 @@ and the test framework itself are in `tests.md`.
 - UBSan (MSVC has none): preset `clang-asan` uses clang-cl with
   `-fsanitize=address,undefined`. Slower to build; use for suspected UB
   (signed overflow, misaligned reads in the arena, bad enum values).
+  `node make.ts fuzz --preset clang-asan` runs the fuzzer under it.
 - Fuzz: `node make.ts fuzz [--iterations N] [--seed S] [--filter x]
   [--limit N] [--corpus dir...]` (asan preset by default). A failure is
   pinned to a seed, replayed to `build/<preset>/fuzz-failures/<n>-<name>`

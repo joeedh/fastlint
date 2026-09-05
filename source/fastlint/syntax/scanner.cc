@@ -12,13 +12,9 @@ namespace {
 
 // TS diagnostic codes we reuse so our diagnostics stay comparable with tsgo's.
 constexpr uint32_t kCodeUnterminatedString = 1002;
-constexpr uint32_t kCodeUnterminatedRegex = 1160;
 constexpr uint32_t kCodeUnterminatedTemplate = 1160;
 constexpr uint32_t kCodeInvalidCharacter = 1127;
 constexpr uint32_t kCodeUnicodeEscape = 1126;
-constexpr uint32_t kCodeHexDigitExpected = 1125;
-constexpr uint32_t kCodeOctalDigitExpected = 1178;
-constexpr uint32_t kCodeBinaryDigitExpected = 1177;
 constexpr uint32_t kCodeConflictMarker = 1402;
 constexpr uint32_t kCodeIdentifierAfterNumber = 1499;
 constexpr uint32_t kCodeJsxUnexpectedToken = 1381;

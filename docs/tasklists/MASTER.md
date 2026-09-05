@@ -638,7 +638,10 @@ WASM, over the same flat AST.
   `--timing`, `--trace-json`, `--alloc-stats`).
 - [x] Fuzz harness for the parser (2026-09-05): `fastlint fuzz` mutates
   files at token level (delete/duplicate/replace/swap tokens, insert
-  fragments, truncate, flip bytes), parses each mutant and checks tree
+  fragments, truncate, flip bytes, insert or overwrite with random bytes)
+  and, for one case in twelve, feeds random data (arbitrary bytes, NULs,
+  invalid and truncated UTF-8, astral code points, long delimiter runs)
+  alone or grafted onto the file; parses each mutant and checks tree
   invariants (token order and bounds, node token ranges, parent links).
   `node make.ts fuzz` drives it under the `asan` preset in batches, pins
   a crash/hang/invariant failure to its seed from the `# file seed`
@@ -648,7 +651,11 @@ WASM, over the same flat AST.
   (underflow at file start); unterminated `` `${ `` left an orphan
   `TemplateSpan`; a multibyte character cut off by EOF produced a token
   past the end of the source. Second run after the fixes: 643850
-  mutants, no failures, 375 s.
+  mutants, no failures, 375 s. Under `clang-asan` (ASAN + UBSan) with the
+  random-data mutations, seed 11: 772620 mutants, no failures. Deep ASAN
+  run, 300 mutants per file, seed 7: 3863100 mutants, no failures, 43 min.
+  Fuzz processes cap the ASAN quarantine (`quarantine_size_mb=16`) and run
+  50 files each; the parser itself holds flat at 8 MB across mutants.
   - [ ] Promote minimized cases to fixtures automatically.
 - [x] `make.ts bench` with JSON baselines and `--compare`.
 - [ ] `README.md` — what/why, quickstart, `make.ts` commands.

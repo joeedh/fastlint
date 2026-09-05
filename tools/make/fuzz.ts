@@ -53,7 +53,7 @@ export const command: CommandModule<object, Args> = {
       .option("seed", { type: "number", default: 1, describe: "base seed" })
       .option("batch", {
         type    : "number",
-        default : 200,
+        default : 50,
         describe: "files per fastlint process",
       })
       .option("timeout", {
@@ -78,6 +78,13 @@ export const command: CommandModule<object, Args> = {
     if (argv.build) await buildPreset(preset, { target: "fastlint" });
     const exe = path.join(buildDir(preset), "bin", `fastlint${exeSuffix}`);
     const env = asanEnv(preset);
+    if (isAsan(preset)) {
+      // Freed mutants would otherwise sit in the quarantine (256 MB by
+      // default) and the allocator's size-class caches, so a long batch grows
+      // to a gigabyte for no diagnostic gain.
+      env["ASAN_OPTIONS"] =
+        `${env["ASAN_OPTIONS"] ?? ""}:quarantine_size_mb=16:malloc_context_size=8`;
+    }
     const failDir = path.join(buildDir(preset), "fuzz-failures");
     fs.mkdirSync(failDir, { recursive: true });
 

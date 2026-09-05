@@ -106,11 +106,78 @@ constexpr const char *kInserts[] = {
     "1n",        "\xE2\x80\xA8",
 };
 
+/** Random bytes: ASCII punctuation, valid and invalid UTF-8, NULs, long runs. */
+std::string randomBytes(Rng &rng, uint32_t length)
+{
+  std::string out;
+  out.reserve(length);
+  while (out.size() < length) {
+    switch (rng.below(8)) {
+    case 0: // an arbitrary byte, NUL and invalid lead/continuation bytes included
+      out.push_back(char(rng.below(256)));
+      break;
+    case 1: { // a valid code point, astral ones included
+      uint32_t cp = rng.below(0x110000);
+      if (cp >= 0xD800 && cp < 0xE000) {
+        cp = 0xFFFD;
+      }
+      if (cp < 0x80) {
+        out.push_back(char(cp));
+      } else if (cp < 0x800) {
+        out.push_back(char(0xC0 | (cp >> 6)));
+        out.push_back(char(0x80 | (cp & 0x3F)));
+      } else if (cp < 0x10000) {
+        out.push_back(char(0xE0 | (cp >> 12)));
+        out.push_back(char(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(char(0x80 | (cp & 0x3F)));
+      } else {
+        out.push_back(char(0xF0 | (cp >> 18)));
+        out.push_back(char(0x80 | ((cp >> 12) & 0x3F)));
+        out.push_back(char(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(char(0x80 | (cp & 0x3F)));
+      }
+      break;
+    }
+    case 2: // a truncated multibyte sequence
+      out.append("â");
+      break;
+    case 3: // a long run of one delimiter (deep nesting, long names)
+      out.append(1 + rng.below(64), "([{<`'\"/*\\$.a"[rng.below(13)]);
+      break;
+    case 4: // a source fragment
+      out += kInserts[rng.below(uint32_t(std::size(kInserts)))];
+      break;
+    default: { // printable ASCII
+      const char pool[] = "abcxyz019_$ {}()[]<>;,.:=?!/*+-&|^~%#@`'\"\\\n\r\t";
+      out.push_back(pool[rng.below(uint32_t(sizeof(pool) - 1))]);
+      break;
+    }
+    }
+  }
+  out.resize(length);
+  return out;
+}
+
 /** Applies one to three random edits; token spans are from the original text. */
 std::string mutate(std::string_view original, const Vector<Span> &spans, uint64_t seed)
 {
   Rng rng{seed};
   std::string text(original);
+  // One case in twelve is pure garbage, or garbage grafted onto the file, so
+  // malformed data reaches the scanner without a token structure around it.
+  if (rng.below(12) == 0) {
+    uint32_t length =
+        1 + rng.below(1 + std::min<uint32_t>(uint32_t(original.size()), 4096));
+    std::string junk = randomBytes(rng, length);
+    switch (rng.below(3)) {
+    case 0:
+      return junk;
+    case 1:
+      return text + junk;
+    default:
+      return junk + text;
+    }
+  }
   uint32_t edits = 1 + rng.below(3);
   for (uint32_t e = 0; e < edits; ++e) {
     // Offsets shift after the first edit; keep each edit inside the text.
@@ -122,7 +189,7 @@ std::string mutate(std::string_view original, const Vector<Span> &spans, uint64_
     Span b = n ? spans[rng.below(n)] : Span{0, 0};
     uint32_t start = clamp(a.offset);
     uint32_t length = std::min<uint32_t>(a.length, uint32_t(text.size()) - start);
-    switch (rng.below(7)) {
+    switch (rng.below(9)) {
     case 0: // delete a token
       text.erase(start, length);
       break;
@@ -147,6 +214,18 @@ std::string mutate(std::string_view original, const Vector<Span> &spans, uint64_
       const char pool[] = "{}()[]<>;,.:=/'\"`$\n\\";
       text[rng.below(uint32_t(text.size()))] =
           pool[rng.below(uint32_t(sizeof(pool) - 1))];
+      break;
+    }
+    case 7: // insert random bytes at a token boundary
+      text.insert(start, randomBytes(rng, 1 + rng.below(32)));
+      break;
+    case 8: { // overwrite a region with random bytes
+      if (text.empty()) {
+        break;
+      }
+      uint32_t at = rng.below(uint32_t(text.size()));
+      uint32_t count = std::min<uint32_t>(1 + rng.below(16), uint32_t(text.size()) - at);
+      text.replace(at, count, randomBytes(rng, count));
       break;
     }
     default: { // swap two tokens
