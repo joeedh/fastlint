@@ -14,6 +14,8 @@ built both as an N-API addon and as WASM.
 - docs/tasklists/MASTER.md — the master task list with status checkboxes.
   Update checkboxes as work lands; add sub-tasks rather than tracking work
   elsewhere.
+- docs/parser.md — the scanner, the parser and the grammar tree as built:
+  node and flag conventions, recovery, speculation, JSX, the dump format.
 - docs/tests.md — the in-house test framework (`fastlint::test`), snapshot
   format, and per-component test strategy.
 - docs/debugging.md — debugging aids per subsystem (dump commands, trace
