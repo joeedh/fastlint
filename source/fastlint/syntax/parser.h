@@ -99,6 +99,8 @@ private:
   bool eat(TokenKind k);
   /** Consumes and returns the token index, or reports Missing with kNoToken. */
   uint32_t expect(TokenKind k);
+  /** `expect(>)` that first splits a `>>`-family token closing a type list. */
+  uint32_t expectGreaterThan();
   /** True when ASI may end a statement before the current token. */
   bool canInsertSemicolon() const;
   /** Consumes a `;`, applies ASI, or reports that one is missing. */
@@ -120,6 +122,11 @@ private:
   void rollback(const Mark &m);
   /** The kind of the token after the current one, via scanner rewind. */
   TokenKind peekKind();
+  /** True when `<T>(params): R =>` or `(params) =>` starts here. */
+  bool isArrowHead();
+  /** Parses `<…>` in expression position when what follows allows it. */
+  bool tryParseTypeArguments(NodeId &typeArguments);
+  bool canFollowTypeArguments();
 
   // ----------------------------------------------------------------- lists
 
@@ -148,11 +155,15 @@ private:
 
   // --------------------------------------------------------------- context
 
-  bool m_allowAwait = false;   // top level, module, async bodies
+  bool m_allowAwait = false; // top level, module, async bodies
   bool m_inYieldContext = false;
-  bool m_inIteration = false;  // break/continue targets
+  bool m_inIteration = false; // break/continue targets
   bool m_inSwitch = false;
-  bool m_ambient = false;      // declare blocks/interfaces
+  bool m_ambient = false; // declare blocks/interfaces
+  /** Inside the `extends` operand of a conditional type or an `infer` constraint. */
+  bool m_noConditionalType = false;
+  /** Inside a `for` head, where `in` ends the initializer. */
+  bool m_disallowIn = false;
   /** Bit per `ListKind` currently being parsed. */
   uint32_t m_lists = 0;
 
@@ -163,7 +174,8 @@ private:
   GrammarTree *m_tree = nullptr;
   Options m_options;
 
-  void error(uint32_t code, uint32_t offset, uint32_t length, litestl::util::string message);
+  void
+  error(uint32_t code, uint32_t offset, uint32_t length, litestl::util::string message);
   void errorAt(const Token &t, uint32_t code, litestl::util::string message);
 
   // statement/declaration/entry points, defined in parser.cc
@@ -205,15 +217,15 @@ private:
   NodeId parsePrimary();
   NodeId parseParenthesizedOrArrow();
   NodeId parseObjectLiteral();
-  NodeId parseTemplateLiteral(bool tagged);
+  NodeId parseTemplateLiteral();
   NodeId parseFunctionExpression(bool asyncFlag);
   NodeId parseClassExpression();
   NodeId parseArguments();
 
   // shared productions
   NodeId parseVariableDeclarationList(TokenKind keyword);
-  NodeId parseVariableDeclaration(bool disallowIn);
-  NodeId parseBindingPattern();  // identifier or pattern
+  NodeId parseVariableDeclaration();
+  NodeId parseBindingPattern(); // identifier or pattern
   NodeId parseBindingElement(bool inArrayPattern);
   /** Appends parameters to the innermost open node; there is no wrapper node. */
   void parseParameterList(bool allowModifiers, bool isConstructor);
@@ -223,6 +235,7 @@ private:
   void parseFunctionCommon(NodeId node);
   NodeId parseClassLike(NodeId node);
   NodeId parseHeritageClause(NodeKind kind);
+  void parseIndexSignatureRest();
   NodeId parseClassMember();
   NodeId parseObjectMember();
   NodeId parsePropertyName();
@@ -233,11 +246,13 @@ private:
   // types (TS)
   NodeId parseType();
   NodeId parseTypeOrTypePredicate();
+  NodeId parseConditionalType();
   NodeId parseUnionType();
   NodeId parseIntersectionType();
   NodeId parseTypeOperator();
   NodeId parsePostfixType(NodeId type);
   NodeId parsePrimaryType();
+  NodeId parseFunctionType(NodeKind kind, uint32_t firstToken);
   NodeId parseTypeReference();
   NodeId parseTypeParameters();
   NodeId parseTypeParameter();
@@ -246,14 +261,24 @@ private:
   NodeId parseTupleElement();
   NodeId parseTypeMember(bool isInterface);
   NodeId parseTypeLiteralBody();
-  NodeId parseImportTypeRest(uint32_t firstToken);
+  /** `("mod").A.B<T>` after `import`, appended to the open ImportType. */
+  void parseImportTypeRest();
 
   // lookahead helpers
   TokenKind peekKind2();
   bool startsTypeAlias();
   bool wordFollows();
   bool nextHasLineBreak();
+  /** True when the token after the current one can name a member. */
+  bool nextStartsPropertyName();
+  /** True when a modifier here is a modifier rather than the member name. */
+  bool nextCanFollowModifier(bool sameLine = true);
   bool letStartsDeclaration();
+  /** `using x` / `await using x` with the name on the same line. */
+  bool usingStartsDeclaration();
+  NodeId parseDecoratedStatement();
+  /** Appends Decorator children for each leading `@expr`. */
+  void parseDecorators();
   NodeId missingNode(NodeKind kind, uint32_t at);
   NodeId parseBreakOrContinue(NodeKind kind, TokenKind keyword);
   NodeId parseImportOrExportClause(bool isImport);

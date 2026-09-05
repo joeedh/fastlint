@@ -51,8 +51,6 @@ NodeId GrammarTree::endNode(NodeId id, uint32_t endToken)
   return id;
 }
 
-
-
 uint32_t GrammarTree::lineOf(uint32_t offset) const
 {
   // Binary search over line starts.

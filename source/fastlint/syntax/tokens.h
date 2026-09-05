@@ -41,7 +41,7 @@ inline bool isPunctuation(TokenKind kind)
 
 /** How many token kinds there are (one past the last valid value). */
 constexpr int tokenKindCount = 0
-#define FASTLINT_TOKEN(kind, name) + 1
+#define FASTLINT_TOKEN(kind, name) +1
 #include "fastlint/syntax/tokens.def"
 #undef FASTLINT_TOKEN
     ;
@@ -61,6 +61,5 @@ struct Token {
   /** Unterminated string/template/regex/comment; the token still ends at EOF or EOL. */
   bool unterminated = false;
 };
-
 
 } // namespace fastlint::syntax

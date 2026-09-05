@@ -62,4 +62,4 @@ TokenKind keywordKind(std::string_view word)
   return TokenKind::Identifier;
 }
 
-} // fastlint::syntax
+} // namespace fastlint::syntax

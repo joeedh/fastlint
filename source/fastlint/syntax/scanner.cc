@@ -23,15 +23,20 @@ constexpr uint32_t kCodeIdentifierAfterNumber = 1499;
 constexpr uint32_t kCodeCommentNotTerminated = 0;
 constexpr uint32_t kCodeSeparator = 0;
 
-bool isDigit(char c) { return c >= '0' && c <= '9'; }
+bool isDigit(char c)
+{
+  return c >= '0' && c <= '9';
+}
 bool isHexDigit(char c)
 {
   return isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 }
 int hexValue(char c)
 {
-  if (c >= '0' && c <= '9') return c - '0';
-  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
   return c - 'A' + 10;
 }
 bool isAsciiIdentifierStart(uint32_t c)
@@ -45,7 +50,9 @@ bool isAsciiIdentifierPart(uint32_t c)
 
 } // namespace
 
-Scanner::Scanner(std::string_view source, const Options &options, Diagnostics &diagnostics)
+Scanner::Scanner(std::string_view source,
+                 const Options &options,
+                 Diagnostics &diagnostics)
     : m_source(source), m_options(options), m_diagnostics(&diagnostics)
 {
   m_lineStarts.append(0);
@@ -53,16 +60,25 @@ Scanner::Scanner(std::string_view source, const Options &options, Diagnostics &d
 
 uint32_t Scanner::peekChar() const
 {
-  if (atEnd()) return 0;
+  if (atEnd())
+    return 0;
   unsigned char c = uint8_t(byte(m_pos));
-  if (c < 0x80) return c;
+  if (c < 0x80)
+    return c;
   size_t len = charLength();
   uint32_t cp = 0;
   switch (len) {
-  case 2: cp = c & 0x1f; break;
-  case 3: cp = c & 0x0f; break;
-  case 4: cp = c & 0x07; break;
-  default: return 0xfffd;
+  case 2:
+    cp = c & 0x1f;
+    break;
+  case 3:
+    cp = c & 0x0f;
+    break;
+  case 4:
+    cp = c & 0x07;
+    break;
+  default:
+    return 0xfffd;
   }
   for (size_t i = 1; i < len && m_pos + i < m_source.size(); ++i) {
     cp = (cp << 6) | (uint32_t(uint8_t(byte(m_pos + i))) & 0x3f);
@@ -73,16 +89,25 @@ uint32_t Scanner::peekChar() const
 uint32_t Scanner::peekCharAt(size_t ahead) const
 {
   size_t pos = m_pos + ahead;
-  if (pos >= m_source.size()) return 0;
+  if (pos >= m_source.size())
+    return 0;
   unsigned char c = uint8_t(byte(pos));
-  if (c < 0x80) return c;
+  if (c < 0x80)
+    return c;
   size_t len = c >= 0xf0 ? 4 : c >= 0xe0 ? 3 : c >= 0xc0 ? 2 : 1;
   uint32_t cp = 0;
   switch (len) {
-  case 2: cp = c & 0x1f; break;
-  case 3: cp = c & 0x0f; break;
-  case 4: cp = c & 0x07; break;
-  default: return 0xfffd;
+  case 2:
+    cp = c & 0x1f;
+    break;
+  case 3:
+    cp = c & 0x0f;
+    break;
+  case 4:
+    cp = c & 0x07;
+    break;
+  default:
+    return 0xfffd;
   }
   for (size_t i = 1; i < len && pos + i < m_source.size(); ++i) {
     cp = (cp << 6) | (uint32_t(uint8_t(byte(pos + i))) & 0x3f);
@@ -93,21 +118,31 @@ uint32_t Scanner::peekCharAt(size_t ahead) const
 size_t Scanner::charLength() const
 {
   unsigned char c = uint8_t(byte(m_pos));
-  if (c < 0x80) return 1;
-  if (c >= 0xf0) return 4;
-  if (c >= 0xe0) return 3;
-  if (c >= 0xc0) return 2;
+  if (c < 0x80)
+    return 1;
+  if (c >= 0xf0)
+    return 4;
+  if (c >= 0xe0)
+    return 3;
+  if (c >= 0xc0)
+    return 2;
   return 1;
 }
 
-void Scanner::advanceChar() { m_pos += charLength(); }
+void Scanner::advanceChar()
+{
+  m_pos += charLength();
+}
 
 void Scanner::error(uint32_t code, uint32_t offset, uint32_t length, string message)
 {
   m_diagnostics->report(code, offset, length, std::move(message));
 }
 
-void Scanner::addTrivia(Trivia::Kind kind, uint32_t offset, uint32_t length, bool lineBreak)
+void Scanner::addTrivia(Trivia::Kind kind,
+                        uint32_t offset,
+                        uint32_t length,
+                        bool lineBreak)
 {
   Trivia trivia;
   trivia.kind = kind;
@@ -132,7 +167,8 @@ void Scanner::finishCurrent(uint32_t index)
   uint32_t count = uint32_t(m_trivia.size()) - m_lastTriviaEnd;
   // A trailing whitespace run is not part of a token's leading trivia; only
   // comments and newlines are.
-  while (count > 0 && m_trivia[m_lastTriviaEnd + count - 1].kind == Trivia::Kind::Whitespace)
+  while (count > 0 &&
+         m_trivia[m_lastTriviaEnd + count - 1].kind == Trivia::Kind::Whitespace)
     count--;
   m_current.leadingTriviaCount = count;
   m_current.precedingLineBreak = m_sawLineBreak;
@@ -203,7 +239,8 @@ void Scanner::scanOne()
   switch (c) {
   case '#':
     if (m_pos + 1 < m_source.size() &&
-        (isAsciiIdentifierStart(uint32_t(byte(m_pos + 1))) || byte(m_pos + 1) == '\\')) {
+        (isAsciiIdentifierStart(uint32_t(byte(m_pos + 1))) || byte(m_pos + 1) == '\\'))
+    {
       m_pos += 1;
       scanIdentifier(start, true);
     } else {
@@ -232,10 +269,33 @@ void Scanner::scanOne()
   commit();
 }
 
+/** ES WhiteSpace beyond ASCII: NBSP, ZWNBSP (the BOM) and the Zs category. */
+static bool isUnicodeWhiteSpace(uint32_t cp)
+{
+  switch (cp) {
+  case 0x00a0:
+  case 0x1680:
+  case 0x202f:
+  case 0x205f:
+  case 0x3000:
+  case 0xfeff:
+    return true;
+  default:
+    return cp >= 0x2000 && cp <= 0x200a;
+  }
+}
+
 void Scanner::skipTrivia(bool &sawLineBreak)
 {
+  if (m_pos == 0 && startsWith("#!")) {
+    while (!atEnd() && byte(m_pos) != '\n' && byte(m_pos) != '\r') {
+      m_pos += 1;
+    }
+    addTrivia(Trivia::Kind::Shebang, 0, uint32_t(m_pos), false);
+  }
   for (;;) {
-    if (atEnd()) return;
+    if (atEnd())
+      return;
     char c = byte(m_pos);
     if (c == ' ' || c == '\t' || c == '\f' || c == '\v') {
       uint32_t start = uint32_t(m_pos);
@@ -273,6 +333,14 @@ void Scanner::skipTrivia(bool &sawLineBreak)
       addTrivia(Trivia::Kind::NewLine, start, uint32_t(m_pos - start), true);
       continue;
     }
+    if (isUnicodeWhiteSpace(cp)) {
+      uint32_t start = uint32_t(m_pos);
+      while (!atEnd() && isUnicodeWhiteSpace(peekChar())) {
+        advanceChar();
+      }
+      addTrivia(Trivia::Kind::Whitespace, start, uint32_t(m_pos - start), false);
+      continue;
+    }
     if (c == '/' && m_pos + 1 < m_source.size() && byte(m_pos + 1) == '/') {
       uint32_t start = uint32_t(m_pos);
       while (!atEnd() && byte(m_pos) != '\n' && byte(m_pos) != '\r') {
@@ -288,7 +356,8 @@ void Scanner::skipTrivia(bool &sawLineBreak)
       bool broke = false;
       while (!atEnd()) {
         if (byte(m_pos) == '\n' || byte(m_pos) == '\r' || peekChar() == 0x2028 ||
-            peekChar() == 0x2029) {
+            peekChar() == 0x2029)
+        {
           broke = true;
           sawLineBreak = true;
           m_sawLineBreak = true;
@@ -304,7 +373,9 @@ void Scanner::skipTrivia(bool &sawLineBreak)
         m_pos += 1;
       }
       if (!closed) {
-        error(kCodeCommentNotTerminated, start, uint32_t(m_pos - start),
+        error(kCodeCommentNotTerminated,
+              start,
+              uint32_t(m_pos - start),
               string("Comment not terminated."));
       }
       addTrivia(Trivia::Kind::MultiLineComment, start, uint32_t(m_pos - start), broke);
@@ -323,7 +394,9 @@ void Scanner::skipTrivia(bool &sawLineBreak)
       while (!atEnd() && byte(m_pos) != '\n' && byte(m_pos) != '\r') {
         m_pos += 1;
       }
-      error(kCodeConflictMarker, start, uint32_t(m_pos - start),
+      error(kCodeConflictMarker,
+            start,
+            uint32_t(m_pos - start),
             string("File appears to have a merge conflict marker."));
       addTrivia(Trivia::Kind::Whitespace, start, uint32_t(m_pos - start), false);
       continue;
@@ -335,7 +408,8 @@ void Scanner::skipTrivia(bool &sawLineBreak)
 void Scanner::scanIdentifier(uint32_t start, bool isPrivate)
 {
   for (;;) {
-    if (atEnd()) break;
+    if (atEnd())
+      break;
     uint32_t cp = peekChar();
     if (isAsciiIdentifierPart(cp) || cp == '$' || cp == '_') {
       advanceChar();
@@ -363,9 +437,12 @@ void Scanner::scanIdentifier(uint32_t start, bool isPrivate)
           m_pos += 1;
           any = true;
         }
-        if (!atEnd() && byte(m_pos) == '}') m_pos += 1;
+        if (!atEnd() && byte(m_pos) == '}')
+          m_pos += 1;
         if (bad || !any || value > 0x10ffff) {
-          error(kCodeUnicodeEscape, uint32_t(escapePos), 2,
+          error(kCodeUnicodeEscape,
+                uint32_t(escapePos),
+                2,
                 string("Invalid Unicode escape sequence"));
         }
         continue;
@@ -379,7 +456,9 @@ void Scanner::scanIdentifier(uint32_t start, bool isPrivate)
         m_pos += 1;
       }
       if (!ok) {
-        error(kCodeUnicodeEscape, uint32_t(escapePos), 2,
+        error(kCodeUnicodeEscape,
+              uint32_t(escapePos),
+              2,
               string("Invalid Unicode escape sequence"));
       }
       continue;
@@ -389,6 +468,18 @@ void Scanner::scanIdentifier(uint32_t start, bool isPrivate)
       continue;
     }
     break;
+  }
+
+  // A non-ASCII character that cannot start a name; every token must
+  // consume something or the parser never advances.
+  if (m_pos == start) {
+    advanceChar();
+    error(kCodeInvalidCharacter,
+          start,
+          uint32_t(m_pos - start),
+          string("Invalid character."));
+    addToken(TokenKind::Identifier, start);
+    return;
   }
 
   if (isPrivate) {
@@ -412,13 +503,17 @@ void Scanner::scanNumber(uint32_t start)
       char d = byte(m_pos);
       if (d == '_') {
         if (lastWasSeparator) {
-          error(kCodeSeparator, uint32_t(m_pos), 1,
+          error(kCodeSeparator,
+                uint32_t(m_pos),
+                1,
                 string("Numeric separators are not allowed here."));
         }
         lastWasSeparator = true;
         m_pos += 1;
         if (atEnd() || !pred(byte(m_pos))) {
-          error(kCodeSeparator, uint32_t(m_pos) - 1, 1,
+          error(kCodeSeparator,
+                uint32_t(m_pos) - 1,
+                1,
                 string("Numeric separators are not allowed here."));
         }
         continue;
@@ -439,23 +534,27 @@ void Scanner::scanNumber(uint32_t start)
       m_pos += 2;
       bool any = false;
       scanDigits(isHexDigit, any);
-      if (!any) error(1125, start, 2, string("Hexadecimal digit expected."));
+      if (!any)
+        error(1125, start, 2, string("Hexadecimal digit expected."));
     } else if (next == 'o' || next == 'O') {
       m_pos += 2;
       bool any = false;
       scanDigits([](char c) { return c >= '0' && c <= '7'; }, any);
-      if (!any) error(1178, start, 2, string("Octal digit expected."));
+      if (!any)
+        error(1178, start, 2, string("Octal digit expected."));
     } else if (next == 'b' || next == 'B') {
       m_pos += 2;
       bool any = false;
       scanDigits([](char c) { return c == '0' || c == '1'; }, any);
-      if (!any) error(1177, start, 2, string("Binary digit expected."));
+      if (!any)
+        error(1177, start, 2, string("Binary digit expected."));
     } else if (next >= '0' && next <= '9') {
       // Legacy octal, or a legacy decimal such as 08.
       bool any = false;
       scanDigits([](char c) { return c >= '0' && c <= '7'; }, any);
       if (!atEnd() && (byte(m_pos) == '8' || byte(m_pos) == '9')) {
-        while (!atEnd() && isDigit(byte(m_pos))) m_pos += 1;
+        while (!atEnd() && isDigit(byte(m_pos)))
+          m_pos += 1;
       } else {
         m_current.legacyOctal = true;
       }
@@ -480,10 +579,12 @@ void Scanner::scanNumber(uint32_t start)
   if (!atEnd() && (byte(m_pos) == 'e' || byte(m_pos) == 'E')) {
     size_t save = m_pos;
     m_pos += 1;
-    if (!atEnd() && (byte(m_pos) == '+' || byte(m_pos) == '-')) m_pos += 1;
+    if (!atEnd() && (byte(m_pos) == '+' || byte(m_pos) == '-'))
+      m_pos += 1;
     bool any = false;
     scanDigits([](char c) { return c >= '0' && c <= '9'; }, any);
-    if (!any) m_pos = save;
+    if (!any)
+      m_pos = save;
   }
 
   if (!atEnd() && byte(m_pos) == 'n') {
@@ -491,9 +592,11 @@ void Scanner::scanNumber(uint32_t start)
     isBigInt = true;
   }
 
-  if (!atEnd() &&
-      (isAsciiIdentifierStart(uint32_t(byte(m_pos))) || byte(m_pos) == '\\')) {
-    error(kCodeIdentifierAfterNumber, start, uint32_t(m_pos - start),
+  if (!atEnd() && (isAsciiIdentifierStart(uint32_t(byte(m_pos))) || byte(m_pos) == '\\'))
+  {
+    error(kCodeIdentifierAfterNumber,
+          start,
+          uint32_t(m_pos - start),
           string("An identifier cannot follow a number."));
     // The number ends here; the identifier becomes its own token so the
     // token stream stays well-formed.
@@ -513,7 +616,9 @@ void Scanner::scanString(uint32_t start)
   bool terminated = false;
   for (;;) {
     if (atEnd() || byte(m_pos) == '\n' || byte(m_pos) == '\r') {
-      error(kCodeUnterminatedString, start, uint32_t(m_pos - start),
+      error(kCodeUnterminatedString,
+            start,
+            uint32_t(m_pos - start),
             string("Unterminated string constant."));
       break;
     }
@@ -526,7 +631,9 @@ void Scanner::scanString(uint32_t start)
     if (c == '\\') {
       m_pos += 1;
       if (atEnd()) {
-        error(kCodeUnterminatedString, start, uint32_t(m_pos - start),
+        error(kCodeUnterminatedString,
+              start,
+              uint32_t(m_pos - start),
               string("Unterminated string constant."));
         break;
       }
@@ -552,7 +659,9 @@ void Scanner::scanString(uint32_t start)
         m_pos += 1;
         for (int i = 0; i < 2; ++i) {
           if (atEnd() || !isHexDigit(byte(m_pos))) {
-            error(1125, start, uint32_t(m_pos - start),
+            error(1125,
+                  start,
+                  uint32_t(m_pos - start),
                   string("Hexadecimal digit expected."));
             break;
           }
@@ -567,23 +676,30 @@ void Scanner::scanString(uint32_t start)
           bool any = false;
           while (!atEnd() && byte(m_pos) != '}') {
             if (!isHexDigit(byte(m_pos))) {
-              error(kCodeUnicodeEscape, start, uint32_t(m_pos - start),
+              error(kCodeUnicodeEscape,
+                    start,
+                    uint32_t(m_pos - start),
                     string("Invalid Unicode escape sequence"));
               break;
             }
             m_pos += 1;
             any = true;
           }
-          if (!atEnd() && byte(m_pos) == '}') m_pos += 1;
+          if (!atEnd() && byte(m_pos) == '}')
+            m_pos += 1;
           if (!any) {
-            error(kCodeUnicodeEscape, start, uint32_t(m_pos - start),
+            error(kCodeUnicodeEscape,
+                  start,
+                  uint32_t(m_pos - start),
                   string("Invalid Unicode escape sequence"));
           }
           continue;
         }
         for (int i = 0; i < 4; ++i) {
           if (atEnd() || !isHexDigit(byte(m_pos))) {
-            error(kCodeUnicodeEscape, start, uint32_t(m_pos - start),
+            error(kCodeUnicodeEscape,
+                  start,
+                  uint32_t(m_pos - start),
                   string("Invalid Unicode escape sequence"));
             break;
           }
@@ -595,7 +711,9 @@ void Scanner::scanString(uint32_t start)
         m_current.legacyOctal = true;
         m_pos += 1;
         if (e != '0') {
-          for (int i = 0; i < 2 && !atEnd() && byte(m_pos) >= '0' && byte(m_pos) <= '7'; ++i) {
+          for (int i = 0; i < 2 && !atEnd() && byte(m_pos) >= '0' && byte(m_pos) <= '7';
+               ++i)
+          {
             m_pos += 1;
           }
         }
@@ -618,11 +736,12 @@ void Scanner::scanTemplate(uint32_t start, ScanMode mode)
   }
   for (;;) {
     if (atEnd()) {
-      error(kCodeUnterminatedTemplate, start, uint32_t(m_pos - start),
+      error(kCodeUnterminatedTemplate,
+            start,
+            uint32_t(m_pos - start),
             string("Unterminated template literal."));
-      TokenKind kind = mode == ScanMode::Normal
-                           ? TokenKind::NoSubstitutionTemplateLiteral
-                           : TokenKind::TemplateInvalid;
+      TokenKind kind = mode == ScanMode::Normal ? TokenKind::NoSubstitutionTemplateLiteral
+                                                : TokenKind::TemplateInvalid;
       addToken(kind, start, true);
       return;
     }
@@ -644,7 +763,8 @@ void Scanner::scanTemplate(uint32_t start, ScanMode mode)
     }
     if (c == '$' && m_pos + 1 < m_source.size() && byte(m_pos + 1) == '{') {
       m_pos += 2;
-      addToken(mode == ScanMode::Normal ? TokenKind::TemplateHead : TokenKind::TemplateMiddle,
+      addToken(mode == ScanMode::Normal ? TokenKind::TemplateHead
+                                        : TokenKind::TemplateMiddle,
                start);
       return;
     }
@@ -662,13 +782,14 @@ void Scanner::scanTemplate(uint32_t start, ScanMode mode)
   }
 }
 
-bool Scanner::scanRegex(uint32_t)/* start */
+bool Scanner::scanRegex(uint32_t) /* start */
 {
   m_pos += 1; // leading slash
   bool inClass = false;
   for (;;) {
     if (atEnd() || byte(m_pos) == '\n' || byte(m_pos) == '\r' || peekChar() == 0x2028 ||
-        peekChar() == 0x2029) {
+        peekChar() == 0x2029)
+    {
       return false; // division, not a regex
     }
     char c = byte(m_pos);
@@ -706,12 +827,14 @@ void Scanner::scanJsxText(uint32_t start)
 void Scanner::scanJsxIdentifier(uint32_t start)
 {
   if (!atEnd() &&
-      (isAsciiIdentifierStart(uint32_t(byte(m_pos))) || uint32_t(byte(m_pos)) >= 0x80)) {
+      (isAsciiIdentifierStart(uint32_t(byte(m_pos))) || uint32_t(byte(m_pos)) >= 0x80))
+  {
     advanceChar();
   }
   while (!atEnd()) {
     char c = byte(m_pos);
-    if (isAsciiIdentifierPart(uint32_t(c)) || c == '-' || c == ':' || uint32_t(c) >= 0x80) {
+    if (isAsciiIdentifierPart(uint32_t(c)) || c == '-' || c == ':' || uint32_t(c) >= 0x80)
+    {
       advanceChar();
       continue;
     }
@@ -733,23 +856,55 @@ void Scanner::scanPunctuation(uint32_t start)
 
   char c = byte(m_pos);
   switch (c) {
-  case '{': m_pos += 1; addToken(TokenKind::OpenBraceToken, start); return;
-  case '}': m_pos += 1; addToken(TokenKind::CloseBraceToken, start); return;
-  case '(': m_pos += 1; addToken(TokenKind::OpenParenToken, start); return;
-  case ')': m_pos += 1; addToken(TokenKind::CloseParenToken, start); return;
-  case '[': m_pos += 1; addToken(TokenKind::OpenBracketToken, start); return;
-  case ']': m_pos += 1; addToken(TokenKind::CloseBracketToken, start); return;
-  case ';': m_pos += 1; addToken(TokenKind::SemicolonToken, start); return;
-  case ',': m_pos += 1; addToken(TokenKind::CommaToken, start); return;
-  case '~': m_pos += 1; addToken(TokenKind::TildeToken, start); return;
-  case '@': m_pos += 1; addToken(TokenKind::AtToken, start); return;
+  case '{':
+    m_pos += 1;
+    addToken(TokenKind::OpenBraceToken, start);
+    return;
+  case '}':
+    m_pos += 1;
+    addToken(TokenKind::CloseBraceToken, start);
+    return;
+  case '(':
+    m_pos += 1;
+    addToken(TokenKind::OpenParenToken, start);
+    return;
+  case ')':
+    m_pos += 1;
+    addToken(TokenKind::CloseParenToken, start);
+    return;
+  case '[':
+    m_pos += 1;
+    addToken(TokenKind::OpenBracketToken, start);
+    return;
+  case ']':
+    m_pos += 1;
+    addToken(TokenKind::CloseBracketToken, start);
+    return;
+  case ';':
+    m_pos += 1;
+    addToken(TokenKind::SemicolonToken, start);
+    return;
+  case ',':
+    m_pos += 1;
+    addToken(TokenKind::CommaToken, start);
+    return;
+  case '~':
+    m_pos += 1;
+    addToken(TokenKind::TildeToken, start);
+    return;
+  case '@':
+    m_pos += 1;
+    addToken(TokenKind::AtToken, start);
+    return;
   case ':':
-    if (tryMatch("::", TokenKind::ColonColonToken)) return;
+    if (tryMatch("::", TokenKind::ColonColonToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::ColonToken, start);
     return;
   case '.':
-    if (tryMatch("...", TokenKind::DotDotDotToken)) return;
+    if (tryMatch("...", TokenKind::DotDotDotToken))
+      return;
     if (m_pos + 1 < m_source.size() && isDigit(byte(m_pos + 1))) {
       scanNumber(start);
       return;
@@ -758,7 +913,8 @@ void Scanner::scanPunctuation(uint32_t start)
     addToken(TokenKind::DotToken, start);
     return;
   case '?':
-    if (tryMatch("\?\?=", TokenKind::QuestionQuestionEqualsToken)) return;
+    if (tryMatch("\?\?=", TokenKind::QuestionQuestionEqualsToken))
+      return;
     if (startsWith("?.")) {
       // `a?.1:x` is a ternary with a dot, not optional chaining.
       if (m_pos + 2 < m_source.size() && isDigit(byte(m_pos + 2))) {
@@ -770,91 +926,123 @@ void Scanner::scanPunctuation(uint32_t start)
       addToken(TokenKind::QuestionDotToken, start);
       return;
     }
-    if (tryMatch("??", TokenKind::QuestionQuestionToken)) return;
+    if (tryMatch("??", TokenKind::QuestionQuestionToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::QuestionToken, start);
     return;
   case '<':
-    if (tryMatch("<<=", TokenKind::LessThanLessThanEqualsToken)) return;
-    if (tryMatch("<<", TokenKind::LessThanLessThanToken)) return;
-    if (tryMatch("<=", TokenKind::LessThanEqualsToken)) return;
+    if (tryMatch("<<=", TokenKind::LessThanLessThanEqualsToken))
+      return;
+    if (tryMatch("<<", TokenKind::LessThanLessThanToken))
+      return;
+    if (tryMatch("<=", TokenKind::LessThanEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::LessThanToken, start);
     return;
   case '>':
-    if (tryMatch(">>>=", TokenKind::GreaterThanGreaterThanGreaterThanEqualsToken)) return;
-    if (tryMatch(">>>", TokenKind::GreaterThanGreaterThanGreaterThanToken)) return;
-    if (tryMatch(">>=", TokenKind::GreaterThanGreaterThanEqualsToken)) return;
-    if (tryMatch(">>", TokenKind::GreaterThanGreaterThanToken)) return;
-    if (tryMatch(">=", TokenKind::GreaterThanEqualsToken)) return;
+    if (tryMatch(">>>=", TokenKind::GreaterThanGreaterThanGreaterThanEqualsToken))
+      return;
+    if (tryMatch(">>>", TokenKind::GreaterThanGreaterThanGreaterThanToken))
+      return;
+    if (tryMatch(">>=", TokenKind::GreaterThanGreaterThanEqualsToken))
+      return;
+    if (tryMatch(">>", TokenKind::GreaterThanGreaterThanToken))
+      return;
+    if (tryMatch(">=", TokenKind::GreaterThanEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::GreaterThanToken, start);
     return;
   case '=':
-    if (tryMatch("===", TokenKind::EqualsEqualsEqualsToken)) return;
-    if (tryMatch("=>", TokenKind::EqualsGreaterThanToken)) return;
-    if (tryMatch("==", TokenKind::EqualsEqualsToken)) return;
+    if (tryMatch("===", TokenKind::EqualsEqualsEqualsToken))
+      return;
+    if (tryMatch("=>", TokenKind::EqualsGreaterThanToken))
+      return;
+    if (tryMatch("==", TokenKind::EqualsEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::EqualsToken, start);
     return;
   case '!':
-    if (tryMatch("!==", TokenKind::ExclamationEqualsEqualsToken)) return;
-    if (tryMatch("!=", TokenKind::ExclamationEqualsToken)) return;
+    if (tryMatch("!==", TokenKind::ExclamationEqualsEqualsToken))
+      return;
+    if (tryMatch("!=", TokenKind::ExclamationEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::ExclamationToken, start);
     return;
   case '+':
-    if (tryMatch("+=", TokenKind::PlusEqualsToken)) return;
-    if (tryMatch("++", TokenKind::PlusPlusToken)) return;
+    if (tryMatch("+=", TokenKind::PlusEqualsToken))
+      return;
+    if (tryMatch("++", TokenKind::PlusPlusToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::PlusToken, start);
     return;
   case '-':
-    if (tryMatch("-=", TokenKind::MinusEqualsToken)) return;
-    if (tryMatch("--", TokenKind::MinusMinusToken)) return;
+    if (tryMatch("-=", TokenKind::MinusEqualsToken))
+      return;
+    if (tryMatch("--", TokenKind::MinusMinusToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::MinusToken, start);
     return;
   case '*':
-    if (tryMatch("**=", TokenKind::AsteriskAsteriskEqualsToken)) return;
-    if (tryMatch("**", TokenKind::AsteriskAsteriskToken)) return;
-    if (tryMatch("*=", TokenKind::AsteriskEqualsToken)) return;
+    if (tryMatch("**=", TokenKind::AsteriskAsteriskEqualsToken))
+      return;
+    if (tryMatch("**", TokenKind::AsteriskAsteriskToken))
+      return;
+    if (tryMatch("*=", TokenKind::AsteriskEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::AsteriskToken, start);
     return;
   case '/':
-    if (tryMatch("/=", TokenKind::SlashEqualsToken)) return;
+    if (tryMatch("/=", TokenKind::SlashEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::SlashToken, start);
     return;
   case '%':
-    if (tryMatch("%=", TokenKind::PercentEqualsToken)) return;
+    if (tryMatch("%=", TokenKind::PercentEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::PercentToken, start);
     return;
   case '&':
-    if (tryMatch("&&=", TokenKind::AmpersandAmpersandEqualsToken)) return;
-    if (tryMatch("&&", TokenKind::AmpersandAmpersandToken)) return;
-    if (tryMatch("&=", TokenKind::AmpersandEqualsToken)) return;
+    if (tryMatch("&&=", TokenKind::AmpersandAmpersandEqualsToken))
+      return;
+    if (tryMatch("&&", TokenKind::AmpersandAmpersandToken))
+      return;
+    if (tryMatch("&=", TokenKind::AmpersandEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::AmpersandToken, start);
     return;
   case '|':
-    if (tryMatch("||=", TokenKind::PipePipeEqualsToken)) return;
-    if (tryMatch("||", TokenKind::PipePipeToken)) return;
-    if (tryMatch("|=", TokenKind::PipeEqualsToken)) return;
+    if (tryMatch("||=", TokenKind::PipePipeEqualsToken))
+      return;
+    if (tryMatch("||", TokenKind::PipePipeToken))
+      return;
+    if (tryMatch("|=", TokenKind::PipeEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::PipeToken, start);
     return;
   case '^':
-    if (tryMatch("^=", TokenKind::CaretEqualsToken)) return;
+    if (tryMatch("^=", TokenKind::CaretEqualsToken))
+      return;
     m_pos += 1;
     addToken(TokenKind::CaretToken, start);
     return;
   default:
     // Unknown character: one diagnostic, one broken token.
     advanceChar();
-    error(kCodeInvalidCharacter, start, uint32_t(m_pos - start),
+    error(kCodeInvalidCharacter,
+          start,
+          uint32_t(m_pos - start),
           string("Invalid character."));
     addToken(TokenKind::Identifier, start);
     return;
@@ -865,7 +1053,9 @@ void Scanner::scanPunctuation(uint32_t start)
 
 bool Scanner::rescanSlash()
 {
-  if (m_current.kind != TokenKind::SlashToken && m_current.kind != TokenKind::SlashEqualsToken) {
+  if (m_current.kind != TokenKind::SlashToken &&
+      m_current.kind != TokenKind::SlashEqualsToken)
+  {
     return false;
   }
   uint32_t offset = m_current.offset;
@@ -886,11 +1076,14 @@ bool Scanner::rescanSlash()
 bool Scanner::rescanGreaterThan()
 {
   if (m_gtRemaining == 0) {
-    if (!isPunctuation(m_current.kind)) return false;
+    if (!isPunctuation(m_current.kind))
+      return false;
     std::string_view t = text(m_current);
     uint32_t n = 0;
-    while (n < t.size() && t[n] == '>') n++;
-    if (n < 2) return false;
+    while (n < t.size() && t[n] == '>')
+      n++;
+    if (n < 2)
+      return false;
     m_gtBase = m_current.offset;
     m_gtRemaining = n;
   }
@@ -947,7 +1140,8 @@ void Scanner::scanAll(GrammarTree &tree)
       commit();
       continue;
     }
-    if (m_current.kind == TokenKind::TemplateHead) m_templateDepth++;
+    if (m_current.kind == TokenKind::TemplateHead)
+      m_templateDepth++;
     scanOne();
   }
   for (const Token &token : m_tokens) {

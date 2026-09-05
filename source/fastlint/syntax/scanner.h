@@ -118,8 +118,12 @@ public:
 
   State state() const
   {
-    return {m_currentIndex, uint32_t(m_tokens.size()), uint32_t(m_trivia.size()),
-            uint32_t(m_pos), m_mode, uint32_t(m_diagnostics->size())};
+    return {m_currentIndex,
+            uint32_t(m_tokens.size()),
+            uint32_t(m_trivia.size()),
+            uint32_t(m_pos),
+            m_mode,
+            uint32_t(m_diagnostics->size())};
   }
 
   /** Back to an earlier state; also rewinds the tree's arrays via counts. */
@@ -232,7 +236,6 @@ private:
    * are left to hand out, one per call. */
   uint32_t m_gtBase = 0;
   uint32_t m_gtRemaining = 0;
-
 };
 
 } // namespace fastlint::syntax

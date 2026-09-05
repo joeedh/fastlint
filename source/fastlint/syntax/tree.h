@@ -10,9 +10,9 @@
 #include "fastlint/syntax/tokens.h"
 #include "util/span.h"
 
-#include <span>
 #include "util/string.h"
 #include "util/vector.h"
+#include <span>
 
 #include <cstdint>
 #include <string_view>
@@ -21,8 +21,8 @@ namespace fastlint::syntax {
 
 using litestl::util::span;
 using litestl::util::string;
-using std::string_view;
 using litestl::util::Vector;
+using std::string_view;
 
 enum class NodeKind : uint16_t {
 #define FASTLINT_NODE(kind) kind,
@@ -31,7 +31,7 @@ enum class NodeKind : uint16_t {
 };
 
 constexpr int nodeKindCount = 0
-#define FASTLINT_NODE(kind) + 1
+#define FASTLINT_NODE(kind) +1
 #include "fastlint/syntax/node_kind.def"
 #undef FASTLINT_NODE
     ;
@@ -73,6 +73,12 @@ enum NodeFlags : uint32_t {
   FLAG_PUBLIC = 1 << 17,
   FLAG_PRIVATE = 1 << 18,
   FLAG_PROTECTED = 1 << 19,
+  /** `using` declaration list. */
+  FLAG_USING = 1 << 20,
+  /** `await using` list or `for await` loop. */
+  FLAG_AWAIT = 1 << 21,
+  /** `import type` / `export type`. */
+  FLAG_TYPE_ONLY = 1 << 22,
 };
 
 inline NodeFlags operator|(NodeFlags a, NodeFlags b)
@@ -102,7 +108,13 @@ struct Node {
 
 /** One trivia run (whitespace, newline, comment, shebang). */
 struct Trivia {
-  enum class Kind : uint8_t { Whitespace, NewLine, SingleLineComment, MultiLineComment, Shebang };
+  enum class Kind : uint8_t {
+    Whitespace,
+    NewLine,
+    SingleLineComment,
+    MultiLineComment,
+    Shebang
+  };
   Kind kind;
   uint32_t offset;
   uint32_t length;

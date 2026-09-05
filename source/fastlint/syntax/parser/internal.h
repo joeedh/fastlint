@@ -75,14 +75,18 @@ inline int binaryPrecedence(TokenKind kind, bool disallowIn)
 inline bool isAlwaysIdentifier(TokenKind kind)
 {
   switch (kind) {
+  case TokenKind::AccessorKeyword:
   case TokenKind::AsyncKeyword:
   case TokenKind::AwaitKeyword:
   case TokenKind::AnyKeyword:
+  case TokenKind::BigIntKeyword:
+  case TokenKind::AsKeyword:
   case TokenKind::AssertsKeyword:
   case TokenKind::AssertKeyword:
   case TokenKind::BooleanKeyword:
   case TokenKind::ConstructorKeyword:
   case TokenKind::DeclareKeyword:
+  case TokenKind::FromKeyword:
   case TokenKind::GetKeyword:
   case TokenKind::GlobalKeyword:
   case TokenKind::ImplementsKeyword:
@@ -101,6 +105,7 @@ inline bool isAlwaysIdentifier(TokenKind kind)
   case TokenKind::OverrideKeyword:
   case TokenKind::ReadOnlyKeyword:
   case TokenKind::RequireKeyword:
+  case TokenKind::SatisfiesKeyword:
   case TokenKind::SetKeyword:
   case TokenKind::StaticKeyword:
   case TokenKind::StringKeyword:
@@ -109,12 +114,29 @@ inline bool isAlwaysIdentifier(TokenKind kind)
   case TokenKind::UndefinedKeyword:
   case TokenKind::UniqueKeyword:
   case TokenKind::UnknownKeyword:
+  case TokenKind::UsingKeyword:
   case TokenKind::Identifier:
     return true;
   default:
     return false;
   }
 }
+
+/** Sets a context flag for the enclosing scope and restores it on exit. */
+struct FlagScope {
+  bool &flag;
+  bool saved;
+  FlagScope(bool &target, bool value) : flag(target), saved(target)
+  {
+    flag = value;
+  }
+  ~FlagScope()
+  {
+    flag = saved;
+  }
+  FlagScope(const FlagScope &) = delete;
+  FlagScope &operator=(const FlagScope &) = delete;
+};
 
 } // namespace fastlint::syntax::detail
 
@@ -168,4 +190,3 @@ template <typename Fn> void Parser::parseDelimitedList(ListKind list, Fn &&eleme
 }
 
 } // namespace fastlint::syntax
-

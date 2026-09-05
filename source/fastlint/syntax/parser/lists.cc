@@ -31,7 +31,9 @@ ListError listError(ListKind list)
   case ListKind::SwitchClauses:
     return {1130, "'case' or 'default' expected."};
   case ListKind::ClassMembers:
-    return {1068, "Unexpected token. A constructor, method, accessor, or property was expected."};
+    return {
+        1068,
+        "Unexpected token. A constructor, method, accessor, or property was expected."};
   case ListKind::TypeMembers:
     return {1131, "Property or signature expected."};
   case ListKind::EnumMembers:
@@ -101,6 +103,8 @@ bool Parser::isStartOfExpression()
   case TokenKind::PlusPlusToken:
   case TokenKind::MinusMinusToken:
   case TokenKind::LessThanToken:
+  case TokenKind::SlashToken:
+  case TokenKind::SlashEqualsToken:
     return true;
   default:
     return isAlwaysIdentifier(kind());
@@ -196,6 +200,7 @@ bool Parser::isStartOfBinding()
 bool Parser::isStartOfParameter()
 {
   switch (kind()) {
+  case TokenKind::AtToken:
   case TokenKind::DotDotDotToken:
   case TokenKind::PublicKeyword:
   case TokenKind::PrivateKeyword:
@@ -210,6 +215,7 @@ bool Parser::isStartOfParameter()
 bool Parser::isStartOfClassMember()
 {
   switch (kind()) {
+  case TokenKind::AtToken:
   case TokenKind::SemicolonToken:
   case TokenKind::AsteriskToken:
   case TokenKind::OpenBracketToken:
@@ -274,7 +280,8 @@ bool Parser::isListElement(ListKind list)
   case ListKind::ObjectBindingElements:
     return is(TokenKind::DotDotDotToken) || isStartOfPropertyName();
   case ListKind::ArrayBindingElements:
-    return is(TokenKind::CommaToken) || is(TokenKind::DotDotDotToken) || isStartOfBinding();
+    return is(TokenKind::CommaToken) || is(TokenKind::DotDotDotToken) ||
+           isStartOfBinding();
   case ListKind::ImportOrExportSpecifiers:
   case ListKind::ImportAttributes:
     return is(TokenKind::StringLiteral) || isAlwaysIdentifier(kind()) ||

@@ -261,15 +261,62 @@ Parser notes:
   returning void.
 
 Still open in 3.2:
-- [ ] Statements, declarations, expressions with precedence climbing,
+- [~] Statements, declarations, expressions with precedence climbing,
   patterns/destructuring, classes (fields, accessors, `accessor`, `static`
   blocks, decorators), modules (`import`/`export` all forms, `import type`,
   attributes), `using`/`await using`.
-- [ ] Types: full TS type grammar (conditional, mapped, template literal,
+  - [x] `using`/`await using` statements and `for` heads (`FLAG_USING`,
+    `FLAG_AWAIT` on the list; `for await` flags the loop), with `using` as
+    a plain identifier when no binding name follows on the line.
+  - [x] Decorators on classes (either side of `export`), class members,
+    parameters, and class expressions; each decorated node owns its
+    `Decorator` children.
+  - [x] Non-erasable syntax: enums (`const`/`declare`, members directly
+    under `EnumDeclaration`, `ComputedPropertyName`), namespaces/modules,
+    parameter properties incl. `override`, `import x = require()`,
+    `export import`, `export =` (`ExportAssignment`), `export as namespace`
+    (`NamespaceExportDeclaration`), `declare enum/interface/type`, `declare
+    abstract class`. Modifier tokens belong to their declaration node.
+  - [x] `new.target`, `export default interface`, `export * from` without
+    an alias, `import type x = require()`, `global { }` augmentations
+    inside ambient modules, call/construct signatures in type literals,
+    `bigint` as a type keyword and as a name, `accessor` as a name.
+  - [x] Corpus sweep (`fastlint parse <dir>`, see docs/debugging.md) over
+    4477 files of a real project incl. node_modules: every non-JSX file
+    parses without diagnostics. Found on 2026-09-04: the scanner looped on
+    a UTF-8 BOM (any non-ASCII character that cannot start a name produced
+    a zero-length token), now Unicode whitespace is trivia and other such
+    characters are one-character error tokens; a `#!` shebang line is
+    trivia.
+  - [ ] Class `static` blocks.
+- [~] Types: full TS type grammar (conditional, mapped, template literal,
   indexed access, `infer`, `satisfies`, `asserts`, predicates, `unique
   symbol`, abstract constructors, variance annotations).
-- [ ] Contexts: `await`/`yield` flags, ambient (`declare`), strict-mode
+  - [x] Function and constructor types (speculative `(…) =>` head, `new`,
+    `abstract new`), conditional types with the `extends`-operand
+    restriction, `infer X extends C`, indexed access, `readonly`/optional
+    type members, computed names, index signatures, `this` parameters,
+    `as const`, `void`.
+  - [x] Expressions: `as`/`satisfies`, type arguments on calls and `new`
+    (speculative, TS's follow-set), tagged templates, regex literals via
+    `rescanSlash`, `>>` splitting via `rescanGreaterThan`, generic arrow
+    heads `<T>(…) =>`, `**` right-associativity (other operators were
+    right-associative by mistake), reserved words as member names.
+  - [x] Mapped types: `+`/`-` `readonly` and `?` modifiers (flags
+    `FLAG_READONLY`/`FLAG_OPTIONAL`, the sign kept as a token), `as`
+    clauses; optional and named-rest tuple elements (`T?`, `name?: T`,
+    `...name: T`); import types with qualifiers and type arguments;
+    function-type return types may be conditional inside an `extends`
+    operand; `TypeParameters`/`TypeArguments` list nodes.
+  - [ ] `unique symbol` node, variance annotations recorded (parsed and
+    dropped today), JSX.
+- [~] Contexts: `await`/`yield` flags, ambient (`declare`), strict-mode
   reserved words, `in` operator disallowed in for-init.
+  - [x] `await`/`yield` follow the enclosing function's `async`/`*` flags
+    (functions, methods, object literal methods); `in` is banned in a `for`
+    head and re-allowed inside brackets, arguments and blocks
+    (`detail::FlagScope`).
+  - [ ] Ambient bodies, strict-mode reserved words as names.
 - [~] Speculation: arrow vs parenthesized expr (done), generic call vs
   comparison, type-assertion vs JSX in `.ts` vs `.tsx` (basic `<T>expr` done).
 - [~] ASI rules (restricted productions: `return`, `throw`, `break`,
@@ -289,10 +336,8 @@ Still open in 3.2:
     `ErrorNode` with TS's "X expected" code.
   - [x] Diagnostics at the same offset as the previous one are dropped, so
     an abort through several lists reports once.
-  - [ ] Real-world corpus (`parser.real_world_ts_code`) still fails on
-    grammar gaps, not recovery: `x as T`/`satisfies`, `new Set<T>()` type
-    arguments, function types `(a) => T` in type position, and the
-    cascades that follow them.
+  - [x] Real-world corpus (`parser.real_world_ts_code`) parses with no
+    diagnostics.
 - [ ] Diagnostics: TS-compatible codes where practical.
 
 ### 3.3 Grammar tree representation

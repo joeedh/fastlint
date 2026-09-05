@@ -65,7 +65,16 @@ and the test framework itself are in `tests.md`.
   kind" bugs; check regex/divide and template mode transitions here.
 - `fastlint dump-tree <file> [--spans] [--tokens] [--errors]` — grammar-tree
   S-expression, the same dump the snapshots use. `--errors` lists
-  diagnostics with the recovery sync point taken.
+  diagnostics with the recovery sync point taken. (`--errors` is
+  implemented; `--spans`/`--tokens` are not yet.)
+- `fastlint parse [--summary] [--limit N] <file|dir>...` — parses every
+  `.ts`/`.tsx`/`.mts`/`.cts` file under the given paths and prints each
+  diagnostic as `path:line:col: TSnnnn message`, then a summary line with
+  counts, bytes and time. Exit code 1 when any file had a diagnostic. This
+  is the corpus sweep: run it over a big `node_modules` tree to find grammar
+  gaps. Run it under `timeout` and `ulimit -v` (the debug build, not ASAN,
+  which needs an unlimited address space) so a parser hang cannot exhaust
+  the machine; a hang means a token or recovery path that does not advance.
 - `--trace-parser` — logs production enter/exit with the current token, and
   `tryParse` speculation start/commit/rollback. Noisy; pair with a minimal
   input.

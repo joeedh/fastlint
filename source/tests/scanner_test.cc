@@ -52,7 +52,9 @@ struct Stepped {
       started = true;
       scanner.scanOne();
     }
-    while (scanner.current().kind != kind && scanner.current().kind != TokenKind::EndOfFile) {
+    while (scanner.current().kind != kind &&
+           scanner.current().kind != TokenKind::EndOfFile)
+    {
       scanner.scanOne();
     }
   }
@@ -71,7 +73,8 @@ string kindNames(std::string_view source)
   Scanned scan(source);
   string out;
   for (size_t i = 0; i < scan.scanner.tokens().size(); i++) {
-    if (i != 0) out += (" ");
+    if (i != 0)
+      out += (" ");
     out += (syntax::tokenName(scan.token(i).kind));
   }
   return out;
@@ -106,6 +109,46 @@ TEST(scanner, identifiers_keywords_and_private_names)
   CHECK_EQ(scan.token(5).kind, TokenKind::Identifier);
 }
 
+TEST(scanner, unicode_whitespace_is_trivia)
+{
+  // A BOM, then NBSP and an ideographic space between tokens.
+  Scanned scan("\xef\xbb\xbf"
+               "a\xc2\xa0+\xe3\x80\x80"
+               "b");
+  CHECK(scan.diagnostics.empty());
+  CHECK_EQ(scan.count(), 3);
+  CHECK_EQ(scan.token(0).kind, TokenKind::Identifier);
+  CHECK_EQ(scan.token(0).offset, 3u);
+  CHECK_EQ(scan.token(1).kind, TokenKind::PlusToken);
+  CHECK_EQ(scan.token(2).kind, TokenKind::Identifier);
+}
+
+TEST(scanner, non_identifier_character_is_one_bad_token)
+{
+  // `§` cannot start a name: one diagnostic, one two-byte token, then `a`.
+  Scanned scan("\xc2\xa7"
+               "a");
+  CHECK_EQ(scan.diagnostics.size(), 1u);
+  CHECK_EQ(scan.diagnostics.items()[0].code, 1127u);
+  CHECK_EQ(scan.count(), 2);
+  CHECK_EQ(scan.token(0).length, 2u);
+  CHECK_EQ(scan.token(1).kind, TokenKind::Identifier);
+  CHECK_EQ(scan.token(1).offset, 2u);
+}
+
+TEST(scanner, shebang_line_is_trivia)
+{
+  Scanned scan("#!/usr/bin/env node\nconst x = 1;");
+  CHECK(scan.diagnostics.empty());
+  CHECK_EQ(scan.token(0).kind, TokenKind::ConstKeyword);
+  CHECK_EQ(scan.token(0).offset, 20u);
+  CHECK_EQ(scan.scanner.trivia()[0].kind, syntax::Trivia::Kind::Shebang);
+  CHECK_EQ(scan.scanner.trivia()[0].length, 19u);
+  // Only the first byte of the file starts one; `#!` later is a hash and a bang.
+  Scanned later("a\n#!x");
+  CHECK_EQ(later.token(1).kind, TokenKind::HashToken);
+}
+
 TEST(scanner, contextual_keywords_map_to_their_kinds)
 {
   Scanned scan("as type from of get set");
@@ -127,8 +170,8 @@ TEST(scanner, numeric_literals)
     CHECK_EQ(scan.token(i).kind, TokenKind::NumericLiteral);
   }
   CHECK_EQ(scan.token(scan.count() - 1).kind, TokenKind::BigIntLiteral);
-  CHECK(!scan.token(4).legacyOctal);  // 0xFF
-  CHECK(!scan.token(5).legacyOctal);  // 0o17 is the modern form
+  CHECK(!scan.token(4).legacyOctal); // 0xFF
+  CHECK(!scan.token(5).legacyOctal); // 0o17 is the modern form
 }
 
 TEST(scanner, legacy_octal_is_flagged_only_for_the_leading_zero_form)
@@ -397,7 +440,8 @@ export function greet(name: string): string {
   for (size_t i = 0; i < scan.scanner.tokens().size(); i++) {
     const syntax::Token &token = scan.token(i);
     out += (syntax::tokenName(token.kind));
-    if (token.precedingLineBreak) out += (" <lb>");
+    if (token.precedingLineBreak)
+      out += (" <lb>");
     out += ("\n");
   }
   SNAPSHOT(out);

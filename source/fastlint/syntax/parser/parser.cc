@@ -39,9 +39,16 @@ uint32_t Parser::expect(TokenKind k)
   return kNoToken;
 }
 
+uint32_t Parser::expectGreaterThan()
+{
+  (void)m_scanner.rescanGreaterThan();
+  return expect(TokenKind::GreaterThanToken);
+}
+
 bool Parser::canInsertSemicolon() const
 {
-  return is(TokenKind::EndOfFile) || is(TokenKind::CloseBraceToken) || hasPrecedingLineBreak();
+  return is(TokenKind::EndOfFile) || is(TokenKind::CloseBraceToken) ||
+         hasPrecedingLineBreak();
 }
 
 Semicolon Parser::expectSemicolon()
@@ -117,7 +124,8 @@ TokenKind Parser::peekKind2()
 }
 
 Parser::Parser(std::string_view source, const Options &options, Diagnostics &diagnostics)
-    : m_diagnostics(diagnostics), m_scanner(source, Scanner::Options{options.javaScript}, diagnostics),
+    : m_diagnostics(diagnostics),
+      m_scanner(source, Scanner::Options{options.javaScript}, diagnostics),
       m_options(options)
 {
 }
