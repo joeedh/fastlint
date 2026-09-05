@@ -40,7 +40,8 @@ built both as an N-API addon and as WASM.
 see MASTER.md task 1 for the intended commands: `env`, `vcvars`, `configure`,
 `build`, `test`, `format`, `deps`, `run`, `check`. Parser gates:
 `parse-diff` (tsgo differential), `fuzz` (ASAN mutation fuzz), `bench`
-(parse MB/s).
+(parse MB/s), `lint` (linting, currently just prose style linting, see
+`lint:prose`).
 
 ## C++ conventions
 
@@ -84,7 +85,7 @@ see MASTER.md task 1 for the intended commands: `env`, `vcvars`, `configure`,
 
 
 ## Comments
-
+<!-- commentlint-off -->
 Comments are prose, so the Prose rules below govern them as well. The rules in this section
 are the ones that apply only to code.
 
@@ -194,3 +195,4 @@ this file, and to everything under `documentation/`.
   "Dropping onto itself (or onto a neighbor it would split against) is not a rip". Drop any comma
   that would follow the closing bracket — it separates the subject from its verb.
 
+<!-- commentlint-on -->

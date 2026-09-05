@@ -41,7 +41,7 @@ export async function formatAll(check: boolean): Promise<void> {
     [prettierBin, check ? "--check" : "--write", ...prettierGlobs],
     { cwd: repoRoot, allowFailure: true, quiet: true }
   );
-  if (result.code !== 0) fail("prettier found unformatted files");
+  if (result.code !== 0) fail("prettier returned errors");
   info(color.green(check ? "format check passed" : "formatted"));
 }
 

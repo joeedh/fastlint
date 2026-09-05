@@ -3,3 +3,4 @@ build/
 .cache/
 vendor/
 pnpm-lock.yaml
+tools/spikes/tsgo-api/fixture/bad.ts
