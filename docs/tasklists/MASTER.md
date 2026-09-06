@@ -107,6 +107,9 @@ one command.
 ### 1.4 CI-ish sanity
 - [x] `node make.ts check [--asan] [--all]` = format --check + build + C++
   tests + TS tests (`node --test`). Document in `README`.
+  - [ ] The typecheck step fails on `noUncheckedIndexedAccess` errors in
+    tools/parse-diff and tools/make/parse-diff.ts (seen 2026-09-06); fix
+    them so `check` goes green. Spike fixtures are excluded from tsconfig.
 
 ### 1.5 Test framework (`source/testing/`, see `docs/tests.md`)
 - [x] Core: `TEST`, `TEST_TAGGED`, `SUBCASE`, `SKIP`, `INFO`, `FAIL`; static

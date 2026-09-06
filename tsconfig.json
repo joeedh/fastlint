@@ -23,5 +23,5 @@
     "skipLibCheck"                    : true,
   },
   "include"        : ["make.ts", "tools/**/*.ts"],
-  "exclude"        : ["node_modules", "build", "vendor"],
+  "exclude"        : ["node_modules", "build", "vendor", "tools/spikes/**/fixture/**"],
 }

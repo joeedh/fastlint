@@ -54,7 +54,7 @@ private:
     Listener listener;
   };
   Vector<Entry> m_entries;
-  /** Index of the first entry of each (kind, exit) bucket once sorted; one past-the-end slot. */
+  /** First entry of each (kind, exit) bucket once sorted, plus an end slot. */
   Vector<uint32_t> m_starts;
   bool m_sorted = false;
 

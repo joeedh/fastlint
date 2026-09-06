@@ -78,13 +78,14 @@ function fnv1a(text: string): string {
 }
 
 export function parseDef(text: string): Def {
+  // The hash ignores line endings so a CRLF checkout matches the LF one.
   const def: Def = {
     flags     : [],
     enums     : [],
     nodes     : [],
     unions    : [],
     categories: [],
-    hash      : fnv1a(text),
+    hash      : fnv1a(text.replace(/\r\n/g, "\n")),
   };
   const errors: string[] = [];
   const lines = text.split(/\r?\n/);

@@ -349,6 +349,6 @@ enum class AssignmentOperator : uint8_t {
 };
 
 /** FNV-1a of nodes.def; plugins refuse a host with a different value. */
-constexpr uint32_t nodesDefHash = 0xf4d1d474u;
+constexpr uint32_t nodesDefHash = 0xba98a404u;
 
 } // namespace fastlint::ast
