@@ -164,9 +164,9 @@ this document depends on.
 ### Composing fixes
 
 - Disjoint subtrees compose in one pass — no text-range overlap arithmetic.
-- A fix whose target is already dirty, or was detached by an earlier fix,
-  is skipped and found again on the next pass. This replaces ESLint's
-  text-range overlap arithmetic.
+- A fix is skipped when an earlier fix has dirtied or detached its target;
+  the next pass finds it again. This replaces ESLint's text-range overlap
+  arithmetic.
 - Run to fixpoint (bounded, ESLint uses 10) with a reparse, relower and
   rebind between passes so positions and type queries are fresh.
 - Side product: this is a codemod engine. Treat as a differentiator.
