@@ -58,6 +58,44 @@ void AstFile::buildPreorder()
   }
 }
 
+void AstFile::captureLayout(Node *node)
+{
+  if (!node->grammar || node->end < node->start || m_layouts.contains(node)) {
+    return;
+  }
+  Layout layout;
+  // Children in source order; slot indexes survive the sort.
+  Vector<LayoutItem, 8> placed;
+  for (size_t i = 0; i < node->children.size(); i++) {
+    Node *c = node->children[int(i)];
+    if (c && c->grammar && c->end > c->start) {
+      placed.append({c->start, c->end, c, int(i)});
+    }
+  }
+  placed.sort([](const LayoutItem &a, const LayoutItem &b) {
+    if (a.from != b.from) {
+      return a.from < b.from ? -1 : 1;
+    }
+    return a.slot < b.slot ? -1 : a.slot > b.slot ? 1 : 0;
+  });
+  uint32_t at = node->start;
+  for (const LayoutItem &item : placed) {
+    if (item.from < at || item.from < node->start || item.to > node->end) {
+      layout.usable = false;
+      break;
+    }
+    if (item.from > at) {
+      layout.items.append({at, item.from, nullptr, -1});
+    }
+    layout.items.append(item);
+    at = item.to;
+  }
+  if (layout.usable && at < node->end) {
+    layout.items.append({at, node->end, nullptr, -1});
+  }
+  m_layouts.add(node, layout);
+}
+
 void AstFile::moveComments(const Node *from, const Node *to)
 {
   CommentList moved;

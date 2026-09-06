@@ -4,6 +4,7 @@ add_fastlint_test(fastlint
     ast_comments_test.cc
     ast_fixer_test.cc
     ast_lower_test.cc
+    ast_printer_test.cc
     ast_query_test.cc
     ast_test.cc
     fixture_test.cc

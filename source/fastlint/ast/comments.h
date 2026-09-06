@@ -28,6 +28,9 @@ struct Comment {
   uint32_t length;
   bool multiLine;
   CommentPlace place;
+  /** Set by a fixer when the comment left the source text it came from; the
+   * printer emits moved comments from this table instead of from the text. */
+  bool moved = false;
 };
 
 using CommentList = litestl::util::Vector<Comment, 1>;

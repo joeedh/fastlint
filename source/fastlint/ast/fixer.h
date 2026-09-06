@@ -91,6 +91,10 @@ public:
 private:
   AstFile &m_file;
 
+  /** Captures the layout of each ancestor turning dirty, then marks the chain. */
+  void dirty(Node *node);
+  /** Takes `node` out of its current parent, if any, so it can move. */
+  void detach(Node *node);
   /** The index of `child` in `parent->children`, or -1. */
   static int indexOf(const Node *parent, const Node *child);
   static bool isListIndex(const Node *parent, int index);

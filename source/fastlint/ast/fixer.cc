@@ -51,6 +51,37 @@ bool newlineBetween(string_view source, uint32_t from, uint32_t to)
 
 // ------------------------------------------------------------- mutations
 
+void Fixer::dirty(Node *node)
+{
+  for (Node *n = node; n; n = n->parent) {
+    if (n->dirty) {
+      continue;
+    }
+    m_file.captureLayout(n);
+    n->dirty = true;
+  }
+}
+
+void Fixer::detach(Node *node)
+{
+  Node *parent = node->parent;
+  if (!parent) {
+    return;
+  }
+  int index = indexOf(parent, node);
+  if (index < 0) {
+    node->parent = nullptr;
+    return;
+  }
+  dirty(parent);
+  if (isListIndex(parent, index)) {
+    parent->children.remove_at(index);
+  } else {
+    parent->children[index] = nullptr;
+  }
+  node->parent = nullptr;
+}
+
 int Fixer::indexOf(const Node *parent, const Node *child)
 {
   for (size_t i = 0; i < parent->children.size(); i++) {
@@ -77,11 +108,28 @@ bool Fixer::replace(Node *old, Node *fresh)
   if (index < 0) {
     return false;
   }
+  detach(fresh);
+  dirty(parent);
   parent->children[index] = fresh;
   fresh->parent = parent;
   old->parent = nullptr;
+  // Leading and trailing comments sit in the parent's own text and still
+  // print; dangling ones were inside `old` and must print from the table.
+  if (const CommentList *list = m_file.comments(old)) {
+    for (const Comment &c : *list) {
+      if (c.place == CommentPlace::Dangling) {
+        m_file.markDead(c.offset, c.length);
+      }
+    }
+  }
   m_file.moveComments(old, fresh);
-  markDirty(parent);
+  if (CommentList *list = fresh ? &m_file.commentsFor(fresh) : nullptr) {
+    for (Comment &c : *list) {
+      if (c.place == CommentPlace::Dangling) {
+        c.moved = true;
+      }
+    }
+  }
   return true;
 }
 
@@ -92,9 +140,11 @@ bool Fixer::insertBefore(Node *sibling, Node *fresh)
   if (index < 0 || !fresh || !isListIndex(parent, index)) {
     return false;
   }
+  detach(fresh);
+  dirty(parent);
+  index = indexOf(parent, sibling);
   insertAt(parent->children, index, fresh);
   fresh->parent = parent;
-  markDirty(parent);
   return true;
 }
 
@@ -105,9 +155,11 @@ bool Fixer::insertAfter(Node *sibling, Node *fresh)
   if (index < 0 || !fresh || !isListIndex(parent, index)) {
     return false;
   }
+  detach(fresh);
+  dirty(parent);
+  index = indexOf(parent, sibling);
   insertAt(parent->children, index + 1, fresh);
   fresh->parent = parent;
-  markDirty(parent);
   return true;
 }
 
@@ -116,19 +168,23 @@ bool Fixer::append(Node *parent, Node *fresh)
   if (!parent || !fresh || !kindInfo(parent->kind).hasList) {
     return false;
   }
+  detach(fresh);
+  dirty(parent);
   parent->appendChild(fresh);
-  markDirty(parent);
   return true;
 }
 
 void Fixer::moveRemovedComments(Node *node, Node *parent, int index, CommentPolicy policy)
 {
-  if (policy == CommentPolicy::DropAll) {
-    m_file.dropComments(node);
-    return;
-  }
   const CommentList *list = m_file.comments(node);
   if (!list || list->size() == 0) {
+    return;
+  }
+  if (policy == CommentPolicy::DropAll) {
+    for (const Comment &c : *list) {
+      m_file.markDead(c.offset, c.length);
+    }
+    m_file.dropComments(node);
     return;
   }
   string_view source = m_file.grammar() ? m_file.grammar()->source() : string_view();
@@ -145,7 +201,11 @@ void Fixer::moveRemovedComments(Node *node, Node *parent, int index, CommentPoli
   }
   CommentList moved;
   for (const Comment &c : *list) {
+    // The text around the removed node goes with it, so every comment
+    // either dies here or is printed again from the table.
+    m_file.markDead(c.offset, c.length);
     Comment copy = c;
+    copy.moved = true;
     if (c.place == CommentPlace::Trailing && policy == CommentPolicy::MoveLeading &&
         !newlineBetween(source, node->end, c.offset))
     {
@@ -184,6 +244,7 @@ bool Fixer::remove(Node *node, CommentPolicy policy)
   if (required) {
     return false;
   }
+  dirty(parent);
   moveRemovedComments(node, parent, index, policy);
   if (list) {
     parent->children.remove_at(index);
@@ -191,7 +252,6 @@ bool Fixer::remove(Node *node, CommentPolicy policy)
     parent->children[index] = nullptr;
   }
   node->parent = nullptr;
-  markDirty(parent);
   return true;
 }
 
@@ -207,9 +267,10 @@ bool Fixer::set(Node *parent, int index, Node *fresh)
   if (old) {
     return replace(old, fresh);
   }
+  detach(fresh);
+  dirty(parent);
   parent->children[index] = fresh;
   fresh->parent = parent;
-  markDirty(parent);
   return true;
 }
 

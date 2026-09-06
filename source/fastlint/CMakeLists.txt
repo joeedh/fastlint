@@ -7,6 +7,7 @@ set(SRC
   ast/fixer.cc
   ast/generated/tables.cc
   ast/lower.cc
+  ast/printer.cc
   syntax/parser/declarations.cc
   syntax/parser/dump.cc
   syntax/parser/expressions.cc
@@ -32,6 +33,7 @@ set(SRC
   ast/generated/views.h
   ast/kind_info.h
   ast/lower.h
+  ast/printer.h
   ast/node.h
   ast/nodes.def
   syntax/diagnostics.h

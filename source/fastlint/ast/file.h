@@ -18,6 +18,31 @@ namespace fastlint::ast {
 using litestl::util::Map;
 using litestl::util::Pool;
 
+/**
+ * One piece of a dirty node's original layout: a slice of its tree's source
+ * (`child` null) or a child that sat there, with the slot it occupied.
+ */
+struct LayoutItem {
+  uint32_t from;
+  uint32_t to;
+  Node *child;
+  int slot;
+};
+
+/** A node's layout as captured the moment it first became dirty. */
+struct Layout {
+  Vector<LayoutItem, 4> items;
+  /** False when children overlapped (a shorthand property) and the printer
+   * must use the kind template instead. */
+  bool usable = true;
+};
+
+/** A slice of the file's source the printer must never copy. */
+struct DeadRange {
+  uint32_t offset;
+  uint32_t length;
+};
+
 /** One node of the file's preorder; `subtreeEnd` is the index after its last descendant.
  */
 struct PreorderEntry {
@@ -85,12 +110,35 @@ public:
     m_comments.remove(node);
   }
 
+  /**
+   * Records `node`'s current layout unless one exists. Fixers call it on
+   * the clean-to-dirty transition, before the first edit; the printer reads
+   * it back to interleave own text with the current children.
+   */
+  void captureLayout(Node *node);
+  const Layout *layout(const Node *node) const
+  {
+    return const_cast<Map<const Node *, Layout> &>(m_layouts).lookup_ptr(node);
+  }
+
+  /** Marks a source slice the printer must skip when copying text. */
+  void markDead(uint32_t offset, uint32_t length)
+  {
+    m_dead.append({offset, length});
+  }
+  span<const DeadRange> deadRanges() const
+  {
+    return {const_cast<Vector<DeadRange> &>(m_dead).data(), m_dead.size()};
+  }
+
 private:
   const syntax::GrammarTree *m_tree;
   Pool<Node, 256> m_pool;
   Node *m_root = nullptr;
   Vector<PreorderEntry> m_preorder;
   Map<const Node *, CommentList> m_comments;
+  Map<const Node *, Layout> m_layouts;
+  Vector<DeadRange> m_dead;
   Vector<char *> m_chunks;
   size_t m_chunkUsed = 0;
   size_t m_chunkSize = 0;

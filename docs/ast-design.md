@@ -400,11 +400,19 @@ The printer walks the AST and produces the file's new text.
 
 - Clean node with a grammar link: emit the grammar node's source slice
   verbatim, trivia included. Untouched code carries zero risk.
-- Dirty node with a grammar link: emit its own tokens (the tokens of its
-  grammar node not covered by any child) verbatim, and recurse into
-  children in layout order. Each child prints by the same rule. The link may
-  point at a template's grammar tree, in which case the template author's
-  spacing is what gets emitted.
+- Dirty node with a grammar link: emit its own text verbatim and recurse
+  into the current children in layout order. The own text is known from a
+  `Layout` the fixer captured on the node's clean-to-dirty transition: the
+  node's span cut at each child's span, in source order, with the slot each
+  child occupied (`AstFile::captureLayout`). Nothing about the original
+  children survives on the node itself, so the capture has to happen before
+  the first edit. Each child prints by the same rule. The link may point at
+  a template's grammar tree, in which case the template author's spacing is
+  what gets emitted.
+- Two layouts fall back to the kind template: one whose children overlapped
+  (a shorthand property's key and value share a span) and one that has no
+  place for a child the node now holds (an optional slot that was empty at
+  capture, or a list that was empty).
 - Synthesized node with no link: print from a per-kind template with
   sniffed style. Only builders produce these, and templates are preferred
   over builders precisely so this path stays small.
@@ -414,9 +422,14 @@ The printer walks the AST and produces the file's new text.
 - Style is sniffed once per file: semicolons, quote character, tabs or
   spaces and indent width, trailing commas. Indentation for a synthesized
   line is copied from the nearest clean sibling's line.
-- Comments print from the side table around their node. A comment whose
-  node is dirty prints in the same relative position; a comment that was
-  moved by a policy prints in its new place.
+- Comments stay in the text they came from: a clean node's slice and a
+  dirty node's own text both carry their trivia, so most comments never
+  touch the side table on the way out. A `remove` marks the removed node's
+  comments as dead ranges the printer skips when copying text (with the
+  spaces before them and, for a comment on its own line, the line break
+  after), and flags the copies it moved to a neighbour as `moved`; the
+  printer emits moved comments from the side table before or after their
+  new node.
 - The printer recomputes spans on dirty nodes as it goes, so diagnostics
   reported against post-fix nodes have positions.
 

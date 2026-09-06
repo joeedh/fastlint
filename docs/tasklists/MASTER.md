@@ -544,9 +544,14 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   `applyFixes` skipping fixes whose target is dirty or detached.
 - [ ] Templates: compiler, per-string cache, `instantiate` with category
   checks and precedence-aware parenthesization, `match`.
-- [ ] Printer (verbatim for clean, own tokens + children for dirty,
-  per-kind templates for synthesized, list separator rules, style
-  sniffing, span recomputation).
+- [x] Printer (`ast/printer.cc`, 2026-09-06): verbatim for clean, captured
+  layout + current children for dirty, per-kind templates for synthesized,
+  list separator rules, style sniffing (semicolons, quotes, indent, line
+  ending), span recomputation behind `PrintOptions::updateSpans`. Round-trip
+  tests over the fixtures and the corpus, clean and all-dirty.
+  - [ ] Kind templates cover the JSX kinds (they print a marker comment).
+  - [ ] Precedence-aware parenthesization belongs to template instantiate;
+    the printer only honours the `parenthesized` flag.
 - [ ] Fixpoint driver with rebind and reparse between passes.
 - [ ] Tests: round-trip (parse → lower → print == source for every corpus
   file), fixer unit tests with comment-preservation cases, template
