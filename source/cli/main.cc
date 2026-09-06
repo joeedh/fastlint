@@ -1,4 +1,7 @@
 #include "cli/files.h"
+#include "fastlint/ast/binder.h"
+#include "fastlint/ast/dump.h"
+#include "fastlint/ast/lower.h"
 #include "fastlint/syntax/diagnostics.h"
 #include "fastlint/syntax/parser.h"
 #include "fastlint/syntax/tree.h"
@@ -192,6 +195,55 @@ int dumpTreeCommand(int argc, char **argv)
   return worst;
 }
 
+/** Parses and lowers one file, then prints the AST dump and, on request, the bindings. */
+int dumpAstCommand(int argc, char **argv)
+{
+  const char *file = nullptr;
+  bool errors = false;
+  bool bindings = false;
+  for (int i = 2; i < argc; i++) {
+    if (std::strcmp(argv[i], "--errors") == 0) {
+      errors = true;
+    } else if (std::strcmp(argv[i], "--bindings") == 0) {
+      bindings = true;
+    } else {
+      file = argv[i];
+    }
+  }
+  if (!file) {
+    std::fprintf(stderr, "usage: fastlint dump-ast [--errors] [--bindings] <file>\n");
+    return 2;
+  }
+  std::string bytes;
+  if (!readFile(file, bytes)) {
+    std::fprintf(stderr, "%s: cannot read\n", file);
+    return 2;
+  }
+  syntax::Diagnostics diagnostics;
+  syntax::GrammarTree tree;
+  syntax::Parser parser(std::string_view(bytes), optionsFor(file), diagnostics);
+  parser.parseFile(tree);
+  ast::AstFile astFile(&tree);
+  ast::lower(tree, astFile);
+  string dump;
+  ast::dumpAst(astFile, dump);
+  std::fputs(dump.c_str(), stdout);
+  if (bindings) {
+    ast::Bindings bound;
+    ast::bind(astFile, bound);
+    string scopes;
+    ast::dumpBindings(bound, scopes);
+    std::fputs(scopes.c_str(), stdout);
+  }
+  if (errors) {
+    for (const syntax::Diagnostic &d : diagnostics.items()) {
+      Position at = positionOf(tree, d.offset);
+      std::printf("%u:%u: TS%u %s\n", at.line, at.column, d.code, d.message.c_str());
+    }
+  }
+  return diagnostics.empty() ? 0 : 1;
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -208,6 +260,9 @@ int main(int argc, char **argv)
   if (argc > 1 && std::strcmp(argv[1], "dump-tree") == 0) {
     return dumpTreeCommand(argc, argv);
   }
+  if (argc > 1 && std::strcmp(argv[1], "dump-ast") == 0) {
+    return dumpAstCommand(argc, argv);
+  }
   if (argc > 1 && std::strcmp(argv[1], "fuzz") == 0) {
     return fuzzCommand(argc, argv);
   }
@@ -217,6 +272,7 @@ int main(int argc, char **argv)
   std::printf("%s\n", fastlint::buildBanner().c_str());
   std::printf("commands: parse [--summary] [--limit N] <file|dir>..., "
               "dump-tree [--errors] [--spans] <file>, "
+              "dump-ast [--errors] [--bindings] <file>, "
               "fuzz [--iterations N] [--seed S] <file|dir>..., "
               "bench [--repeat N] [--json] <file|dir>...\n");
   std::printf("no rules yet; see docs/tasklists/MASTER.md\n");

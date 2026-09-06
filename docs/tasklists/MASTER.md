@@ -505,7 +505,8 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   (2026-09-06; `node make.ts gen-ast`, `--check` runs in `make.ts check`).
   Later the C header and TS views for task 7.
   - [x] Dump format on top of the tables (`ast/dump.cc`, 2026-09-06).
-    - [ ] `fastlint dump-ast <file>` subcommand.
+    - [x] `fastlint dump-ast [--errors] [--bindings] <file>` subcommand
+      (2026-09-06).
 - [x] `Node`, `AstFile`, `util::Pool<Node, 256>`, `GrammarRef` (2026-09-06).
 - [x] Lowering pass from the grammar tree (`ast/lower.cc`, 2026-09-06):
   every non-JSX grammar kind, `Error`/`Missing` handling, spans as the
@@ -547,7 +548,6 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   per-kind templates for synthesized, list separator rules, style
   sniffing, span recomputation).
 - [ ] Fixpoint driver with rebind and reparse between passes.
-- [ ] `dump-ast` subcommand (docs/debugging.md).
 - [ ] Tests: round-trip (parse → lower → print == source for every corpus
   file), fixer unit tests with comment-preservation cases, template
   instantiate/match cases, binder snapshot tests.

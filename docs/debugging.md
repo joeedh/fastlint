@@ -100,16 +100,21 @@ and the test framework itself are in `tests.md`.
 
 ## AST, fixers, printer
 
-- `fastlint dump-ast <file>` — the ergonomic layer's view (kinds, slots,
+- `fastlint dump-ast [--errors] [--bindings] <file>` — the rule-facing
+  tree (kinds, named slots, flags, enum fields, `@start-end` spans and
   attached comments), vs `dump-tree` for the grammar tree beneath it.
+  `--bindings` appends the binder's scope tree: each scope with its
+  declarations (`decl name@offset kind space refs=n`) and references
+  (`ref name@offset read|write|init -> scope name@offset`, or
+  `unresolved`). `--errors` lists parse diagnostics after the dump.
 - `--fix --dry-run` prints a unified diff instead of writing; `--fix
   --verify-print` re-parses the printed output and asserts the tree matches
   the mutated one, catching printer bugs at the point of use.
 - Comment went missing after a fix: dump the `CommentPolicy` chosen
   (`--trace-fixes` logs each mutation with policy and the trivia it moved).
 - Dirty-flag problems (a clean node reprinted, or a dirty one emitted
-  verbatim) show up as spurious whitespace changes in `--dry-run`; `dump-ast
-  --dirty` marks the flagged nodes.
+  verbatim) show up as spurious whitespace changes in `--dry-run`; the AST
+  dump marks flagged nodes with `:dirty` in the head line.
 
 ## tsgo / type cache
 
