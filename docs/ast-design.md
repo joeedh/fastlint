@@ -328,6 +328,10 @@ struct CallExpression : View {
   `no-redeclare`, `no-use-before-define`.
 - `dumpBindings` writes the scope tree for snapshot tests
   (tests/fixtures/binder/).
+- `namespace A.B.C { }` declares `A` in the enclosing scope and opens one
+  namespace scope per segment, so `B` lives in `A`'s scope and `C` in
+  `B`'s. The outer scope is keyed by the declaration node and the inner
+  ones by the segment identifiers.
 - Binder output is not updated by fixers. A rule that runs after a fix in
   the same pass sees pre-fix scopes; the fixpoint driver rebinds after
   applying a pass's fixes.
@@ -469,6 +473,9 @@ fix.replace(call, n);
   an ordinary identifier.
 - A parse error or a misplaced splice makes `ok()` false; `instantiate`
   and `match` then fail without touching anything.
+- `compile(text, mode, true)` parses the text with JSX enabled. Tag and
+  attribute names are `JSXIdentifier`s, not placeholders; `{$x}` inside
+  an element is an expression slot.
 
 ### Instantiate
 

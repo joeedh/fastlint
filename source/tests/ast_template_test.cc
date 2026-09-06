@@ -413,3 +413,19 @@ TEST(ast_template, builders_parenthesize_children)
   CHECK_EQ(replaced(l, n), "(a + b).c;");
   CHECK(!needsParens(n, 0, fixer.identifier("d")));
 }
+
+TEST(ast_template, jsx_templates_parse_with_the_jsx_option)
+{
+  CHECK(!Template::compile("<div>{$x}</div>", Template::Mode::Expression)->ok());
+  const Template *t =
+      Template::compile("<div>{$x}</div>", Template::Mode::Expression, true);
+  CHECK(t->ok());
+  CHECK(t != Template::compile("<div>{$x}</div>", Template::Mode::Expression));
+  CHECK(t == Template::compile("<div>{$x}</div>", Template::Mode::Expression, true));
+  CHECK(t->prototype()->kind == NodeKind::JSXElement);
+  Lowered l("foo(a + b);");
+  Node *arg = l.expression(0)->children[2];
+  Node *n = t->instantiate(l.file, {{"x", arg}});
+  CHECK(n != nullptr);
+  CHECK_EQ(replaced(l, n), "<div>{a + b}</div>;");
+}

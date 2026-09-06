@@ -229,3 +229,25 @@ TEST(ast_binder, rebind_replaces_previous_contents)
   CHECK_EQ(b.bindings.scopeCount(), 1);
   CHECK(b.bindings.moduleScope() == b.bindings.scopeOf(b.root));
 }
+
+TEST(ast_binder, dotted_namespace_nests_a_scope_per_segment)
+{
+  Bound b("namespace A.B.C { export const v = 1; } A.B.C.v;");
+  Scope *m = b.bindings.moduleScope();
+  Declaration *a = m->lookupLocal("A");
+  CHECK(bool(a && a->kind == DeclKind::Namespace));
+  CHECK(m->lookupLocal("B") == nullptr);
+  Node *ns = b.root->children[0];
+  Scope *aScope = b.bindings.scopeOf(ns);
+  CHECK(aScope != nullptr);
+  Declaration *bDecl = aScope ? aScope->lookupLocal("B") : nullptr;
+  CHECK(bool(bDecl && bDecl->kind == DeclKind::Namespace));
+  Scope *bScope = bDecl ? b.bindings.scopeOf(bDecl->id) : nullptr;
+  CHECK(bScope != nullptr);
+  Declaration *cDecl = bScope ? bScope->lookupLocal("C") : nullptr;
+  CHECK(bool(cDecl && cDecl->kind == DeclKind::Namespace));
+  Scope *cScope = cDecl ? b.bindings.scopeOf(cDecl->id) : nullptr;
+  CHECK(bool(cScope && cScope->lookupLocal("v") != nullptr));
+  CHECK(bool(cScope && cScope->parent == bScope));
+  CHECK_EQ(int(b.bindings.unresolved().size()), 0);
+}

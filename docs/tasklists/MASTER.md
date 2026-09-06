@@ -516,8 +516,8 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   - [x] JSX lowering (2026-09-06): elements, self-closing elements,
     fragments, member and namespaced names, attributes, spreads, expression
     containers, empty expressions, text. Fixture tests/fixtures/ast/jsx.tsx.
-  - [ ] An `ErrorNode` in a type slot lowers into the initializer slot;
-    place it by position instead.
+  - [x] An `ErrorNode` before the `=` of a declarator, parameter or property
+    lowers into the type slot (2026-09-06).
 - [x] Generic API + views, including the `FunctionLike` union view
   (generated; `is<T>`/`as<T>` on `Node`, 2026-09-06).
   - [x] Convenience predicates on `Node` (`isIdentifier("x")`,
@@ -537,7 +537,8 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   declarations with value and type spaces, references with read, write and
   init flags, unresolved list, `dumpBindings` snapshot over
   tests/fixtures/binder/.
-  - [ ] `namespace A.B.C` declares only `A`; nest a scope per segment.
+  - [x] `namespace A.B.C` nests a scope per segment (2026-09-06); the inner
+    scopes are keyed by the segment identifiers.
   - [ ] `declare global` bodies declare into the module scope; give them a
     global scope once lib globals exist.
 - [x] Fixer API (`ast/fixer.h`, 2026-09-06): `replace`, `insertBefore/After`,
@@ -549,7 +550,8 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   escapes, `instantiate` with slot checks, detach-and-reparent, clone for
   repeated names and precedence parens via `ast/precedence.h`, `match` with
   splice spans and structural equality for repeated names.
-  - [ ] Templates parse without JSX; add a JSX mode when JSX lowering lands.
+  - [x] `Template::compile(text, mode, jsx)` parses JSX templates
+    (2026-09-06); placeholders sit in expression containers.
   - [ ] A placeholder in a shorthand property or a for-in head is typed
     loosely (`Name`, `Any`); tighten once rules need it.
 - [x] Printer (`ast/printer.cc`, 2026-09-06): verbatim for clean, captured
@@ -566,10 +568,11 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   run the pass callback, apply, print, repeat; stops on no fixes, unchanged
   text or `maxPasses`; reverts a pass whose output fails to parse; one
   fix-free pass for files with syntax errors.
-- [ ] Tests: round-trip (parse → lower → print == source for every corpus
-  file), fixer unit tests with comment-preservation cases, template
-  instantiate/match cases (`ast_template_test.cc`, done), binder snapshot
-  tests.
+- [x] Tests (2026-09-06): round-trip (parse → lower → print == source for
+  every fixture and corpus file, clean and all-dirty), fixer unit tests with
+  comment-preservation cases, template instantiate/match cases
+  (`ast_template_test.cc`), fixpoint driver cases (`ast_fixpoint_test.cc`),
+  binder snapshot tests (tests/fixtures/binder/).
 
 ---
 

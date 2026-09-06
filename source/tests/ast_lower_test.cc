@@ -203,3 +203,30 @@ TEST(ast_lower, corpus_invariants)
     CHECK(countNodes(l.root) > 0);
   }
 }
+
+TEST(ast_lower, error_before_the_initializer_is_the_type)
+{
+  Lowered l("let x: = 1;\nlet z: ;\nfunction f(p: = 2) {}\nclass C { m: = 3; }");
+  Node *x = l.root->children[0]->children[0];
+  CHECK(x->children[0]->children[0] != nullptr);
+  CHECK(x->children[0]->children[0]->kind == NodeKind::Error);
+  CHECK(x->children[1] != nullptr);
+  CHECK(x->children[1]->isLiteral());
+  Node *z = l.root->children[1]->children[0];
+  CHECK(z->children[0]->children[0] != nullptr);
+  CHECK(z->children[0]->children[0]->kind == NodeKind::Error);
+  CHECK(z->children[1] == nullptr);
+  FunctionLike fn = l.root->children[2]->as<FunctionLike>();
+  CHECK(bool(fn));
+  AssignmentPattern param = fn.params()[0]->as<AssignmentPattern>();
+  CHECK(bool(param));
+  CHECK(param.left()->children[0] != nullptr);
+  CHECK(param.left()->children[0]->kind == NodeKind::Error);
+  CHECK(param.right()->isLiteral());
+  Node *member = l.root->children[3]->children[5]->children[0];
+  CHECK(member->kind == NodeKind::PropertyDefinition);
+  CHECK(member->children[2] != nullptr);
+  CHECK(member->children[2]->kind == NodeKind::Error);
+  CHECK(member->children[3] != nullptr);
+  CHECK(member->children[3]->isLiteral());
+}

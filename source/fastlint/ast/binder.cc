@@ -473,16 +473,37 @@ private:
       visit(m.body());
       return;
     }
+    // `namespace A.B.C` nests a scope per segment, keyed by the segment's
+    // identifier from the second one on. The chain is left-nested, so the
+    // segments come out last first.
+    Vector<Node *, 4> segments;
     if (id && id->kind != NodeKind::Literal) {
       Node *name = id;
       while (name->kind == NodeKind::TSQualifiedName) {
+        segments.append(name->children[1]);
         name = name->children[0];
       }
-      declare(name->text, name, n, DeclKind::Namespace, Space::Either);
+      segments.append(name);
+      for (size_t i = 0, j = segments.size() - 1; i < j; i++, j--) {
+        Node *tmp = segments[int(i)];
+        segments[int(i)] = segments[int(j)];
+        segments[int(j)] = tmp;
+      }
+    }
+    if (!segments.isEmpty()) {
+      declare(segments[0]->text, segments[0], n, DeclKind::Namespace, Space::Either);
     }
     push(ScopeKind::Namespace, n);
+    for (size_t i = 1; i < segments.size(); i++) {
+      Node *segment = segments[int(i)];
+      declare(segment->text, segment, n, DeclKind::Namespace, Space::Either);
+      push(ScopeKind::Namespace, segment);
+    }
     visit(m.body());
-    pop();
+    size_t pushed = segments.isEmpty() ? 1 : segments.size();
+    for (size_t i = 0; i < pushed; i++) {
+      pop();
+    }
   }
 
   void importDeclaration(Node *n)

@@ -106,11 +106,14 @@ public:
   };
 
   /**
-   * Parses `text` once per mode and keeps the result for the life of the
-   * process. A template that fails to parse (or whose placeholders sit in
-   * positions the engine cannot fill) reports `ok() == false`.
+   * Parses `text` once per mode and JSX setting and keeps the result for the
+   * life of the process. With `jsx`, `<` in expression position starts a JSX
+   * element; placeholders then live in expression containers. A template that fails to
+   * parse (or whose placeholders sit in positions the engine cannot fill) reports `ok()
+   * == false`.
    */
-  static const Template *compile(string_view text, Mode mode = Mode::Auto);
+  static const Template *
+  compile(string_view text, Mode mode = Mode::Auto, bool jsx = false);
 
   bool ok() const
   {
@@ -157,7 +160,7 @@ public:
   bool match(Node *node, TemplateArgs &bindings) const;
 
 private:
-  Template(string_view text, Mode mode);
+  Template(string_view text, Mode mode, bool jsx);
   Template(const Template &) = delete;
   Template &operator=(const Template &) = delete;
 
@@ -166,6 +169,7 @@ private:
   /** The mode `compile` was called with; `m_mode` is the resolved one. */
   Mode m_requested;
   Mode m_mode;
+  bool m_jsx;
   bool m_ok = false;
   syntax::Diagnostics m_diagnostics;
   syntax::GrammarTree m_tree;

@@ -363,10 +363,11 @@ void dirtyChain(AstFile &file, Node *node)
 }
 
 /** The 64-bit FNV-1a hash of the mode and text, the cache key. */
-uint64_t cacheKey(string_view text, Template::Mode mode)
+uint64_t cacheKey(string_view text, Template::Mode mode, bool jsx)
 {
   uint64_t h = 14695981039346656037ull;
   h = (h ^ uint8_t(mode)) * 1099511628211ull;
+  h = (h ^ uint8_t(jsx)) * 1099511628211ull;
   for (char c : text) {
     h = (h ^ uint8_t(c)) * 1099511628211ull;
   }
@@ -418,7 +419,7 @@ Node *cloneNode(AstFile &file, const Node *n)
 
 // -------------------------------------------------------------- compile
 
-const Template *Template::compile(string_view text, Mode mode)
+const Template *Template::compile(string_view text, Mode mode, bool jsx)
 {
   struct Cache {
     std::mutex mutex;
@@ -426,12 +427,12 @@ const Template *Template::compile(string_view text, Mode mode)
   };
   static Cache cache;
 
-  uint64_t hash = cacheKey(text, mode);
+  uint64_t hash = cacheKey(text, mode, jsx);
   int key = int(uint32_t(hash ^ (hash >> 32)));
   std::lock_guard<std::mutex> lock(cache.mutex);
   Template **bucket = cache.buckets.lookup_ptr(key);
   for (Template *t = bucket ? *bucket : nullptr; t; t = t->m_nextInBucket) {
-    if (t->m_requested == mode &&
+    if (t->m_requested == mode && t->m_jsx == jsx &&
         string_view(t->m_text.c_str(), t->m_text.size()) == text)
     {
       return t;
@@ -439,7 +440,7 @@ const Template *Template::compile(string_view text, Mode mode)
   }
   litestl::alloc::PermanentGuard guard;
   void *mem = litestl::alloc::alloc("ast::Template", sizeof(Template));
-  Template *fresh = new (mem) Template(text, mode);
+  Template *fresh = new (mem) Template(text, mode, jsx);
   if (bucket) {
     fresh->m_nextInBucket = *bucket;
     *bucket = fresh;
@@ -449,8 +450,8 @@ const Template *Template::compile(string_view text, Mode mode)
   return fresh;
 }
 
-Template::Template(string_view text, Mode mode)
-    : m_requested(mode), m_mode(mode), m_file(&m_tree)
+Template::Template(string_view text, Mode mode, bool jsx)
+    : m_requested(mode), m_mode(mode), m_jsx(jsx), m_file(&m_tree)
 {
   for (char c : text) {
     m_text += c;
@@ -472,6 +473,7 @@ Template::Template(string_view text, Mode mode)
 
   string_view source(m_source.c_str(), m_source.size());
   syntax::Parser::Options options;
+  options.jsx = jsx;
   syntax::Parser parser(source, options, m_diagnostics);
   parser.parseFile(m_tree);
   if (!m_diagnostics.empty()) {

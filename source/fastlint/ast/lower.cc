@@ -581,8 +581,9 @@ private:
     Node *n = mk(NodeKind::VariableDeclarator, id);
     Node *name = ch.size() > 0 ? lowerBindingName(ch[0]) : nullptr;
     Node *init = nullptr;
+    uint32_t equals = findOwnToken(id, TokenKind::EqualsToken);
     for (size_t i = 1; i < ch.size(); i++) {
-      if (isTypeKind(gk(ch[i]))) {
+      if (inTypePosition(ch[i], equals)) {
         attachType(name, lowerType(ch[i]));
       } else {
         init = lowerExpression(ch[i]);
@@ -594,6 +595,22 @@ private:
       n->setFlag(Flag::Definite);
     }
     return finish(n);
+  }
+
+  /**
+   * Whether child `c` fills the type slot of a declarator, parameter or
+   * property: a type, or an error node that starts before the `=` token
+   * (`equals`, `kNoToken` when there is no initializer).
+   */
+  bool inTypePosition(NodeId c, uint32_t equals) const
+  {
+    if (isTypeKind(gk(c))) {
+      return true;
+    }
+    if (gk(c) != GK::ErrorNode) {
+      return false;
+    }
+    return equals == kNoToken || g(c).firstToken <= equals;
   }
 
   /** Fills the typeAnnotation slot of an Identifier or pattern. */
@@ -1637,8 +1654,9 @@ private:
     i++;
     Node *type = nullptr;
     Node *init = nullptr;
+    uint32_t equals = findOwnToken(id, TokenKind::EqualsToken);
     for (; i < ch.size(); i++) {
-      if (isTypeKind(gk(ch[i]))) {
+      if (inTypePosition(ch[i], equals)) {
         type = lowerType(ch[i]);
       } else {
         init = lowerExpression(ch[i]);
@@ -1929,8 +1947,9 @@ private:
       req(n, i < ch.size() ? lowerKey(ch[i], computed) : nullptr);
       Node *type = nullptr;
       Node *value = nullptr;
+      uint32_t equals = findOwnToken(id, TokenKind::EqualsToken);
       for (i++; i < ch.size(); i++) {
-        if (isTypeKind(gk(ch[i]))) {
+        if (inTypePosition(ch[i], equals)) {
           type = lowerType(ch[i]);
         } else {
           value = lowerExpression(ch[i]);

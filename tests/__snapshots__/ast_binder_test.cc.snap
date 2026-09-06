@@ -173,9 +173,11 @@ module @0-1776
     decl Green@1452 enum-member value refs=0
     ref Red@1460 read -> enum Red@1447
   namespace @1470-1520
-    decl v@1504 const value refs=1
-    ref v@1504 write+init -> namespace v@1504
-    ref Color@1508 read -> module Color@1439
+    decl Inner@1483 namespace value+type refs=0
+    namespace @1483-1488
+      decl v@1504 const value refs=1
+      ref v@1504 write+init -> namespace v@1504
+      ref Color@1508 read -> module Color@1439
   namespace @1521-1569
     decl w@1557 const value refs=0
   type @1587-1619
