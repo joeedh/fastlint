@@ -436,12 +436,12 @@ The printer walks the AST and produces the file's new text.
 ## Templates
 
 A template is a code snippet with placeholders, parsed once and instantiated
-many times.
+many times (`ast/template.h`).
 
 ```cpp
-static const Template kOptCall = Template::compile("$a?.$b?.($c)");
+static const Template *kOptCall = Template::compile("$a?.$b?.($c)");
 
-Node *n = kOptCall.instantiate(file, {{"a", obj}, {"b", prop}, {"c", arg}});
+Node *n = kOptCall->instantiate(file, {{"a", obj}, {"b", prop}, {"c", arg}});
 fix.replace(call, n);
 ```
 
@@ -449,47 +449,69 @@ fix.replace(call, n);
 
 - `compile` runs the ordinary parser on the text and lowers it to a
   prototype AST. A placeholder is an `Identifier` whose name starts with
-  `$`; no parser mode is needed because `$a` is a legal identifier. `$$`
-  escapes a literal dollar.
-- Compiled templates are cached by string. The template's source and grammar
-  tree stay alive with the cache so instantiated nodes can link to them.
-- Each placeholder records the category its position accepts, derived from
-  the slot it landed in: expression, statement, type, property name,
-  binding, or list. A placeholder followed by `...` in a list slot is a
-  splice.
+  `$`; no parser mode is needed because `$a` is a legal identifier. A name
+  starting with `$$` is a literal identifier without the first dollar.
+- Compiled templates are cached by mode and text and live for the process.
+  The template's source and grammar tree stay alive with it so instantiated
+  nodes can link to them.
+- The mode picks the prototype. `Auto` takes the expression of a lone
+  expression statement, a lone statement of any other kind, or the whole
+  program. `Expression` wraps the text in parentheses so `{ a: 1 }` parses
+  as an object literal. `Type` parses the text as a type alias's right side.
+  `Statements` keeps the program and instantiates through `instantiateAll`.
+- Each placeholder records the slot its position accepts, derived from its
+  parent: expression, statement, type, name, property, property name,
+  pattern, assignable, or any (an unchecked list such as object members).
+- A name ending in a second `$` (`f($args$)`, `{ $body$ }`) is a splice
+  that binds a list of nodes. It is only legal as a list element, or as
+  the expression statement of a statement list. The design first used a
+  `...` suffix, which the parser rejects; the trailing dollar parses as
+  an ordinary identifier.
+- A parse error or a misplaced splice makes `ok()` false; `instantiate`
+  and `match` then fail without touching anything.
 
 ### Instantiate
 
+- Checks every binding first: each placeholder has one, a splice's nodes
+  and a single argument fit their slot. A mismatch is an authoring error
+  and returns null with nothing moved.
 - Deep-clones the prototype into the file's pool. Cloned nodes keep their
   `GrammarRef` into the template's grammar tree, which is what lets the
-  printer emit the template's own tokens verbatim.
+  printer emit the template's own tokens verbatim. The parent of each
+  placeholder captures its layout before the swap, so the template's text
+  around the argument prints unchanged.
 - Replaces each placeholder with the supplied node by reparenting it. The
-  argument arrives with its own grammar link and its comments; nothing is
-  copied or re-tokenized.
+  argument is detached from its old parent, arrives with its own grammar
+  link, and nothing is copied or re-tokenized. A name bound to several
+  occurrences moves into the first and is deep-cloned into the rest, which
+  is how shorthand `{ $a }` fills both key and value.
 - Unwraps by position: a bare `$s` in statement position parses as an
   expression statement, and a statement argument replaces the whole
-  statement; `$T` in type position parses as a type reference and a type
-  argument replaces the reference; `$b` after a dot is a property slot and
-  accepts only an identifier or private identifier. A splice placeholder
-  takes a `span<Node *>` and inserts all of them.
-- Checks that each argument's kind belongs to the placeholder's category.
-  A mismatch is an authoring error: debug assert plus an error return, not
-  a diagnostic.
-- Parenthesizes on demand. When an expression argument has lower precedence
-  than its slot requires (`a + b` into `$x * 2`), instantiate sets the
-  parenthesized flag on the argument and the printer emits the parens.
+  statement while an expression argument keeps the wrapper; `$T` in type
+  position parses as a type reference and a type argument replaces the
+  reference while an identifier replaces the name; `$b` after a dot is a
+  property slot and accepts only an identifier or private identifier. A
+  template that is a bare placeholder returns the argument itself.
+- Parenthesizes on demand. `needsParens` (`ast/precedence.h`) compares the
+  argument's binding strength with its slot: `a + b` into `$x * 2`, an
+  `||` under `??`, a unary operand left of `**`, a call as the callee of
+  `new`, a sequence in an argument list, a union under `[]`. Instantiate
+  and the `Fixer` builders set the parenthesized flag; the printer only
+  honours it.
 - The result is dirty relative to the file and is passed to `replace`,
   `insert` or `set` like any other node.
 
 ### Match
 
-- `template.match(node)` walks the prototype and the node together,
-  ignoring trivia and the parenthesized flag, binding each placeholder to
-  the corresponding subtree. A splice placeholder binds a span. It returns
-  the bindings or nothing.
-- A placeholder that appears twice must bind structurally equal subtrees.
+- `match(node, args)` walks the prototype and the node together, ignoring
+  trivia and the parenthesized flag, binding each placeholder to the
+  subtree that fills its slot. A statement placeholder binds any statement,
+  a type placeholder any type. A splice binds the span between the list
+  elements before and after it.
+- A placeholder that appears twice must bind structurally equal subtrees
+  (`equivalent`: kind, flags, data, text and children).
 - Rules that are "find this shape, rewrite to that shape" are a `match`
-  followed by an `instantiate` with the same bindings.
+  followed by an `instantiate` with the same `TemplateArgs`.
 
 ## Ownership and lifetime
 

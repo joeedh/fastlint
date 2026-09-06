@@ -243,7 +243,7 @@ TEST(ast_printer, synthesized_nodes_print_from_templates)
   Node *block = fixer.block({fixer.returnStatement(test)});
   CHECK(fixer.append(l.root, block));
   CHECK_EQ(l.print(),
-           "console.log(\"hi\", 1);\nconst t = await p;\n{\n  return a && !b + c;\n}");
+           "console.log(\"hi\", 1);\nconst t = await p;\n{\n  return a && !(b + c);\n}");
 }
 
 TEST(ast_printer, style_is_sniffed_from_the_file)

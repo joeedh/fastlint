@@ -1,6 +1,7 @@
 #include "fastlint/ast/fixer.h"
 
 #include "fastlint/ast/kind_info.h"
+#include "fastlint/ast/precedence.h"
 
 namespace fastlint::ast {
 
@@ -30,6 +31,17 @@ void insertAt(Vector<Node *, 3> &children, int index, Node *value)
     children[i] = children[i - 1];
   }
   children[index] = value;
+}
+
+/** Flags every child that would change meaning in its slot without parentheses. */
+void parenthesizeChildren(Node *n)
+{
+  for (size_t i = 0; i < n->children.size(); i++) {
+    Node *c = n->children[int(i)];
+    if (c && needsParens(n, int(i), c)) {
+      c->setFlag(Flag::Parenthesized);
+    }
+  }
 }
 
 /** Whether `source` has a line break between `from` and `to`. */
@@ -337,6 +349,7 @@ Node *Fixer::member(Node *object, Node *property, bool computed)
 {
   Node *n = build(NodeKind::MemberExpression, {object, property});
   n->setFlag(Flag::Computed, computed);
+  parenthesizeChildren(n);
   return n;
 }
 
@@ -346,6 +359,7 @@ Node *Fixer::call(Node *callee, std::initializer_list<Node *> arguments)
   for (Node *a : arguments) {
     n->appendChild(a);
   }
+  parenthesizeChildren(n);
   return n;
 }
 
@@ -355,6 +369,7 @@ Node *Fixer::call(Node *callee, span<Node *> arguments)
   for (Node *a : arguments) {
     n->appendChild(a);
   }
+  parenthesizeChildren(n);
   return n;
 }
 
@@ -362,6 +377,7 @@ Node *Fixer::unary(UnaryOperator op, Node *argument)
 {
   Node *n = build(NodeKind::UnaryExpression, {argument});
   n->setDataByte(0, uint8_t(op));
+  parenthesizeChildren(n);
   return n;
 }
 
@@ -369,6 +385,7 @@ Node *Fixer::binary(BinaryOperator op, Node *left, Node *right)
 {
   Node *n = build(NodeKind::BinaryExpression, {left, right});
   n->setDataByte(0, uint8_t(op));
+  parenthesizeChildren(n);
   return n;
 }
 
@@ -376,12 +393,15 @@ Node *Fixer::logical(LogicalOperator op, Node *left, Node *right)
 {
   Node *n = build(NodeKind::LogicalExpression, {left, right});
   n->setDataByte(0, uint8_t(op));
+  parenthesizeChildren(n);
   return n;
 }
 
 Node *Fixer::awaitExpression(Node *argument)
 {
-  return build(NodeKind::AwaitExpression, {argument});
+  Node *n = build(NodeKind::AwaitExpression, {argument});
+  parenthesizeChildren(n);
+  return n;
 }
 
 Node *Fixer::expressionStatement(Node *expression)

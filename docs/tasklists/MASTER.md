@@ -542,20 +542,29 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
 - [x] Fixer API (`ast/fixer.h`, 2026-09-06): `replace`, `insertBefore/After`,
   `append`, `remove(CommentPolicy)`, `set`, builders, dirty propagation,
   `applyFixes` skipping fixes whose target is dirty or detached.
-- [ ] Templates: compiler, per-string cache, `instantiate` with category
-  checks and precedence-aware parenthesization, `match`.
+- [x] Templates (`ast/template.h`, 2026-09-06): compiler with `Auto`,
+  `Expression`, `Statement`, `Statements` and `Type` modes, per-mode-and-text
+  cache, slot classification per placeholder, `$name$` splices, `$$`
+  escapes, `instantiate` with slot checks, detach-and-reparent, clone for
+  repeated names and precedence parens via `ast/precedence.h`, `match` with
+  splice spans and structural equality for repeated names.
+  - [ ] Templates parse without JSX; add a JSX mode when JSX lowering lands.
+  - [ ] A placeholder in a shorthand property or a for-in head is typed
+    loosely (`Name`, `Any`); tighten once rules need it.
 - [x] Printer (`ast/printer.cc`, 2026-09-06): verbatim for clean, captured
   layout + current children for dirty, per-kind templates for synthesized,
   list separator rules, style sniffing (semicolons, quotes, indent, line
   ending), span recomputation behind `PrintOptions::updateSpans`. Round-trip
   tests over the fixtures and the corpus, clean and all-dirty.
   - [ ] Kind templates cover the JSX kinds (they print a marker comment).
-  - [ ] Precedence-aware parenthesization belongs to template instantiate;
+  - [x] Precedence-aware parenthesization lives in `ast/precedence.h`
+    (`needsParens`), used by template instantiate and the `Fixer` builders;
     the printer only honours the `parenthesized` flag.
 - [ ] Fixpoint driver with rebind and reparse between passes.
 - [ ] Tests: round-trip (parse → lower → print == source for every corpus
   file), fixer unit tests with comment-preservation cases, template
-  instantiate/match cases, binder snapshot tests.
+  instantiate/match cases (`ast_template_test.cc`, done), binder snapshot
+  tests.
 
 ---
 
