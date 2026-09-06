@@ -33,11 +33,18 @@ export interface UnionDef {
   members: string[];
 }
 
+/** A syntactic position kinds may fill; one bit of KindInfo::categories. */
+export interface CategoryDef {
+  name: string;
+  members: string[];
+}
+
 export interface Def {
   flags: string[];
   enums: EnumDef[];
   nodes: NodeDef[];
   unions: UnionDef[];
+  categories: CategoryDef[];
   hash: string;
 }
 
@@ -48,6 +55,7 @@ export const outDir = path.join(repoRoot, "source", "fastlint", "ast", "generate
 const maxFlags = 32;
 const maxEnumFields = 4;
 const maxEnumValues = 256;
+const maxCategories = 8;
 
 /** Accessor names that are C++ keywords, and what the view calls them instead. */
 const cppRenames: Record<string, string> = {
@@ -70,7 +78,14 @@ function fnv1a(text: string): string {
 }
 
 export function parseDef(text: string): Def {
-  const def: Def = { flags: [], enums: [], nodes: [], unions: [], hash: fnv1a(text) };
+  const def: Def = {
+    flags     : [],
+    enums     : [],
+    nodes     : [],
+    unions    : [],
+    categories: [],
+    hash      : fnv1a(text),
+  };
   const errors: string[] = [];
   const lines = text.split(/\r?\n/);
 
@@ -95,6 +110,11 @@ export function parseDef(text: string): Def {
       const [name, ...members] = rest;
       if (!name || members.length === 0) return fail("union needs a name and members");
       def.unions.push({ name, members });
+    } else if (keyword === "category") {
+      const [name, ...members] = rest;
+      if (!name || members.length === 0) return fail("category needs a name and members");
+      if (def.categories.length >= maxCategories) return fail("too many categories");
+      def.categories.push({ name, members });
     } else if (keyword === "node") {
       const [name] = rest;
       if (!name) return fail("node needs a name");
@@ -161,6 +181,12 @@ export function parseDef(text: string): Def {
       if (!seen.has(member)) errors.push(`union ${union.name}: unknown kind ${member}`);
     }
   }
+  for (const category of def.categories) {
+    for (const member of category.members) {
+      if (!seen.has(member))
+        errors.push(`category ${category.name}: unknown kind ${member}`);
+    }
+  }
   if (errors.length > 0) throw new Error(errors.join("\n"));
   return def;
 }
@@ -197,6 +223,10 @@ export function emitKinds(def: Def): string {
   out.push("/** Bits of Node::flags. */", "enum class Flag : uint32_t {");
   def.flags.forEach((flag, bit) => out.push(`  ${pascal(flag)} = 1u << ${bit},`));
   out.push("};", "", `constexpr int flagCount = ${def.flags.length};`, "");
+
+  out.push("/** Bits of KindInfo::categories. */", "enum class Category : uint8_t {");
+  def.categories.forEach((c, bit) => out.push(`  ${c.name} = 1u << ${bit},`));
+  out.push("};", "", `constexpr int categoryCount = ${def.categories.length};`, "");
 
   for (const e of def.enums) {
     out.push(`enum class ${e.name} : uint8_t {`);
@@ -397,11 +427,15 @@ export function emitTables(def: Def): string {
     node.children.forEach((c, i) => {
       if (!c.list && !c.optional) requiredMask |= 1 << i;
     });
+    const categories = def.categories
+      .filter((c) => c.members.includes(node.name))
+      .map((c) => `uint8_t(Category::${c.name})`);
     out.push(
       `  {"${node.name}", ${fixed}, ${list ? "true" : "false"}, ${list?.nullableElements ? "true" : "false"}, ` +
         `${usesText ? "true" : "false"}, ${node.children.length > 0 ? `${node.name}Children` : "nullptr"}, ` +
         `${node.children.length}, ${enums > 0 ? `${node.name}Enums` : "nullptr"}, ${enums}, ` +
-        `${flags.length > 0 ? flags.join(" | ") : "0"}, ${requiredMask}u},`
+        `${flags.length > 0 ? flags.join(" | ") : "0"}, ${requiredMask}u, ` +
+        `${categories.length > 0 ? categories.join(" | ") : "0"}},`
     );
   }
   out.push("};", "");

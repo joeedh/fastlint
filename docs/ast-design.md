@@ -268,22 +268,36 @@ struct CallExpression : View {
   them before they know the kind: `isIdentifier("name")`, `isLiteral()`,
   `isStringLiteral("x")`, `enclosingStatement()`, `enclosingFunction()`.
   There is no `skipParens()` because parens are a flag.
+  `isStringLiteral("x")` compares the raw text between the quotes and does
+  not decode escapes.
 
 ## Traversal and dispatch
 
-- Generic: `children()`, `parent()`, `ancestors()`, `descendants()`,
-  `descendants<T>()`, `firstChild<T>()`. All iterate the child lists;
-  no visitor.
-- The lowering pass fills `Vector<Node *> preorder` on the file. Rule
-  dispatch is one linear scan of that vector against a kind-to-rules table.
-  Each entry also records its subtree end index, so `descendants()` of a
-  clean node is a contiguous slice of the vector.
+- Generic: `children`, `parent`, `ancestors()`, `descendants(fn)`,
+  `descendants<T>(fn)`, `firstChild<T>()`, `enclosing(kind)`,
+  `enclosing<T>()`, `enclosingStatement()`, `enclosingFunction()`. All
+  iterate the child lists or the parent chain; no visitor. The `enclosing*`
+  forms return strict ancestors, so a statement's enclosing statement is
+  the one containing it.
+- `nodes.def` assigns each kind its syntactic categories (`Statement`,
+  `Expression`, `Type`, `Pattern`; a kind may hold several). They back
+  `isStatement()` and friends on `Node`, and later the template category
+  checks.
+- Lowering fills `Vector<PreorderEntry> preorder` on the file. Each entry
+  is the node plus its subtree end index, so a node's descendants are the
+  contiguous slice between its index and its end.
+- `Dispatcher` holds listeners keyed by kind, with an enter and an exit
+  list per kind (`on`, `onExit`, and `on<T>` for every kind a view
+  matches). `run(file)` is one linear scan of the preorder vector; exits
+  fire when the scan reaches the subtree end, so enters and exits nest as
+  in a recursive walk. Listeners are `function_ref`s that the rule keeps
+  alive for the pass.
 - After an edit the preorder vector is stale for the dirty region. Dispatch
   within a pass is unaffected because fixes are collected during the pass
-  and applied after it. Rules that run after fixes get a rebuilt vector.
-- `match<T>(node, callback)` invokes the callback with the typed view when
-  the kind matches; `switch` on `node->kind` with `as<T>()` is the general
-  form.
+  and applied after it. Rules that run after fixes get a rebuilt vector
+  (`AstFile::buildPreorder`).
+- `switch` on `node->kind` with `as<T>()` is the general form of typed
+  dispatch inside a listener.
 
 ## Binder
 

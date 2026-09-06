@@ -5,6 +5,7 @@
 // Typed views over Node are generated into generated/views.h.
 
 #include "fastlint/ast/generated/kinds.h"
+#include "fastlint/ast/kind_info.h"
 #include "fastlint/syntax/tree.h"
 #include "util/span.h"
 #include "util/vector.h"
@@ -97,7 +98,178 @@ struct Node {
   {
     return T::matches(kind) ? T(this) : T();
   }
+
+  // ----------------------------------------------------------------- predicates
+
+  bool hasCategory(Category category) const
+  {
+    return ast::hasCategory(kind, category);
+  }
+  bool isStatement() const
+  {
+    return hasCategory(Category::Statement);
+  }
+  bool isExpression() const
+  {
+    return hasCategory(Category::Expression);
+  }
+  bool isType() const
+  {
+    return hasCategory(Category::Type);
+  }
+  bool isPattern() const
+  {
+    return hasCategory(Category::Pattern);
+  }
+  /** An Identifier, and one named `name` when `name` is given. */
+  bool isIdentifier(string_view name = {}) const
+  {
+    return kind == NodeKind::Identifier && (name.empty() || text == name);
+  }
+  bool isLiteral() const
+  {
+    return kind == NodeKind::Literal;
+  }
+  /**
+   * A string Literal, and one spelling `value` when `value` is given. The
+   * comparison is against the raw text between the quotes, so escapes in the
+   * source are not decoded.
+   */
+  bool isStringLiteral(string_view value = {}) const;
+
+  // ------------------------------------------------------------------ traversal
+
+  struct AncestorRange;
+  /** The parent chain from the parent up to the root, nearest first. */
+  AncestorRange ancestors() const;
+  /** The nearest strict ancestor that is a statement, or null. */
+  Node *enclosingStatement() const;
+  /** The nearest strict ancestor that is one of the five function kinds, or null. */
+  Node *enclosingFunction() const;
+  /** The nearest strict ancestor of kind `k`, or null. */
+  Node *enclosing(NodeKind k) const;
+  /** The nearest strict ancestor matching `T`, as a view (null on none). */
+  template <typename T> T enclosing() const
+  {
+    for (Node *a = parent; a; a = a->parent) {
+      if (T::matches(a->kind)) {
+        return T(a);
+      }
+    }
+    return T();
+  }
+  /** The first direct child matching `T`, as a view (null on none). */
+  template <typename T> T firstChild() const
+  {
+    for (Node *c : children) {
+      if (c && T::matches(c->kind)) {
+        return T(c);
+      }
+    }
+    return T();
+  }
+  /** Calls `fn(Node *)` for every descendant in preorder, excluding this node. */
+  template <typename F> void descendants(F &&fn) const
+  {
+    for (Node *c : children) {
+      if (c) {
+        fn(c);
+        c->descendants(fn);
+      }
+    }
+  }
+  /** Calls `fn(T)` for every descendant whose kind matches `T`, in preorder. */
+  template <typename T, typename F> void descendants(F &&fn) const
+  {
+    descendants([&](Node *d) {
+      if (T::matches(d->kind)) {
+        fn(T(d));
+      }
+    });
+  }
 };
+
+struct Node::AncestorRange {
+  struct Iterator {
+    Node *at;
+    Node *operator*() const
+    {
+      return at;
+    }
+    Iterator &operator++()
+    {
+      at = at->parent;
+      return *this;
+    }
+    bool operator!=(const Iterator &b) const
+    {
+      return at != b.at;
+    }
+  };
+  Node *first;
+  Iterator begin() const
+  {
+    return {first};
+  }
+  Iterator end() const
+  {
+    return {nullptr};
+  }
+};
+
+inline Node::AncestorRange Node::ancestors() const
+{
+  return {parent};
+}
+
+inline Node *Node::enclosing(NodeKind k) const
+{
+  for (Node *a = parent; a; a = a->parent) {
+    if (a->kind == k) {
+      return a;
+    }
+  }
+  return nullptr;
+}
+
+inline Node *Node::enclosingStatement() const
+{
+  for (Node *a = parent; a; a = a->parent) {
+    if (a->isStatement()) {
+      return a;
+    }
+  }
+  return nullptr;
+}
+
+inline Node *Node::enclosingFunction() const
+{
+  for (Node *a = parent; a; a = a->parent) {
+    switch (a->kind) {
+    case NodeKind::FunctionDeclaration:
+    case NodeKind::FunctionExpression:
+    case NodeKind::ArrowFunctionExpression:
+    case NodeKind::TSDeclareFunction:
+    case NodeKind::TSEmptyBodyFunctionExpression:
+      return a;
+    default:
+      break;
+    }
+  }
+  return nullptr;
+}
+
+inline bool Node::isStringLiteral(string_view value) const
+{
+  if (kind != NodeKind::Literal || text.size() < 2) {
+    return false;
+  }
+  char quote = text.front();
+  if ((quote != '"' && quote != '\'') || text.back() != quote) {
+    return false;
+  }
+  return value.empty() || text.substr(1, text.size() - 2) == value;
+}
 
 /** Base of every generated view. A view is a Node pointer with typed accessors. */
 struct View {

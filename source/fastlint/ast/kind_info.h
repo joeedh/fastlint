@@ -33,10 +33,17 @@ struct KindInfo {
   uint32_t flagMask;
   /** Bit i set when fixed slot i must hold a node. */
   uint32_t requiredMask;
+  /** `Category` bits; a kind may fill several positions. */
+  uint8_t categories;
 };
 
 const KindInfo &kindInfo(NodeKind kind);
 const char *kindName(NodeKind kind);
 const char *flagName(int bit);
+
+inline bool hasCategory(NodeKind kind, Category category)
+{
+  return (kindInfo(kind).categories & uint8_t(category)) != 0;
+}
 
 } // namespace fastlint::ast

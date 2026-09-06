@@ -1,5 +1,6 @@
 set(SRC
   ast/comments.cc
+  ast/dispatch.cc
   ast/dump.cc
   ast/file.cc
   ast/generated/tables.cc
@@ -20,6 +21,7 @@ set(SRC
 
   ast/access.h
   ast/comments.h
+  ast/dispatch.h
   ast/dump.h
   ast/file.h
   ast/generated/kinds.h

@@ -2622,6 +2622,7 @@ Node *lower(const syntax::GrammarTree &tree, AstFile &file)
   Lowerer lowerer(tree, file);
   Node *root = lowerer.run();
   attachComments(tree, file);
+  file.buildPreorder();
   return root;
 }
 

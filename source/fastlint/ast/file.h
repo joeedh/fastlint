@@ -18,6 +18,13 @@ namespace fastlint::ast {
 using litestl::util::Map;
 using litestl::util::Pool;
 
+/** One node of the file's preorder; `subtreeEnd` is the index after its last descendant.
+ */
+struct PreorderEntry {
+  Node *node;
+  uint32_t subtreeEnd;
+};
+
 class AstFile {
 public:
   explicit AstFile(const syntax::GrammarTree *tree = nullptr) : m_tree(tree)
@@ -51,6 +58,16 @@ public:
     return m_pool.live_count();
   }
 
+  /**
+   * Rebuilds the preorder vector from the root. Lowering calls it; an edit
+   * leaves the vector stale until the fixpoint driver calls it again.
+   */
+  void buildPreorder();
+  span<const PreorderEntry> preorder() const
+  {
+    return {const_cast<Vector<PreorderEntry> &>(m_preorder).data(), m_preorder.size()};
+  }
+
   /** The node's comments, or null when it has none. */
   const CommentList *comments(const Node *node) const
   {
@@ -72,6 +89,7 @@ private:
   const syntax::GrammarTree *m_tree;
   Pool<Node, 256> m_pool;
   Node *m_root = nullptr;
+  Vector<PreorderEntry> m_preorder;
   Map<const Node *, CommentList> m_comments;
   Vector<char *> m_chunks;
   size_t m_chunkUsed = 0;

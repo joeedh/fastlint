@@ -5,6 +5,7 @@
 #   enum <Name> <value>...          a small enum stored in a byte of Node::data
 #   node <Kind> <children> [: <fields>]
 #   union <Name> <Kind>...          a view over kinds that share field names
+#   category <Name> <Kind>...       the syntactic positions a kind may fill
 #
 # A child is `name` (required), `name?` (optional, nullptr when absent) or
 # `name...` (the list; at most one, always last; `name...?` allows null
@@ -209,3 +210,9 @@ union Loop ForStatement ForInStatement ForOfStatement WhileStatement DoWhileStat
 union NamedDeclaration FunctionDeclaration ClassDeclaration TSInterfaceDeclaration TSTypeAliasDeclaration TSEnumDeclaration TSModuleDeclaration
 union ClassMember MethodDefinition TSAbstractMethodDefinition PropertyDefinition TSAbstractPropertyDefinition AccessorProperty TSAbstractAccessorProperty
 union SignatureLike TSFunctionType TSConstructorType TSCallSignatureDeclaration TSConstructSignatureDeclaration TSMethodSignature
+
+# Categories are bits of KindInfo::categories; a kind may hold several.
+category Statement ExpressionStatement BlockStatement EmptyStatement DebuggerStatement IfStatement ForStatement ForInStatement ForOfStatement WhileStatement DoWhileStatement ReturnStatement ThrowStatement BreakStatement ContinueStatement LabeledStatement SwitchStatement TryStatement WithStatement VariableDeclaration FunctionDeclaration ClassDeclaration TSDeclareFunction ImportDeclaration ExportNamedDeclaration ExportDefaultDeclaration ExportAllDeclaration TSInterfaceDeclaration TSTypeAliasDeclaration TSEnumDeclaration TSModuleDeclaration TSImportEqualsDeclaration TSExportAssignment TSNamespaceExportDeclaration
+category Expression Identifier Literal TemplateLiteral TaggedTemplateExpression ThisExpression Super ArrayExpression ObjectExpression MemberExpression CallExpression NewExpression ImportExpression MetaProperty UnaryExpression UpdateExpression BinaryExpression LogicalExpression AssignmentExpression ConditionalExpression SequenceExpression AwaitExpression YieldExpression ArrowFunctionExpression FunctionExpression ClassExpression TSAsExpression TSSatisfiesExpression TSNonNullExpression TSTypeAssertion TSInstantiationExpression JSXElement JSXFragment
+category Type TSKeywordType TSThisType TSTypeReference TSUnionType TSIntersectionType TSFunctionType TSConstructorType TSConditionalType TSInferType TSMappedType TSIndexedAccessType TSTypeLiteral TSArrayType TSTupleType TSNamedTupleMember TSOptionalType TSRestType TSTypeOperator TSTypeQuery TSTypePredicate TSLiteralType TSTemplateLiteralType TSImportType
+category Pattern Identifier ObjectPattern ArrayPattern RestElement AssignmentPattern

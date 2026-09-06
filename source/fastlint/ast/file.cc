@@ -24,6 +24,40 @@ Node *AstFile::make(NodeKind kind, GrammarRef grammar)
   return node;
 }
 
+void AstFile::buildPreorder()
+{
+  m_preorder.clear();
+  if (!m_root) {
+    return;
+  }
+  // Iterative so a deep tree cannot overflow the stack; each frame is the node
+  // plus how far into its children the walk has got.
+  struct Frame {
+    Node *node;
+    uint32_t index;
+    uint32_t nextChild;
+  };
+  Vector<Frame, 64> stack;
+  m_preorder.append({m_root, 0});
+  stack.append({m_root, 0, 0});
+  while (!stack.isEmpty()) {
+    Frame &top = stack[int(stack.size()) - 1];
+    Vector<Node *, 3> &children = top.node->children;
+    while (top.nextChild < children.size() && !children[int(top.nextChild)]) {
+      top.nextChild++;
+    }
+    if (top.nextChild == children.size()) {
+      m_preorder[int(top.index)].subtreeEnd = uint32_t(m_preorder.size());
+      stack.pop_back();
+      continue;
+    }
+    Node *child = children[int(top.nextChild++)];
+    uint32_t index = uint32_t(m_preorder.size());
+    m_preorder.append({child, 0});
+    stack.append({child, index, 0});
+  }
+}
+
 void AstFile::moveComments(const Node *from, const Node *to)
 {
   CommentList moved;

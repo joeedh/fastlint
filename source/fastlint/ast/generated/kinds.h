@@ -192,6 +192,16 @@ enum class Flag : uint32_t {
 
 constexpr int flagCount = 26;
 
+/** Bits of KindInfo::categories. */
+enum class Category : uint8_t {
+  Statement = 1u << 0,
+  Expression = 1u << 1,
+  Type = 1u << 2,
+  Pattern = 1u << 3,
+};
+
+constexpr int categoryCount = 4;
+
 enum class SourceType : uint8_t {
   Script,
   Module,
@@ -339,6 +349,6 @@ enum class AssignmentOperator : uint8_t {
 };
 
 /** FNV-1a of nodes.def; plugins refuse a host with a different value. */
-constexpr uint32_t nodesDefHash = 0x766fe1c1u;
+constexpr uint32_t nodesDefHash = 0xf4d1d474u;
 
 } // namespace fastlint::ast

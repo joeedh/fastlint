@@ -515,14 +515,19 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
     place it by position instead.
 - [x] Generic API + views, including the `FunctionLike` union view
   (generated; `is<T>`/`as<T>` on `Node`, 2026-09-06).
-  - [ ] Convenience predicates on `Node` (`isIdentifier("x")`,
-    `enclosingFunction()`, `ancestors()`, `descendants<T>()`).
+  - [x] Convenience predicates on `Node` (`isIdentifier("x")`,
+    `isStringLiteral("x")`, `enclosingFunction()`, `enclosingStatement()`,
+    `enclosing<T>()`, `ancestors()`, `descendants<T>()`, `firstChild<T>()`;
+    2026-09-06). Backed by `category` lines in nodes.def, generated into
+    `KindInfo::categories`.
 - [x] Comment attachment rule + `Map<const Node *, CommentList>` side table
   (`ast/comments.cc`, 2026-09-06). Found and fixed a scanner bug on the
   way: speculation rewind did not restore the trivia cursor, so tokens
   after a rolled-back probe carried garbage trivia ranges; the fuzzer now
   checks trivia ranges.
-- [ ] Preorder vector + kind-to-rules dispatch.
+- [x] Preorder vector + kind-to-rules dispatch (`AstFile::preorder()`,
+  `ast/dispatch.h` `Dispatcher` with enter/exit listeners per kind;
+  2026-09-06). The rule framework in 6.1 builds on `Dispatcher`.
 - [ ] Binder (scopes/refs) v1.
 - [ ] Fixer API: `replace`, `insertBefore/After`, `remove(CommentPolicy)`,
   `set`, builders, dirty propagation, deferral of fixes into dirty regions.
