@@ -48,20 +48,6 @@ async function loadEnum(file: string): Promise<EnumTable> {
   return { name: exportName, members };
 }
 
-function cppName(name: string): string {
-  // A member such as `Import` is a C++ keyword risk only for a handful of names.
-  const reserved = new Set([
-    "Default",
-    "Delete",
-    "Export",
-    "New",
-    "This",
-    "Void",
-    "Null",
-  ]);
-  return reserved.has(name) ? `${name}_` : name;
-}
-
 export async function emitHeader(): Promise<string> {
   const pkg = JSON.parse(
     fs.readFileSync(path.join(typescriptDir(), "package.json"), "utf8")
@@ -83,7 +69,7 @@ export async function emitHeader(): Promise<string> {
     const table = await loadEnum(file);
     lines.push("", `namespace ${table.name} {`);
     for (const { name, value } of table.members) {
-      lines.push(`constexpr uint32_t ${cppName(name)} = ${value >>> 0}u;`);
+      lines.push(`constexpr uint32_t ${name} = ${value >>> 0}u;`);
     }
     lines.push(`} // namespace ${table.name}`);
   }

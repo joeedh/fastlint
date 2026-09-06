@@ -124,6 +124,10 @@ public:
                              Vector<SymbolResponse> &parameters,
                              string &error);
   bool symbolOfType(int typeId, SymbolResponse &symbol, string &error);
+  bool aliasSymbolOfType(int typeId, SymbolResponse &symbol, string &error);
+  /** Properties of an object type (`TypeFlags::Object`); the server panics on other
+   * kinds. */
+  bool propertiesOfType(int typeId, Vector<SymbolResponse> &properties, string &error);
   bool typeOfSymbol(int symbolId, TypeResponse &type, string &error);
   bool symbolAtPosition(std::string_view file,
                         uint32_t position,

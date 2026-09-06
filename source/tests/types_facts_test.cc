@@ -1,0 +1,259 @@
+#include "fastlint/ast/file.h"
+#include "fastlint/ast/lower.h"
+#include "fastlint/ast/node.h"
+#include "fastlint/syntax/diagnostics.h"
+#include "fastlint/syntax/parser.h"
+#include "fastlint/tsgo/client.h"
+#include "fastlint/tsgo/queries.h"
+#include "fastlint/types/type_facts.h"
+#include "testing/test.h"
+
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
+
+using namespace fastlint;
+using namespace fastlint::types;
+
+namespace {
+
+namespace fs = std::filesystem;
+
+std::string projectDir()
+{
+  return fs::path(FASTLINT_TESTS_DIR).parent_path().generic_string() +
+         "/tests/fixtures/projects/basic";
+}
+
+std::string readText(const std::string &path)
+{
+  std::ifstream in(path, std::ios::binary);
+  std::stringstream buffer;
+  buffer << in.rdbuf();
+  return buffer.str();
+}
+
+std::string str(const string &s)
+{
+  return std::string(s.c_str(), s.size());
+}
+
+/** The fixture project opened in a server, with main.ts parsed by our own front end. */
+struct Fixture {
+  tsgo::Client client;
+  tsgo::SnapshotInfo snapshot;
+  string error;
+  bool ok = false;
+  std::string main = projectDir() + "/src/main.ts";
+  std::string mainText = readText(main);
+  syntax::Diagnostics diagnostics;
+  syntax::GrammarTree tree;
+  ast::AstFile file;
+
+  Fixture() : file(&tree)
+  {
+    tsgo::ClientOptions options;
+    options.cwd = string(projectDir().c_str());
+    ok = client.start(options, error) &&
+         client.openProject((projectDir() + "/tsconfig.json").c_str(), snapshot, error);
+    syntax::Parser parser(mainText, {}, diagnostics);
+    parser.parseFile(tree);
+    ast::lower(tree, file);
+  }
+
+  tsgo::Session session()
+  {
+    return tsgo::Session(
+        client, snapshot.id, std::string_view(snapshot.projects[0].id.c_str()));
+  }
+
+  uint32_t offsetOf(const char *needle, uint32_t skip = 0)
+  {
+    return uint32_t(mainText.find(needle)) + skip;
+  }
+
+  const ast::Node *nodeAt(ast::NodeKind kind, uint32_t start)
+  {
+    for (const ast::PreorderEntry &entry : file.preorder()) {
+      if (entry.node->kind == kind && entry.node->start == start) {
+        return entry.node;
+      }
+    }
+    return nullptr;
+  }
+};
+
+bool haveTsgo()
+{
+  string exe;
+  return tsgo::resolveTsgoExe(std::string_view(projectDir().c_str()), exe);
+}
+
+} // namespace
+
+TEST(types_facts, declaration_file_is_the_handle_tail)
+{
+  CHECK_EQ(std::string(TypeFacts::declarationFile("43.214.c:/dev/x/main.ts")),
+           std::string("c:/dev/x/main.ts"));
+  CHECK_EQ(std::string(TypeFacts::declarationFile("43.214.c:/dev/lib.es5.d.ts")),
+           std::string("c:/dev/lib.es5.d.ts"));
+  CHECK_EQ(std::string(TypeFacts::declarationFile("garbage")), std::string());
+}
+
+TEST_TAGGED(types_facts, answers_rule_questions_from_nodes, "integration")
+{
+  if (!haveTsgo()) {
+    SKIP("no native tsc found");
+  }
+  Fixture fx;
+  CHECK_EQ(str(fx.error), std::string());
+  if (!fx.ok) {
+    return;
+  }
+  tsgo::Session session = fx.session();
+  TypeGraph graph;
+  TypeFacts facts(session, graph);
+  string error;
+  CHECK(facts.beginFile(fx.file, fx.main.c_str(), error));
+
+  uint32_t callStart = fx.offsetOf("  fetchUser(id);", 2);
+  const ast::Node *call = fx.nodeAt(ast::NodeKind::CallExpression, callStart);
+  CHECK(call != nullptr);
+  TypeId promise = facts.typeOf(call);
+  CHECK_EQ(str(facts.lastError()), std::string());
+  CHECK_NE(promise, 0u);
+  CHECK(facts.isPromiseLike(promise));
+  CHECK(!facts.isNullable(promise));
+  CHECK(!facts.isAnyLike(promise));
+  CHECK_EQ(facts.unionMembers(promise).size(), size_t(0));
+  SymbolId promiseSymbol = facts.symbolOf(promise);
+  CHECK_EQ(std::string(facts.text(graph.symbol(promiseSymbol).name)),
+           std::string("Promise"));
+  CHECK(facts.declarationsOf(promiseSymbol).size() > 0);
+  if (facts.declarationsOf(promiseSymbol).size() > 0) {
+    std::string_view handle = facts.text(facts.declarationsOf(promiseSymbol)[0]);
+    CHECK(TypeFacts::declarationFile(handle).ends_with(".d.ts"));
+  }
+  // One hop: the reference carries its type argument, which is our `User`.
+  CHECK(graph.type(promise).childKind == ChildKind::TypeArguments);
+  CHECK_EQ(graph.children(promise).size(), size_t(1));
+  if (graph.children(promise).size() == 1) {
+    SymbolId user = facts.symbolOf(graph.children(promise)[0]);
+    CHECK_EQ(std::string(facts.text(graph.symbol(user).name)), std::string("User"));
+  }
+
+  const ast::Node *maybe =
+      fx.nodeAt(ast::NodeKind::Identifier, fx.offsetOf("maybe !== undefined"));
+  CHECK(maybe != nullptr);
+  TypeId maybeType = facts.typeOf(maybe);
+  CHECK_NE(maybeType, 0u);
+  CHECK(facts.isNullable(maybeType));
+  CHECK(!facts.isPromiseLike(maybeType));
+  CHECK_EQ(facts.unionMembers(maybeType).size(), size_t(2));
+
+  const ast::Node *anything =
+      fx.nodeAt(ast::NodeKind::Identifier, fx.offsetOf("anything.whatever"));
+  CHECK(anything != nullptr);
+  CHECK(facts.isAnyLike(facts.typeOf(anything)));
+
+  const ast::Node *tags =
+      fx.nodeAt(ast::NodeKind::Identifier, fx.offsetOf("of tags)", 3));
+  CHECK(tags != nullptr);
+  CHECK(facts.isArrayLike(facts.typeOf(tags)));
+  CHECK(!facts.isArrayLike(maybeType));
+
+  // `id` in the call and the narrowed `maybe` are both `string`: one interned row.
+  const ast::Node *idArg = fx.nodeAt(ast::NodeKind::Identifier, callStart + 10);
+  const ast::Node *narrowed =
+      fx.nodeAt(ast::NodeKind::Identifier, fx.offsetOf("maybe.toUpperCase"));
+  CHECK(idArg != nullptr);
+  CHECK(narrowed != nullptr);
+  TypeId stringType = facts.typeOf(idArg);
+  CHECK_NE(stringType, 0u);
+  CHECK_EQ(stringType, facts.typeOf(narrowed));
+  CHECK_NE(stringType, maybeType);
+
+  bool assignable = false;
+  CHECK(facts.assignableTo(stringType, maybeType, assignable));
+  CHECK(assignable);
+  CHECK(facts.assignableTo(maybeType, stringType, assignable));
+  CHECK(!assignable);
+
+  const ast::Node *callee = fx.nodeAt(ast::NodeKind::Identifier, callStart);
+  CHECK(callee != nullptr);
+  Vector<Signature> signatures;
+  CHECK(facts.callSignatures(facts.typeOf(callee), signatures));
+  CHECK_EQ(signatures.size(), size_t(1));
+  if (signatures.size() == 1) {
+    CHECK(facts.isPromiseLike(signatures[0].returnType));
+    CHECK_EQ(signatures[0].returnType, promise);
+    CHECK_EQ(signatures[0].parameters.size(), size_t(1));
+    if (signatures[0].parameters.size() == 1) {
+      CHECK_EQ(std::string(facts.text(graph.symbol(signatures[0].parameters[0]).name)),
+               std::string("id"));
+    }
+  }
+  bool stringCallable =
+      facts.callSignatures(stringType, signatures) && !signatures.isEmpty();
+  CHECK(!stringCallable);
+
+  // A node the side table cannot place answers 0 without a round trip.
+  syntax::Diagnostics otherDiagnostics;
+  syntax::GrammarTree otherTree;
+  ast::AstFile otherFile(&otherTree);
+  syntax::Parser otherParser("bar;", {}, otherDiagnostics);
+  otherParser.parseFile(otherTree);
+  ast::Node *otherRoot = ast::lower(otherTree, otherFile);
+  int unmappedBefore = facts.stats().unmappedNodes;
+  CHECK_EQ(facts.typeOf(otherRoot->children[0]), 0u);
+  CHECK_EQ(facts.stats().unmappedNodes, unmappedBefore + 1);
+
+  int fetchesBefore = facts.stats().typeFetches;
+  CHECK_EQ(facts.typeOf(call), promise);
+  CHECK_EQ(facts.stats().typeFetches, fetchesBefore);
+  CHECK(facts.stats().nodeHits > 0);
+  CHECK(graph.typeCount() > 5);
+
+  facts.endFile();
+  CHECK(session.release(error));
+}
+
+TEST_TAGGED(types_facts, prefetch_batches_a_file, "integration")
+{
+  if (!haveTsgo()) {
+    SKIP("no native tsc found");
+  }
+  Fixture fx;
+  CHECK_EQ(str(fx.error), std::string());
+  if (!fx.ok) {
+    return;
+  }
+  tsgo::Session session = fx.session();
+  TypeGraph graph;
+  TypeFacts facts(session, graph);
+  string error;
+  CHECK(facts.beginFile(fx.file, fx.main.c_str(), error));
+
+  Vector<const ast::Node *> identifiers;
+  for (const ast::PreorderEntry &entry : fx.file.preorder()) {
+    if (entry.node->kind == ast::NodeKind::Identifier) {
+      identifiers.append(entry.node);
+    }
+  }
+  CHECK(identifiers.size() > 20);
+  CHECK(facts.prefetch(
+      span<const ast::Node *const>(identifiers.data(), identifiers.size())));
+  CHECK_EQ(str(facts.lastError()), std::string());
+  CHECK_EQ(facts.stats().typeFetches, 1);
+  int typed = 0;
+  for (const ast::Node *node : identifiers) {
+    if (facts.typeOf(node)) {
+      typed++;
+    }
+  }
+  CHECK_EQ(facts.stats().typeFetches, 1);
+  CHECK_EQ(facts.stats().nodeHits, int(identifiers.size()));
+  CHECK(typed > 10);
+  CHECK(session.release(error));
+}

@@ -18,6 +18,8 @@ built both as an N-API addon and as WASM.
   node and flag conventions, recovery, speculation, JSX, the dump format.
 - docs/tsgo-client.md — the C++ client for `tsc --api`: process, framing,
   JSON, version gate, snapshots, node handles and the typed queries.
+- docs/type-facts.md — the interned type graph and the `TypeFacts` questions
+  rules ask; how nodes become tsgo handles and what one hop means.
 - docs/tests.md — the in-house test framework (`fastlint::test`), snapshot
   format, and per-component test strategy.
 - docs/debugging.md — debugging aids per subsystem (dump commands, trace

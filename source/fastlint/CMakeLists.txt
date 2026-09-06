@@ -29,6 +29,8 @@ set(SRC
   tsgo/process.cc
   tsgo/queries.cc
   tsgo/source_file.cc
+  types/type_facts.cc
+  types/type_graph.cc
   version.cc
 
   ast/access.h
@@ -65,6 +67,8 @@ set(SRC
   tsgo/process.h
   tsgo/queries.h
   tsgo/source_file.h
+  types/type_facts.h
+  types/type_graph.h
   version.h
 )
 

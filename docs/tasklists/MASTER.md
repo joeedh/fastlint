@@ -624,13 +624,30 @@ the pieces. Tests: `tsgo_json_test`, `tsgo_msgpack_test`,
   `SyntaxKind`) from the installed typescript package's `dist/enums/`.
 
 ### 5.2 Type facts layer
-- [ ] `TypeFacts` interface rules call: `typeOf(node)`, `isNullable`,
-  `isAnyLike`, `isPromiseLike`, `isArrayLike`, `unionMembers`,
-  `callSignatures`, `returnType`, `assignableTo`, `symbolOf`,
-  `declarationsOf`.
-- [ ] Lazy fetch; per-file working set; flush on file completion.
-- [ ] Interning: structural hash of `TypeResponse` + one hop; `types`,
-  `type_children`, `symbols`, `strings` tables in memory with LRU.
+
+Landed 2026-09-06 under `source/fastlint/types/`; docs/type-facts.md describes
+it. Tests: `types_graph_test` (fast) and `types_facts_test` (`[integration]`).
+
+- [x] `TypeFacts` interface rules call: `typeOf(node)`, `prefetch(nodes)`,
+  `isNullable`, `isAnyLike`, `isPromiseLike`, `isArrayLike`, `unionMembers`,
+  `callSignatures` (each with its interned return type and parameter
+  symbols), `assignableTo`, `symbolOf`, `declarationsOf`,
+  `declarationFile(handle)`.
+- [x] Lazy fetch; per-file working set; flush on file completion.
+  `beginFile` selects the file, the node side table is fetched on the first
+  query, `typeOf` caches per node, `prefetch` issues one
+  `getTypeAtLocations` for a batch, `endFile` drops the working set.
+- [x] Interning: `TypeGraph` rows keyed by a 64-bit structural hash over the
+  row's flags, text, symbol and alias identities and one hop of children
+  (union/intersection members, type arguments). Symbol identity is name,
+  flags and declaration handles. `types`, `type_children`, `symbols` and
+  `strings` live in `Vector`s with a hash `Map` per table; live tsgo ids are
+  tracked per row and dropped with `clearSessionIds()`.
+  - [ ] LRU over type rows once 5.3 can reload them from SQLite; until then
+    the graph is the whole working set and only grows.
+  - [ ] Children interned as members are shallow (no hop of their own). A
+    union nested in a union hashes by its flags alone; decide whether to
+    deepen on demand or accept the collision risk after measuring.
 
 ### 5.3 SQLite store
 - [ ] Vendor sqlite amalgamation via `make.ts deps`; WAL; single writer

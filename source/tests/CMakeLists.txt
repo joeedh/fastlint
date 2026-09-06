@@ -18,6 +18,8 @@ add_fastlint_test(fastlint
     tsgo_json_test.cc
     tsgo_msgpack_test.cc
     tsgo_source_file_test.cc
+    types_facts_test.cc
+    types_graph_test.cc
     version_test.cc
     test_sources.cc
     test_sources.h

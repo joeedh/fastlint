@@ -338,6 +338,34 @@ bool Session::symbolOfType(int typeId, SymbolResponse &symbol, string &error)
   return callSymbol("getSymbolOfType", w, symbol, error);
 }
 
+bool Session::aliasSymbolOfType(int typeId, SymbolResponse &symbol, string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member(typeIdParam("getAliasSymbolOfType"), typeId);
+  return callSymbol("getAliasSymbolOfType", w, symbol, error);
+}
+
+bool Session::propertiesOfType(int typeId,
+                               Vector<SymbolResponse> &properties,
+                               string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member(typeIdParam("getPropertiesOfType"), typeId);
+  w.endObject();
+  JsonDocument result;
+  if (!m_client.call("getPropertiesOfType", w.text(), result, error)) {
+    return false;
+  }
+  properties.clear();
+  const JsonValue *list = result.root();
+  for (int i = 0; list && i < list->size(); i++) {
+    properties.append(SymbolResponse::from(list->at(i)));
+  }
+  return true;
+}
+
 bool Session::typeOfSymbol(int symbolId, TypeResponse &type, string &error)
 {
   JsonWriter w;
