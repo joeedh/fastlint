@@ -797,9 +797,9 @@ NodeId Parser::parseCallChain(NodeId expression, bool stopAtCall)
       break;
     }
     case TokenKind::OpenBracketToken: {
-      uint32_t firstToken = pos();
       m_scanner.scanOne();
-      NodeId node = m_tree->beginNode(NodeKind::ElementAccessExpression, firstToken);
+      NodeId node = m_tree->beginNode(NodeKind::ElementAccessExpression,
+                                      m_tree->node(expression).firstToken);
       m_tree->addChild(expression);
       {
         detail::FlagScope allowIn(m_disallowIn, false);
@@ -816,15 +816,14 @@ NodeId Parser::parseCallChain(NodeId expression, bool stopAtCall)
       NodeKind kind = hasFlags(m_tree->node(expression).flags, FLAG_OPTIONAL_CHAIN)
                           ? NodeKind::OptionalCallExpression
                           : NodeKind::CallExpression;
-      uint32_t firstToken = pos();
-      NodeId node = m_tree->beginNode(kind, firstToken);
+      NodeId node = m_tree->beginNode(kind, m_tree->node(expression).firstToken);
       m_tree->addChild(expression);
       m_tree->addChild(parseArguments());
       expression = m_tree->endNode(node, pos());
       break;
     }
     case TokenKind::QuestionDotToken: {
-      uint32_t firstToken = pos();
+      uint32_t firstToken = m_tree->node(expression).firstToken;
       m_scanner.scanOne();
       if (is(TokenKind::OpenParenToken)) {
         NodeId node = m_tree->beginNode(NodeKind::OptionalCallExpression, firstToken);
