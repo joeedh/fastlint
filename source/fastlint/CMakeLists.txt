@@ -4,6 +4,7 @@ set(SRC
   ast/dispatch.cc
   ast/dump.cc
   ast/file.cc
+  ast/fixer.cc
   ast/generated/tables.cc
   ast/lower.cc
   syntax/parser/declarations.cc
@@ -26,6 +27,7 @@ set(SRC
   ast/dispatch.h
   ast/dump.h
   ast/file.h
+  ast/fixer.h
   ast/generated/kinds.h
   ast/generated/views.h
   ast/kind_info.h

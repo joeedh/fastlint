@@ -353,10 +353,20 @@ Fixers edit the AST. The file owns a `Fixer` that exposes:
 - A removed node is detached (`parent = nullptr`) but its comments stay in
   the side table until the policy moves or drops them.
 
-Fixes are collected as closures during a rule pass and applied after it,
-one at a time in source order. A fix whose target is already dirty from an
-earlier fix in the same pass is deferred to the next pass. This replaces
-ESLint's text-range overlap check with an ancestor-or-self check.
+Fixes are collected as closures during a rule pass (`Fix{target, apply}`)
+and applied after it by `applyFixes`, one at a time in source order of
+their targets. A fix is skipped when its target is dirty (an earlier fix in
+the pass edited it or something below it) or detached (an earlier fix
+replaced or removed it or an ancestor). Skipped fixes are not carried
+over: the next pass runs the rules again over the reprinted file and
+finds them afresh. This replaces ESLint's text-range overlap check. The
+check is on the target alone rather than its ancestors because dirtiness
+propagates to the root, so an ancestor check would serialize every fix.
+
+`Fixer` is constructed over the file (`Fixer fixer(file)`); the builders
+are its methods (`identifier`, `literal`, `member`, `call`, `unary`,
+`binary`, `logical`, `expressionStatement`, `variableDeclaration`, and
+`build(kind, {children})` for the rest). Synthesized nodes start dirty.
 
 ## Comments
 
@@ -371,11 +381,14 @@ ESLint's text-range overlap check with an ancestor-or-self check.
   contains it. Comments before end-of-file trail `Program`.
 - Storage is a side table `Map<const Node *, CommentList>` on the file,
   reached through `file.comments(node)`. Most nodes have no entry.
-- `remove` with the default policy moves the node's leading comments to the
-  next sibling (or to the previous sibling's trailing list when the node is
-  last) and drops its same-line trailing comment. Rules pass a policy to
-  keep the trailing comment or to drop everything, and every policy other
-  than drop-all is lossless.
+- `remove` with the default policy (`CommentPolicy::MoveLeading`) moves the
+  node's leading and dangling comments to the next sibling (or to the
+  previous sibling's trailing list when the node is last, or to the parent
+  as dangling when it was the only element) and drops its same-line
+  trailing comment; a trailing comment on its own line moves with the
+  leading ones. Rules pass `KeepTrailing` to move the same-line trailing
+  comment too, or `DropAll` to drop everything. `KeepTrailing` is
+  lossless.
 - `replace` moves the old node's comments to the new node.
 - Directive comments (`eslint-disable`, `@ts-ignore`, `fastlint-disable`)
   are indexed by position in the grammar tree; rules never look for them by

@@ -538,8 +538,9 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   - [ ] `namespace A.B.C` declares only `A`; nest a scope per segment.
   - [ ] `declare global` bodies declare into the module scope; give them a
     global scope once lib globals exist.
-- [ ] Fixer API: `replace`, `insertBefore/After`, `remove(CommentPolicy)`,
-  `set`, builders, dirty propagation, deferral of fixes into dirty regions.
+- [x] Fixer API (`ast/fixer.h`, 2026-09-06): `replace`, `insertBefore/After`,
+  `append`, `remove(CommentPolicy)`, `set`, builders, dirty propagation,
+  `applyFixes` skipping fixes whose target is dirty or detached.
 - [ ] Templates: compiler, per-string cache, `instantiate` with category
   checks and precedence-aware parenthesization, `match`.
 - [ ] Printer (verbatim for clean, own tokens + children for dirty,
