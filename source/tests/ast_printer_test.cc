@@ -76,7 +76,43 @@ TEST(ast_printer, clean_tree_round_trips_fixtures)
       l.dirtyAll();
       CHECK_EQ(l.print(), std::string(sv(fixture.text)));
     });
+    test::forEachFile(dir, ".tsx", [&](const test::Fixture &fixture) {
+      syntax::Parser::Options options;
+      options.jsx = true;
+      Lowered l(sv(fixture.text), options);
+      CHECK_EQ(l.print(), std::string(sv(fixture.text)));
+      l.dirtyAll();
+      CHECK_EQ(l.print(), std::string(sv(fixture.text)));
+    });
   }
+}
+
+TEST(ast_printer, synthesized_jsx_prints_from_templates)
+{
+  Lowered l("x;");
+  Fixer fixer(l.file);
+  auto jsxName = [&](std::string_view name) {
+    Node *n = fixer.build(NodeKind::JSXIdentifier, {});
+    n->text = l.file.intern(name);
+    return n;
+  };
+  Node *attribute = fixer.build(NodeKind::JSXAttribute,
+                                {jsxName("className"), fixer.stringLiteral("x")});
+  Node *spread = fixer.build(NodeKind::JSXSpreadAttribute, {fixer.identifier("rest")});
+  Node *opening = fixer.build(NodeKind::JSXOpeningElement,
+                              {jsxName("div"), nullptr, attribute, spread});
+  Node *closing = fixer.build(NodeKind::JSXClosingElement, {jsxName("div")});
+  Node *text = fixer.build(NodeKind::JSXText, {});
+  text->text = l.file.intern("hi ");
+  Node *container =
+      fixer.build(NodeKind::JSXExpressionContainer, {fixer.identifier("a")});
+  Node *br = fixer.build(NodeKind::JSXOpeningElement, {jsxName("br"), nullptr});
+  br->setFlag(Flag::SelfClosing);
+  Node *empty = fixer.build(NodeKind::JSXElement, {br, nullptr});
+  Node *element =
+      fixer.build(NodeKind::JSXElement, {opening, closing, text, container, empty});
+  CHECK(fixer.replace(l.statement(0), fixer.expressionStatement(element)));
+  CHECK_EQ(l.print(), "<div className=\"x\" {...rest}>hi {a}<br /></div>;");
 }
 
 TEST(ast_printer, dirty_but_unchanged_tree_round_trips_corpus)

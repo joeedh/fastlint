@@ -636,9 +636,13 @@ from one file.
 - `Identifier` carries `typeAnnotation` as an optional child, matching
   typescript-eslint. The null slot on every identifier costs one pointer and
   keeps ported rules unchanged.
-- JSX kinds are in `nodes.def` from the start but the lowering pass does not
-  populate them in v1. A JSX grammar node lowers to `Error` until JSX
-  lowering lands as its own 4.2 item.
+- JSX lowers to the typescript-eslint kinds with these choices: a
+  self-closing tag is a `JSXElement` whose `openingElement` shares its
+  grammar node and span; `this` in a tag name is a `JSXIdentifier` spelling
+  `this`; `JSXText` carries the raw text; an empty `{}` holds a
+  `JSXEmptyExpression` spanning the text between the braces, so a comment
+  there survives reprinting; an unclosed element has a null
+  `closingElement` and the `incomplete` flag.
 - `dirty` stays a flag. The printer walks clean subtrees under a dirty
   ancestor and checks the flag on each node. Promote it to a per-subtree
   counter only if the printer shows up in a profile.

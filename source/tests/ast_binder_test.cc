@@ -22,9 +22,10 @@ struct Bound {
   Node *root = nullptr;
   Bindings bindings;
 
-  explicit Bound(std::string_view source) : file(&tree)
+  explicit Bound(std::string_view source, syntax::Parser::Options options = {})
+      : file(&tree)
   {
-    syntax::Parser parser(source, {}, diagnostics);
+    syntax::Parser parser(source, options, diagnostics);
     parser.parseFile(tree);
     root = lower(tree, file);
     bind(file, bindings);
@@ -61,6 +62,12 @@ TEST(ast_binder, fixtures)
 {
   test::forEachFile("tests/fixtures/binder", ".ts", [&](const test::Fixture &fixture) {
     Bound b(std::string_view(fixture.text.c_str(), fixture.text.size()));
+    SNAPSHOT(b.dump());
+  });
+  test::forEachFile("tests/fixtures/binder", ".tsx", [&](const test::Fixture &fixture) {
+    syntax::Parser::Options options;
+    options.jsx = true;
+    Bound b(std::string_view(fixture.text.c_str(), fixture.text.size()), options);
     SNAPSHOT(b.dump());
   });
 }

@@ -882,6 +882,10 @@ private:
       req(n, child(ch, 0, &Lowerer::lowerExpression));
       return finish(n);
     }
+    case GK::JsxElement:
+    case GK::JsxSelfClosingElement:
+    case GK::JsxFragment:
+      return lowerJsx(id);
     case GK::OmittedExpression:
       return nullptr;
     case GK::ImportKeyword: {
@@ -898,6 +902,197 @@ private:
       }
       return errorLeaf(id);
     }
+  }
+
+  // ---------------------------------------------------------------------- JSX
+
+  /** An element, a self-closing element or a fragment. */
+  Node *lowerJsx(NodeId id)
+  {
+    span<const NodeId> ch = kids(id);
+    switch (gk(id)) {
+    case GK::JsxFragment: {
+      Node *n = mk(NodeKind::JSXFragment, id);
+      size_t last = ch.size() - 1;
+      bool closed = ch.size() > 1 && gk(ch[last]) == GK::JsxClosingFragment;
+      req(n, ch.size() > 0 ? leaf(NodeKind::JSXOpeningFragment, ch[0]) : nullptr);
+      req(n, closed ? leaf(NodeKind::JSXClosingFragment, ch[last]) : nullptr);
+      for (size_t i = 1; i < ch.size() - (closed ? 1 : 0); i++) {
+        elem(n, jsxChild(ch[i]));
+      }
+      return finish(n);
+    }
+    case GK::JsxSelfClosingElement: {
+      // The element and its opening tag are the same grammar node.
+      Node *n = mk(NodeKind::JSXElement, id);
+      req(n, jsxOpening(id));
+      opt(n, nullptr);
+      return finish(n);
+    }
+    case GK::JsxElement: {
+      Node *n = mk(NodeKind::JSXElement, id);
+      size_t last = ch.size() - 1;
+      bool closed = ch.size() > 1 && gk(ch[last]) == GK::JsxClosingElement;
+      req(n, ch.size() > 0 ? jsxOpening(ch[0]) : nullptr);
+      Node *closing = closed ? jsxClosing(ch[last]) : nullptr;
+      opt(n, closing);
+      if (!closing) {
+        n->setFlag(Flag::Incomplete);
+      }
+      for (size_t i = 1; i < ch.size() - (closed ? 1 : 0); i++) {
+        elem(n, jsxChild(ch[i]));
+      }
+      return finish(n);
+    }
+    default:
+      return errorLeaf(id);
+    }
+  }
+
+  Node *jsxOpening(NodeId id)
+  {
+    span<const NodeId> ch = kids(id);
+    Node *n = mk(NodeKind::JSXOpeningElement, id);
+    req(n, child(ch, 0, &Lowerer::jsxName));
+    size_t attributes = ch.size() > 1 && gk(ch[1]) == GK::TypeArguments ? 2 : 1;
+    opt(n, attributes == 2 ? lowerTypeArguments(ch[1]) : nullptr);
+    if (attributes < ch.size()) {
+      for (NodeId a : kids(ch[attributes])) {
+        elem(n, jsxAttribute(a));
+      }
+    }
+    if (gk(id) == GK::JsxSelfClosingElement) {
+      n->setFlag(Flag::SelfClosing);
+    }
+    return finish(n);
+  }
+
+  /** Null for an unclosed element, whose closing node owns no token. */
+  Node *jsxClosing(NodeId id)
+  {
+    if (g(id).tokenCount == 0) {
+      return nullptr;
+    }
+    span<const NodeId> ch = kids(id);
+    Node *n = mk(NodeKind::JSXClosingElement, id);
+    req(n, child(ch, 0, &Lowerer::jsxName));
+    return finish(n);
+  }
+
+  /** A tag or attribute name: an identifier, `this`, `ns:name` or `a.b.c`. */
+  Node *jsxName(NodeId id)
+  {
+    if (isMissing(id)) {
+      return nullptr;
+    }
+    span<const NodeId> ch = kids(id);
+    switch (gk(id)) {
+    case GK::Identifier:
+    case GK::ThisExpression: {
+      Node *n = mk(NodeKind::JSXIdentifier, id);
+      n->text = nodeText(id);
+      return finish(n);
+    }
+    case GK::JsxNamespacedName: {
+      Node *n = mk(NodeKind::JSXNamespacedName, id);
+      req(n, child(ch, 0, &Lowerer::jsxName));
+      req(n, child(ch, 1, &Lowerer::jsxName));
+      return finish(n);
+    }
+    case GK::PropertyAccessExpression: {
+      Node *n = mk(NodeKind::JSXMemberExpression, id);
+      req(n, child(ch, 0, &Lowerer::jsxName));
+      req(n, child(ch, 1, &Lowerer::jsxName));
+      return finish(n);
+    }
+    default:
+      return errorLeaf(id);
+    }
+  }
+
+  Node *jsxAttribute(NodeId id)
+  {
+    span<const NodeId> ch = kids(id);
+    switch (gk(id)) {
+    case GK::JsxSpreadAttribute: {
+      Node *n = mk(NodeKind::JSXSpreadAttribute, id);
+      req(n, child(ch, 0, &Lowerer::lowerExpression));
+      return finish(n);
+    }
+    case GK::JsxAttribute: {
+      Node *n = mk(NodeKind::JSXAttribute, id);
+      req(n, child(ch, 0, &Lowerer::jsxName));
+      opt(n, child(ch, 1, &Lowerer::jsxAttributeValue));
+      return finish(n);
+    }
+    default:
+      return errorLeaf(id);
+    }
+  }
+
+  Node *jsxAttributeValue(NodeId id)
+  {
+    if (isMissing(id)) {
+      return nullptr;
+    }
+    switch (gk(id)) {
+    case GK::StringLiteral:
+      return literal(id, LiteralKind::String);
+    case GK::JsxExpression:
+      return jsxExpression(id);
+    case GK::JsxElement:
+    case GK::JsxSelfClosingElement:
+    case GK::JsxFragment:
+      return lowerJsx(id);
+    default:
+      return errorLeaf(id);
+    }
+  }
+
+  Node *jsxChild(NodeId id)
+  {
+    switch (gk(id)) {
+    case GK::JsxText: {
+      Node *n = mk(NodeKind::JSXText, id);
+      n->text = nodeText(id);
+      return finish(n);
+    }
+    case GK::JsxExpression:
+      return jsxExpression(id);
+    case GK::JsxElement:
+    case GK::JsxSelfClosingElement:
+    case GK::JsxFragment:
+      return lowerJsx(id);
+    default:
+      return errorLeaf(id);
+    }
+  }
+
+  /** `{expr}`, `{...expr}` or `{}`, whose empty expression owns no token. */
+  Node *jsxExpression(NodeId id)
+  {
+    span<const NodeId> ch = kids(id);
+    if (gflag(id, syntax::FLAG_REST)) {
+      Node *n = mk(NodeKind::JSXSpreadChild, id);
+      req(n, child(ch, 0, &Lowerer::lowerExpression));
+      return finish(n);
+    }
+    Node *n = mk(NodeKind::JSXExpressionContainer, id);
+    Node *expr = child(ch, 0, &Lowerer::lowerExpression);
+    if (!expr && ch.size() == 0) {
+      // Spans the text between the braces so a comment there survives a reprint.
+      uint32_t open = g(id).firstToken;
+      uint32_t close = open + 1;
+      expr = finish(mkRange(NodeKind::JSXEmptyExpression, id, close, close));
+      const syntax::Token &brace = t.tokenAt(open);
+      expr->start = brace.offset + brace.length;
+      expr->end = close < t.tokens().size() ? t.tokenAt(close).offset : expr->start;
+      if (expr->end < expr->start) {
+        expr->end = expr->start;
+      }
+    }
+    req(n, expr);
+    return finish(n);
   }
 
   Node *unary(NodeId id, UnaryOperator op, span<const NodeId> ch)

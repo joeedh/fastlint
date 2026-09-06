@@ -115,6 +115,210 @@
     )
 )
 
+### ast_lower.fixtures / jsx.tsx #1
+(Program sourceType=script @0-284
+  body
+    (VariableDeclaration kind=const @0-87
+      declarations
+        (VariableDeclarator @6-86
+          id (Identifier "a" @6-7
+            typeAnnotation -
+          )
+          init (JSXElement @10-86
+            openingElement (JSXOpeningElement @10-61
+              name (JSXIdentifier "div" @11-14)
+              typeArguments -
+              attributes
+                (JSXAttribute @15-28
+                  name (JSXIdentifier "className" @15-24)
+                  value (Literal "\"x\"" literalKind=string @25-28)
+                )
+                (JSXAttribute @29-41
+                  name (JSXIdentifier "data-id" @29-36)
+                  value (JSXExpressionContainer @37-41
+                    expression (Identifier "id" @38-40
+                      typeAnnotation -
+                    )
+                  )
+                )
+                (JSXSpreadAttribute @42-51
+                  argument (Identifier "rest" @46-50
+                    typeAnnotation -
+                  )
+                )
+                (JSXAttribute @52-60
+                  name (JSXIdentifier "disabled" @52-60)
+                  value -
+                )
+            )
+            closingElement (JSXClosingElement @80-86
+              name (JSXIdentifier "div" @82-85)
+            )
+            children
+              (JSXText "text " @61-66)
+              (JSXExpressionContainer @66-73
+                expression (Identifier "value" @67-72
+                  typeAnnotation -
+                )
+              )
+              (JSXText " " @73-74)
+              (JSXElement @74-80
+                openingElement (JSXOpeningElement :selfClosing @74-80
+                  name (JSXIdentifier "br" @75-77)
+                  typeArguments -
+                )
+                closingElement -
+              )
+          )
+        )
+    )
+    (VariableDeclaration kind=const @88-224
+      declarations
+        (VariableDeclarator @94-223
+          id (Identifier "b" @94-95
+            typeAnnotation -
+          )
+          init (JSXFragment @98-223
+            openingFragment (JSXOpeningFragment @98-100)
+            closingFragment (JSXClosingFragment @220-223)
+            children
+              (JSXText "\n  " @100-103)
+              (JSXElement @103-126
+                openingElement (JSXOpeningElement :selfClosing @103-126
+                  name (JSXMemberExpression @104-111
+                    object (JSXIdentifier "Foo" @104-107)
+                    property (JSXIdentifier "Bar" @108-111)
+                  )
+                  typeArguments (TSTypeParameterInstantiation @111-114
+                    params
+                      (TSTypeReference @112-113
+                        typeName (Identifier "T" @112-113
+                          typeAnnotation -
+                        )
+                        typeArguments -
+                      )
+                  )
+                  attributes
+                    (JSXAttribute @115-123
+                      name (JSXIdentifier "prop" @115-119)
+                      value (Literal "\"p\"" literalKind=string @120-123)
+                    )
+                )
+                closingElement -
+              )
+              (JSXText "\n  " @126-129)
+              (JSXElement @129-153
+                openingElement (JSXOpeningElement :selfClosing @129-153
+                  name (JSXNamespacedName @130-138
+                    namespace (JSXIdentifier "svg" @130-133)
+                    name (JSXIdentifier "rect" @134-138)
+                  )
+                  typeArguments -
+                  attributes
+                    (JSXAttribute @139-150
+                      name (JSXNamespacedName @139-146
+                        namespace (JSXIdentifier "ns" @139-141)
+                        name (JSXIdentifier "attr" @142-146)
+                      )
+                      value (Literal "\"v\"" literalKind=string @147-150)
+                    )
+                )
+                closingElement -
+              )
+              (JSXText "\n  " @153-156)
+              (JSXElement @156-201
+                openingElement (JSXOpeningElement @156-167
+                  name (JSXMemberExpression @157-166
+                    object (JSXIdentifier "this" @157-161)
+                    property (JSXIdentifier "Comp" @162-166)
+                  )
+                  typeArguments -
+                )
+                closingElement (JSXClosingElement @189-201
+                  name (JSXMemberExpression @191-200
+                    object (JSXIdentifier "this" @191-195)
+                    property (JSXIdentifier "Comp" @196-200)
+                  )
+                )
+                children
+                  (JSXExpressionContainer @167-189
+                    expression (JSXEmptyExpression @168-188
+                      ;dangling "/* only a comment */"
+                    )
+                  )
+              )
+              (JSXText "\n  " @201-204)
+              (JSXSpreadChild @204-214
+                expression (Identifier "items" @208-213
+                  typeAnnotation -
+                )
+              )
+              (JSXText "\n  " @214-217)
+              (JSXExpressionContainer @217-219
+                expression (JSXEmptyExpression @218-218)
+              )
+              (JSXText "\n" @219-220)
+          )
+        )
+    )
+    (VariableDeclaration kind=const @225-262
+      declarations
+        (VariableDeclarator @231-261
+          id (Identifier "c" @231-232
+            typeAnnotation -
+          )
+          init (JSXElement @235-261
+            openingElement (JSXOpeningElement @235-257
+              name (JSXIdentifier "A" @236-237)
+              typeArguments -
+              attributes
+                (JSXAttribute @238-245
+                  name (JSXIdentifier "b" @238-239)
+                  value (JSXElement @240-245
+                    openingElement (JSXOpeningElement :selfClosing @240-245
+                      name (JSXIdentifier "C" @241-242)
+                      typeArguments -
+                    )
+                    closingElement -
+                  )
+                )
+                (JSXAttribute @246-256
+                  name (JSXIdentifier "d" @246-247)
+                  value (JSXExpressionContainer @248-256
+                    expression (JSXFragment @249-255
+                      openingFragment (JSXOpeningFragment @249-251)
+                      closingFragment (JSXClosingFragment @252-255)
+                      children
+                        (JSXText "x" @251-252)
+                    )
+                  )
+                )
+            )
+            closingElement (JSXClosingElement @257-261
+              name (JSXIdentifier "A" @259-260)
+            )
+          )
+        )
+    )
+    (VariableDeclaration kind=const @263-284
+      declarations
+        (VariableDeclarator @269-284
+          id (Identifier "d" @269-270
+            typeAnnotation -
+          )
+          init (JSXElement :incomplete @273-284
+            openingElement (JSXOpeningElement @273-283
+              name (JSXIdentifier "Unclosed" @274-282)
+              typeArguments -
+            )
+            closingElement -
+            children
+              (JSXText "\n" @283-284)
+          )
+        )
+    )
+)
+
 ### ast_lower.fixtures / syntax.ts #1
 (Program sourceType=module @0-2431
   body

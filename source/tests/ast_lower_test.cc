@@ -102,6 +102,13 @@ TEST(ast_lower, fixtures)
     CHECK_EQ(checkInvariants(l.root, nullptr), std::string());
     SNAPSHOT(l.dump());
   });
+  test::forEachFile("tests/fixtures/ast", ".tsx", [&](const test::Fixture &fixture) {
+    syntax::Parser::Options options;
+    options.jsx = true;
+    Lowered l(std::string_view(fixture.text.c_str(), fixture.text.size()), options);
+    CHECK_EQ(checkInvariants(l.root, nullptr), std::string());
+    SNAPSHOT(l.dump());
+  });
 }
 
 TEST(ast_lower, spans_cover_annotations)

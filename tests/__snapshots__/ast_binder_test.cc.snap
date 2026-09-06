@@ -1,3 +1,17 @@
+### ast_binder.fixtures / jsx.tsx #1
+module @0-148
+  decl Card@9 import value+type refs=1
+  decl ns@15 import value+type refs=2
+  decl items@37 const value refs=3
+  decl view@56 const value refs=1
+  ref items@37 write+init -> module items@37
+  ref view@56 write+init -> module view@56
+  ref Card@64 read -> module Card@9
+  ref items@76 read -> module items@37
+  ref ns@94 read -> module ns@15
+  ref ns@108 read -> module ns@15
+  ref items@126 read -> module items@37
+
 ### ast_binder.fixtures / scopes.ts #1
 module @0-1776
   decl def@7 import value+type refs=1

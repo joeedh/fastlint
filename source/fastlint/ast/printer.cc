@@ -678,6 +678,7 @@ private:
     }
     case NodeKind::SwitchStatement:
     case NodeKind::TSTypeLiteral:
+    case NodeKind::JSXOpeningElement:
       put(' ');
       break;
     case NodeKind::TemplateLiteral:
@@ -685,6 +686,8 @@ private:
     case NodeKind::Decorators:
     case NodeKind::TSUnionType:
     case NodeKind::TSIntersectionType:
+    case NodeKind::JSXElement:
+    case NodeKind::JSXFragment:
       break;
     default:
       put(", ");
@@ -1973,6 +1976,84 @@ private:
       list(view.parameters(), ", ");
       put(']');
       optional(": ", view.typeAnnotation());
+      break;
+    }
+    case NodeKind::JSXElement: {
+      JSXElement view(n);
+      print(view.openingElement());
+      list(view.children(), "");
+      print(view.closingElement());
+      break;
+    }
+    case NodeKind::JSXFragment: {
+      JSXFragment view(n);
+      print(view.openingFragment());
+      list(view.children(), "");
+      print(view.closingFragment());
+      break;
+    }
+    case NodeKind::JSXOpeningElement: {
+      JSXOpeningElement view(n);
+      put('<');
+      print(view.name());
+      print(view.typeArguments());
+      for (Node *a : view.attributes()) {
+        put(' ');
+        print(a);
+      }
+      put(view.isSelfClosing() ? " />" : ">");
+      break;
+    }
+    case NodeKind::JSXClosingElement:
+      put("</");
+      print(JSXClosingElement(n).name());
+      put('>');
+      break;
+    case NodeKind::JSXOpeningFragment:
+      put("<>");
+      break;
+    case NodeKind::JSXClosingFragment:
+      put("</>");
+      break;
+    case NodeKind::JSXAttribute: {
+      JSXAttribute view(n);
+      print(view.name());
+      optional("=", view.value());
+      break;
+    }
+    case NodeKind::JSXSpreadAttribute:
+      put("{...");
+      print(JSXSpreadAttribute(n).argument());
+      put('}');
+      break;
+    case NodeKind::JSXExpressionContainer:
+      put('{');
+      print(JSXExpressionContainer(n).expression());
+      put('}');
+      break;
+    case NodeKind::JSXEmptyExpression:
+      break;
+    case NodeKind::JSXSpreadChild:
+      put("{...");
+      print(JSXSpreadChild(n).expression());
+      put('}');
+      break;
+    case NodeKind::JSXText:
+    case NodeKind::JSXIdentifier:
+      put(n->text);
+      break;
+    case NodeKind::JSXMemberExpression: {
+      JSXMemberExpression view(n);
+      print(view.object());
+      put('.');
+      print(view.property());
+      break;
+    }
+    case NodeKind::JSXNamespacedName: {
+      JSXNamespacedName view(n);
+      print(view.namespaceName());
+      put(':');
+      print(view.name());
       break;
     }
     case NodeKind::Error:

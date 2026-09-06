@@ -513,8 +513,9 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   union of own tokens and children, `Incomplete` on parents of missing
   required slots. Fixture snapshots in tests/fixtures/ast/ and an
   invariant check over the parser corpus.
-  - [ ] JSX lowering (kinds exist from the start; grammar JSX nodes lower to
-    `Error` until this lands).
+  - [x] JSX lowering (2026-09-06): elements, self-closing elements,
+    fragments, member and namespaced names, attributes, spreads, expression
+    containers, empty expressions, text. Fixture tests/fixtures/ast/jsx.tsx.
   - [ ] An `ErrorNode` in a type slot lowers into the initializer slot;
     place it by position instead.
 - [x] Generic API + views, including the `FunctionLike` union view
@@ -556,7 +557,8 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   list separator rules, style sniffing (semicolons, quotes, indent, line
   ending), span recomputation behind `PrintOptions::updateSpans`. Round-trip
   tests over the fixtures and the corpus, clean and all-dirty.
-  - [ ] Kind templates cover the JSX kinds (they print a marker comment).
+  - [x] Kind templates cover the JSX kinds (2026-09-06); attributes separate
+    with a space, children with nothing.
   - [x] Precedence-aware parenthesization lives in `ast/precedence.h`
     (`needsParens`), used by template instantiate and the `Fixer` builders;
     the printer only honours the `parenthesized` flag.
