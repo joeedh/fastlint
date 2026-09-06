@@ -497,10 +497,12 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   `dirty` stays a flag.
 
 ### 4.2 Implementation
-- [ ] `source/fastlint/ast/nodes.def` + `tools/gen-ast.ts` generating the
-  C++ views, kind names, child-name tables and the dump format (later the C
-  header and TS views for task 7).
-- [ ] `Node`, `AstFile`, `util::Pool<Node, 256>`, `GrammarRef`.
+- [x] `source/fastlint/ast/nodes.def` + `tools/gen-ast.ts` generating the
+  C++ views, kind names, child-name tables and the layout tables
+  (2026-09-06; `node make.ts gen-ast`, `--check` runs in `make.ts check`).
+  Later the C header and TS views for task 7.
+  - [ ] Dump format on top of the tables (with `dump-ast`).
+- [x] `Node`, `AstFile`, `util::Pool<Node, 256>`, `GrammarRef` (2026-09-06).
 - [ ] Lowering pass from the grammar tree, including `Error`/`Missing` and
   the flag/enum fields that replace keyword children.
   - [ ] JSX lowering (kinds exist from the start; grammar JSX nodes lower to

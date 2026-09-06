@@ -41,13 +41,19 @@ struct GrammarRef {
 
 struct Node {
   NodeKind kind;
-  uint16_t flags;
-  uint16_t dirty;      // set on edit, propagated to every ancestor
+  bool dirty;          // set on edit, propagated to every ancestor
+  uint32_t flags;
+  uint32_t data;       // enum fields, one per byte, in nodes.def order
+  string_view text;    // name or raw text for kinds that carry one
   Node *parent;
   GrammarRef grammar;  // {nullptr, kNoNode} for synthesized nodes
   Vector<Node *, 3> children;
 };
 ```
+
+- `text` points into the source for lowered nodes and into the file's
+  string arena for synthesized ones, so `Identifier` and `Literal` read
+  their name without a lookup on either path.
 
 - Allocated from `util::Pool<Node, 256>` owned by the file. The pool is
   released as a unit when the file leaves the parsed-file LRU. Nodes are

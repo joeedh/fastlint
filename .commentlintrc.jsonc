@@ -12,7 +12,7 @@
 
   // Extra gitignore-style patterns to skip, on top of .gitignore and
   // .commentlintignore.
-  "exclude": ["source/tests/ts_sources/**", "vendor/litestl/**"],
+  "exclude": ["source/tests/ts_sources/**", "source/fastlint/ast/generated/**", "vendor/litestl/**"],
 
   // Extra ignore files to read, beyond .gitignore and .commentlintignore.
   // "ignorePath": [".gitignore"],

@@ -1,0 +1,211 @@
+# AST node kinds and layouts. Read by tools/gen-ast.ts, which writes
+# source/fastlint/ast/generated/. docs/ast-design.md explains the shape.
+#
+#   flags <name>...                 bits of Node::flags, in bit order
+#   enum <Name> <value>...          a small enum stored in a byte of Node::data
+#   node <Kind> <children> [: <fields>]
+#   union <Name> <Kind>...          a view over kinds that share field names
+#
+# A child is `name` (required), `name?` (optional, nullptr when absent) or
+# `name...` (the list; at most one, always last; `name...?` allows null
+# elements). A field is a flag name, `text` (the node uses Node::text), or
+# `name=Enum`. Kinds follow typescript-eslint; see the divergence list in
+# the design doc.
+
+flags optional computed shorthand method prefix delegate async generator
+flags expression declare abstract static override definite readonly
+flags directive await const in out tail selfClosing asserts global
+flags parenthesized incomplete
+
+enum SourceType script module
+enum LiteralKind string number bigint boolean null regex
+enum PropertyKind init get set
+enum MethodKind constructor method get set
+enum Accessibility none public private protected
+enum VariableKind var let const using awaitUsing
+enum ImportKind value type
+enum ModuleKind module namespace global
+enum Modifier none plus minus
+enum TypeOperator keyof unique readonly
+enum Keyword any bigint boolean intrinsic never null number object string symbol undefined unknown void
+enum UnaryOperator minus plus not bitwiseNot typeof void delete
+enum UpdateOperator increment decrement
+enum LogicalOperator or and nullish
+enum BinaryOperator equal notEqual strictEqual strictNotEqual less lessEqual greater greaterEqual shiftLeft shiftRight shiftRightUnsigned add subtract multiply divide remainder exponent bitwiseOr bitwiseXor bitwiseAnd in instanceof
+enum AssignmentOperator assign addAssign subtractAssign multiplyAssign divideAssign remainderAssign exponentAssign shiftLeftAssign shiftRightAssign shiftRightUnsignedAssign bitwiseOrAssign bitwiseXorAssign bitwiseAndAssign orAssign andAssign nullishAssign
+
+# Program and names.
+node Program body... : sourceType=SourceType
+node Identifier typeAnnotation? : text optional
+node PrivateIdentifier : text
+node Literal : text literalKind=LiteralKind
+node TemplateLiteral parts...
+node TemplateElement : text tail
+node TaggedTemplateExpression tag typeArguments? quasi
+node ThisExpression
+node Super
+
+# Expressions.
+node ArrayExpression elements...?
+node ObjectExpression properties...
+node Property key value : kind=PropertyKind computed shorthand method
+node SpreadElement argument
+node MemberExpression object property : computed optional
+node CallExpression callee typeArguments? arguments... : optional
+node NewExpression callee typeArguments? arguments...
+node ImportExpression source options?
+node MetaProperty meta property
+node UnaryExpression argument : operator=UnaryOperator
+node UpdateExpression argument : operator=UpdateOperator prefix
+node BinaryExpression left right : operator=BinaryOperator
+node LogicalExpression left right : operator=LogicalOperator
+node AssignmentExpression left right : operator=AssignmentOperator
+node ConditionalExpression test consequent alternate
+node SequenceExpression expressions...
+node AwaitExpression argument
+node YieldExpression argument? : delegate
+
+# Functions share one layout so FunctionLike works over all five.
+node ArrowFunctionExpression id? typeParameters? returnType? body? params... : async generator expression
+node FunctionExpression id? typeParameters? returnType? body? params... : async generator
+node FunctionDeclaration id? typeParameters? returnType? body? params... : async generator declare
+node TSDeclareFunction id? typeParameters? returnType? body? params... : async generator declare
+node TSEmptyBodyFunctionExpression id? typeParameters? returnType? body? params... : async generator
+
+# Classes. Decorators live in a Decorators wrapper so a class keeps one list.
+node ClassDeclaration decorators? id? typeParameters? superClass? superTypeArguments? body implements... : abstract declare
+node ClassExpression decorators? id? typeParameters? superClass? superTypeArguments? body implements... : abstract
+node ClassBody body...
+node Decorators decorators...
+node Decorator expression
+node MethodDefinition decorators? key value : kind=MethodKind accessibility=Accessibility static computed override optional
+node TSAbstractMethodDefinition decorators? key value : kind=MethodKind accessibility=Accessibility static computed override optional
+node PropertyDefinition decorators? key typeAnnotation? value? : accessibility=Accessibility static computed declare readonly definite optional override
+node TSAbstractPropertyDefinition decorators? key typeAnnotation? value? : accessibility=Accessibility static computed declare readonly definite optional override
+node AccessorProperty decorators? key typeAnnotation? value? : accessibility=Accessibility static computed declare readonly definite optional override
+node TSAbstractAccessorProperty decorators? key typeAnnotation? value? : accessibility=Accessibility static computed declare readonly definite optional override
+node StaticBlock body...
+node TSParameterProperty decorators? parameter : accessibility=Accessibility readonly override
+
+# Bindings.
+node VariableDeclaration declarations... : kind=VariableKind declare
+node VariableDeclarator id init? : definite
+node ObjectPattern typeAnnotation? properties...
+node ArrayPattern typeAnnotation? elements...?
+node RestElement argument typeAnnotation?
+node AssignmentPattern left right
+
+# Statements.
+node ExpressionStatement expression : directive
+node BlockStatement body...
+node EmptyStatement
+node DebuggerStatement
+node IfStatement test consequent alternate?
+node ForStatement init? test? update? body
+node ForInStatement left right body
+node ForOfStatement left right body : await
+node WhileStatement test body
+node DoWhileStatement body test
+node ReturnStatement argument?
+node ThrowStatement argument
+node BreakStatement label?
+node ContinueStatement label?
+node LabeledStatement label body
+node SwitchStatement discriminant cases...
+node SwitchCase test? consequent...
+node TryStatement block handler? finalizer?
+node CatchClause param? body
+node WithStatement object body
+
+# Modules. Import attributes take a wrapper so a declaration keeps one list.
+node ImportDeclaration source attributes? specifiers... : importKind=ImportKind
+node ImportSpecifier imported local : importKind=ImportKind
+node ImportDefaultSpecifier local
+node ImportNamespaceSpecifier local
+node ImportAttributes attributes...
+node ImportAttribute key value
+node ExportNamedDeclaration declaration? source? attributes? specifiers... : exportKind=ImportKind
+node ExportSpecifier local exported : exportKind=ImportKind
+node ExportDefaultDeclaration declaration : exportKind=ImportKind
+node ExportAllDeclaration exported? source attributes? : exportKind=ImportKind
+
+# JSX. Kinds exist from the start; lowering lands later (MASTER.md 4.2).
+node JSXElement openingElement closingElement? children...
+node JSXFragment openingFragment closingFragment children...
+node JSXOpeningElement name typeArguments? attributes... : selfClosing
+node JSXClosingElement name
+node JSXOpeningFragment
+node JSXClosingFragment
+node JSXAttribute name value?
+node JSXSpreadAttribute argument
+node JSXExpressionContainer expression
+node JSXEmptyExpression
+node JSXSpreadChild expression
+node JSXText : text
+node JSXIdentifier : text
+node JSXMemberExpression object property
+node JSXNamespacedName namespace name
+
+# TypeScript expressions and declarations.
+node TSAsExpression expression typeAnnotation
+node TSSatisfiesExpression expression typeAnnotation
+node TSNonNullExpression expression
+node TSTypeAssertion typeAnnotation expression
+node TSInstantiationExpression expression typeArguments
+node TSTypeParameterDeclaration params...
+node TSTypeParameter constraint? default? : text in out const
+node TSTypeParameterInstantiation params...
+node TSInterfaceDeclaration id typeParameters? body extends... : declare
+node TSInterfaceBody body...
+node TSInterfaceHeritage expression typeArguments?
+node TSClassImplements expression typeArguments?
+node TSTypeAliasDeclaration id typeParameters? typeAnnotation : declare
+node TSEnumDeclaration id members... : const declare
+node TSEnumMember id initializer? : computed
+node TSModuleDeclaration id body? : kind=ModuleKind declare
+node TSModuleBlock body...
+node TSImportEqualsDeclaration id moduleReference : importKind=ImportKind
+node TSExternalModuleReference expression
+node TSExportAssignment expression
+node TSNamespaceExportDeclaration id
+
+# TypeScript types.
+node TSKeywordType : keyword=Keyword
+node TSThisType
+node TSTypeReference typeName typeArguments?
+node TSQualifiedName left right
+node TSUnionType types...
+node TSIntersectionType types...
+node TSFunctionType typeParameters? returnType? params...
+node TSConstructorType typeParameters? returnType? params... : abstract
+node TSConditionalType checkType extendsType trueType falseType
+node TSInferType typeParameter
+node TSMappedType typeParameter nameType? typeAnnotation? : readonlyModifier=Modifier optionalModifier=Modifier
+node TSIndexedAccessType objectType indexType
+node TSTypeLiteral members...
+node TSArrayType elementType
+node TSTupleType elementTypes...
+node TSNamedTupleMember label elementType : optional
+node TSOptionalType typeAnnotation
+node TSRestType typeAnnotation
+node TSTypeOperator typeAnnotation : operator=TypeOperator
+node TSTypeQuery exprName typeArguments?
+node TSTypePredicate parameterName typeAnnotation? : asserts
+node TSLiteralType literal
+node TSTemplateLiteralType parts...
+node TSImportType argument qualifier? typeArguments?
+node TSPropertySignature key typeAnnotation? : computed optional readonly
+node TSMethodSignature key typeParameters? returnType? params... : kind=MethodKind computed optional
+node TSCallSignatureDeclaration typeParameters? returnType? params...
+node TSConstructSignatureDeclaration typeParameters? returnType? params...
+node TSIndexSignature typeAnnotation? parameters... : readonly static
+
+# Recovery. A Missing child is nullptr in its slot plus `incomplete` on the parent.
+node Error
+
+union FunctionLike FunctionDeclaration FunctionExpression ArrowFunctionExpression TSDeclareFunction TSEmptyBodyFunctionExpression
+union ClassLike ClassDeclaration ClassExpression
+union Loop ForStatement ForInStatement ForOfStatement WhileStatement DoWhileStatement
+union NamedDeclaration FunctionDeclaration ClassDeclaration TSInterfaceDeclaration TSTypeAliasDeclaration TSEnumDeclaration TSModuleDeclaration
+union ClassMember MethodDefinition TSAbstractMethodDefinition PropertyDefinition TSAbstractPropertyDefinition AccessorProperty TSAbstractAccessorProperty
+union SignatureLike TSFunctionType TSConstructorType TSCallSignatureDeclaration TSConstructSignatureDeclaration TSMethodSignature

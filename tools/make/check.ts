@@ -3,6 +3,7 @@ import { color, fail, info, step } from "./lib/log.ts";
 import { formatAll } from "./format.ts";
 import { presetOptions, resolvePreset, type PresetArgs } from "./lib/preset.ts";
 import { buildPreset } from "./build.ts";
+import { generate } from "../gen-ast.ts";
 import { runCppTests, runTsTests } from "./test.ts";
 
 interface Args extends PresetArgs {
@@ -22,6 +23,10 @@ export const command: CommandModule<object, Args> = {
     const preset = resolvePreset(argv);
 
     await formatAll(true);
+    step("gen-ast --check");
+    const generated = generate(true);
+    if (generated.changed.length > 0)
+      fail("generated AST files are stale; run `node make.ts gen-ast`");
     await buildPreset(preset);
 
     const cppOk = await runCppTests(preset, {

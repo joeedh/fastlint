@@ -1,4 +1,6 @@
 set(SRC
+  ast/file.cc
+  ast/generated/tables.cc
   syntax/parser/declarations.cc
   syntax/parser/dump.cc
   syntax/parser/expressions.cc
@@ -13,6 +15,13 @@ set(SRC
   syntax/unicode.cc
   version.cc
 
+  ast/access.h
+  ast/file.h
+  ast/generated/kinds.h
+  ast/generated/views.h
+  ast/kind_info.h
+  ast/node.h
+  ast/nodes.def
   syntax/diagnostics.h
   syntax/node_kind.def
   syntax/parser.h
