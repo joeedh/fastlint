@@ -513,6 +513,28 @@ fix.replace(call, n);
 - Rules that are "find this shape, rewrite to that shape" are a `match`
   followed by an `instantiate` with the same `TemplateArgs`.
 
+## Fixpoint driver
+
+`runToFixpoint` (`ast/fixpoint.h`) owns the loop that turns proposed fixes
+into final text.
+
+- Each pass parses the current text, lowers it, binds it and hands a `Pass`
+  (grammar tree, `AstFile`, `Bindings`, pass index, fix list) to the
+  callback. The rule layer fills the fix list; nothing in the driver knows
+  about rules.
+- The fixes are applied in source order by `applyFixes`, so a fix whose
+  target an earlier fix dirtied or detached waits for the next pass, where
+  the reprinted and reparsed file shows it whether it still applies.
+- The file is printed and the loop repeats on the printed text. It stops
+  when a pass proposes nothing, when the applied fixes leave the text
+  unchanged, or after `maxPasses` (10 by default, as in ESLint), and the
+  report says which.
+- A pass whose output fails to parse is thrown away: the report marks
+  `reverted` and the text from before that pass stands. A file that already
+  has syntax errors gets one pass for diagnostics and no fixes.
+- Bindings, positions and trees are rebuilt every pass, so a rule may hold
+  `Node *` and `Declaration *` within a pass and never across passes.
+
 ## Ownership and lifetime
 
 - One `AstFile` per source file owns the node pool, the preorder vector, the

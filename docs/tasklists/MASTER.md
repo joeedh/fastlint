@@ -560,7 +560,10 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   - [x] Precedence-aware parenthesization lives in `ast/precedence.h`
     (`needsParens`), used by template instantiate and the `Fixer` builders;
     the printer only honours the `parenthesized` flag.
-- [ ] Fixpoint driver with rebind and reparse between passes.
+- [x] Fixpoint driver (`ast/fixpoint.h`, 2026-09-06): parse, lower, bind,
+  run the pass callback, apply, print, repeat; stops on no fixes, unchanged
+  text or `maxPasses`; reverts a pass whose output fails to parse; one
+  fix-free pass for files with syntax errors.
 - [ ] Tests: round-trip (parse → lower → print == source for every corpus
   file), fixer unit tests with comment-preservation cases, template
   instantiate/match cases (`ast_template_test.cc`, done), binder snapshot
