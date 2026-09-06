@@ -1,0 +1,2996 @@
+### ast_lower.fixtures / syntax.ts #1
+(Program sourceType=module @0-2431
+  body
+    (ExpressionStatement :directive @0-13
+      expression (Literal "\"use strict\"" literalKind=string @0-12)
+    )
+    (ImportDeclaration importKind=value @14-78
+      source (Literal "\"mod\"" literalKind=string @50-55)
+      attributes (ImportAttributes @61-77
+        attributes
+          (ImportAttribute @63-75
+            key (Identifier "type" @63-67
+              typeAnnotation -
+            )
+            value (Literal "\"json\"" literalKind=string @69-75)
+          )
+      )
+      specifiers
+        (ImportDefaultSpecifier @21-24
+          local (Identifier "def" @21-24
+            typeAnnotation -
+          )
+        )
+        (ImportSpecifier importKind=value @28-34
+          imported (Identifier "a" @28-29
+            typeAnnotation -
+          )
+          local (Identifier "b" @33-34
+            typeAnnotation -
+          )
+        )
+        (ImportSpecifier importKind=type @36-42
+          imported (Identifier "C" @41-42
+            typeAnnotation -
+          )
+          local (Identifier "C" @41-42
+            typeAnnotation -
+          )
+        )
+    )
+    (ImportDeclaration importKind=value @79-104
+      source (Literal "\"ns\"" literalKind=string @99-103)
+      attributes -
+      specifiers
+        (ImportNamespaceSpecifier @86-93
+          local (Identifier "ns" @91-93
+            typeAnnotation -
+          )
+        )
+    )
+    (ImportDeclaration importKind=type @105-132
+      source (Literal "\"t\"" literalKind=string @128-131)
+      attributes -
+      specifiers
+        (ImportSpecifier importKind=value @119-120
+          imported (Identifier "T" @119-120
+            typeAnnotation -
+          )
+          local (Identifier "T" @119-120
+            typeAnnotation -
+          )
+        )
+    )
+    (TSImportEqualsDeclaration importKind=value @133-158
+      id (Identifier "eq" @140-142
+        typeAnnotation -
+      )
+      moduleReference (TSExternalModuleReference @145-157
+        expression (Literal "\"x\"" literalKind=string @153-156)
+      )
+    )
+    (TSImportEqualsDeclaration importKind=value @159-176
+      id (Identifier "eqn" @166-169
+        typeAnnotation -
+      )
+      moduleReference (TSQualifiedName @172-175
+        left (Identifier "A" @172-173
+          typeAnnotation -
+        )
+        right (Identifier "B" @174-175
+          typeAnnotation -
+        )
+      )
+    )
+    (ExportNamedDeclaration exportKind=value @177-200
+      declaration -
+      source -
+      attributes -
+      specifiers
+        (ExportSpecifier exportKind=value @186-192
+          local (Identifier "b" @186-187
+            typeAnnotation -
+          )
+          exported (Identifier "c" @191-192
+            typeAnnotation -
+          )
+        )
+        (ExportSpecifier exportKind=value @194-197
+          local (Identifier "def" @194-197
+            typeAnnotation -
+          )
+          exported (Identifier "def" @194-197
+            typeAnnotation -
+          )
+        )
+    )
+    (ExportAllDeclaration exportKind=value @201-228
+      exported (Identifier "all" @213-216
+        typeAnnotation -
+      )
+      source (Literal "\"all\"" literalKind=string @222-227)
+      attributes -
+    )
+    (ExportAllDeclaration exportKind=value @229-250
+      exported -
+      source (Literal "\"star\"" literalKind=string @243-249)
+      attributes -
+    )
+    (ExportDefaultDeclaration exportKind=value @251-343
+      declaration (FunctionDeclaration @266-343
+        id (Identifier "fd" @275-277
+          typeAnnotation -
+        )
+        typeParameters (TSTypeParameterDeclaration @277-294
+          params
+            (TSTypeParameter "T" @278-293
+              constraint (TSTypeReference @288-289
+                typeName (Identifier "U" @288-289
+                  typeAnnotation -
+                )
+                typeArguments -
+              )
+              default (TSTypeReference @292-293
+                typeName (Identifier "V" @292-293
+                  typeAnnotation -
+                )
+                typeArguments -
+              )
+            )
+        )
+        returnType (TSKeywordType keyword=void @336-340)
+        body (BlockStatement @341-343)
+        params
+          (Identifier "this" @295-302
+            typeAnnotation (TSTypeReference @301-302
+              typeName (Identifier "X" @301-302
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+          )
+          (Identifier "a" :optional @304-314
+            typeAnnotation (TSKeywordType keyword=number @308-314)
+          )
+          (RestElement @316-333
+            argument (Identifier "rest" @319-323
+              typeAnnotation -
+            )
+            typeAnnotation (TSArrayType @325-333
+              elementType (TSKeywordType keyword=string @325-331)
+            )
+          )
+      )
+    )
+    (ExportNamedDeclaration exportKind=value @344-374
+      declaration (VariableDeclaration kind=const @351-374
+        declarations
+          (VariableDeclarator @357-362
+            id (Identifier "k" @357-358
+              typeAnnotation -
+            )
+            init (Literal "1" literalKind=number @361-362)
+          )
+          (VariableDeclarator @364-373
+            id (Identifier "l" @364-373
+              typeAnnotation (TSKeywordType keyword=number @367-373)
+            )
+            init -
+          )
+      )
+      source -
+      attributes -
+    )
+    (ExportNamedDeclaration exportKind=value @375-407
+      declaration (TSTypeAliasDeclaration @382-407
+        id (Identifier "Alias" @387-392
+          typeAnnotation -
+        )
+        typeParameters (TSTypeParameterDeclaration @392-395
+          params
+            (TSTypeParameter "T" @393-394
+              constraint -
+              default -
+            )
+        )
+        typeAnnotation (TSUnionType @398-406
+          types
+            (TSTypeReference @398-399
+              typeName (Identifier "T" @398-399
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+            (TSKeywordType keyword=null @402-406)
+        )
+      )
+      source -
+      attributes -
+    )
+    (TSExportAssignment @408-421
+      expression (Identifier "foo" @417-420
+        typeAnnotation -
+      )
+    )
+    (TSNamespaceExportDeclaration @422-445
+      id (Identifier "NS" @442-444
+        typeAnnotation -
+      )
+    )
+    (VariableDeclaration kind=let @446-456
+      declarations
+        (VariableDeclarator @450-455
+          id (Identifier "x" @450-451
+            typeAnnotation -
+          )
+          init (Literal "1" literalKind=number @454-455)
+        )
+    )
+    (VariableDeclaration kind=var @457-463
+      declarations
+        (VariableDeclarator @461-462
+          id (Identifier "y" @461-462
+            typeAnnotation -
+          )
+          init -
+        )
+    )
+    (VariableDeclaration kind=const @464-524
+      declarations
+        (VariableDeclarator @470-497
+          id (ObjectPattern @470-491
+            typeAnnotation -
+            properties
+              (Property :shorthand kind=init @472-473
+                key (Identifier "p" @472-473
+                  typeAnnotation -
+                )
+                value (Identifier "p" @472-473
+                  typeAnnotation -
+                )
+              )
+              (Property kind=init @475-483
+                key (Identifier "q" @475-476
+                  typeAnnotation -
+                )
+                value (AssignmentPattern @478-483
+                  left (Identifier "r" @478-479
+                    typeAnnotation -
+                  )
+                  right (Literal "2" literalKind=number @482-483)
+                )
+              )
+              (RestElement @485-489
+                argument (Identifier "s" @488-489
+                  typeAnnotation -
+                )
+                typeAnnotation -
+              )
+          )
+          init (Identifier "obj" @494-497
+            typeAnnotation -
+          )
+        )
+        (VariableDeclarator @499-523
+          id (ArrayPattern @499-517
+            typeAnnotation -
+            elements
+              (Identifier "u" @500-501
+                typeAnnotation -
+              )
+              -
+              (AssignmentPattern @505-510
+                left (Identifier "w" @505-506
+                  typeAnnotation -
+                )
+                right (Literal "3" literalKind=number @509-510)
+              )
+              (RestElement @512-516
+                argument (Identifier "v" @515-516
+                  typeAnnotation -
+                )
+                typeAnnotation -
+              )
+          )
+          init (Identifier "arr" @520-523
+            typeAnnotation -
+          )
+        )
+    )
+    (VariableDeclaration kind=using @525-543
+      declarations
+        (VariableDeclarator @531-542
+          id (Identifier "res" @531-534
+            typeAnnotation -
+          )
+          init (CallExpression @537-542
+            callee (Identifier "get" @537-540
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+        )
+    )
+    (VariableDeclaration kind=awaitUsing @544-569
+      declarations
+        (VariableDeclarator @556-568
+          id (Identifier "ares" @556-560
+            typeAnnotation -
+          )
+          init (CallExpression @563-568
+            callee (Identifier "get" @563-566
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+        )
+    )
+    (VariableDeclaration :declare kind=const @570-595
+      declarations
+        (VariableDeclarator @584-594
+          id (Identifier "dc" @584-594
+            typeAnnotation (TSKeywordType keyword=number @588-594)
+          )
+          init -
+        )
+    )
+    (ExpressionStatement @596-612
+      expression (AssignmentExpression operator=assign @596-611
+        left (Identifier "x" @596-597
+          typeAnnotation -
+        )
+        right (AssignmentExpression operator=addAssign @600-611
+          left (Identifier "y" @600-601
+            typeAnnotation -
+          )
+          right (BinaryExpression operator=exponent @605-611
+            left (Literal "2" literalKind=number @605-606)
+            right (Literal "3" literalKind=number @610-611)
+          )
+        )
+      )
+    )
+    (ExpressionStatement @613-628
+      expression (CallExpression :optional @613-627
+        callee (MemberExpression :optional :computed @613-622
+          object (MemberExpression :optional @613-617
+            object (Identifier "a" @613-614
+              typeAnnotation -
+            )
+            property (Identifier "b" @616-617
+              typeAnnotation -
+            )
+          )
+          property (Identifier "c" @620-621
+            typeAnnotation -
+          )
+        )
+        typeArguments -
+        arguments
+          (Identifier "d" @625-626
+            typeAnnotation -
+          )
+      )
+    )
+    (ExpressionStatement @629-652
+      expression (NewExpression @629-651
+        callee (Identifier "Foo" @633-636
+          typeAnnotation -
+        )
+        typeArguments (TSTypeParameterInstantiation @636-639
+          params
+            (TSTypeReference @637-638
+              typeName (Identifier "T" @637-638
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+        )
+        arguments
+          (Literal "1" literalKind=number @640-641)
+          (SpreadElement @643-650
+            argument (Identifier "args" @646-650
+              typeAnnotation -
+            )
+          )
+      )
+    )
+    (ExpressionStatement @653-661
+      expression (NewExpression @653-660
+        callee (Identifier "Bar" @657-660
+          typeAnnotation -
+        )
+        typeArguments -
+      )
+    )
+    (ExpressionStatement @662-690
+      expression (ImportExpression @662-689
+        source (Literal "\"mod\"" literalKind=string @669-674)
+        options (ObjectExpression @676-688
+          properties
+            (Property kind=init @678-686
+              key (Identifier "with" @678-682
+                typeAnnotation -
+              )
+              value (ObjectExpression @684-686)
+            )
+        )
+      )
+    )
+    (ExpressionStatement @691-707
+      expression (MemberExpression @691-706
+        object (MetaProperty @691-702
+          meta (Identifier "import" @691-697
+            typeAnnotation -
+          )
+          property (Identifier "meta" @698-702
+            typeAnnotation -
+          )
+        )
+        property (Identifier "url" @703-706
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @708-719
+      expression (MetaProperty @708-718
+        meta (Identifier "new" @708-711
+          typeAnnotation -
+        )
+        property (Identifier "target" @712-718
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @720-723
+      expression (UnaryExpression operator=minus @720-722
+        argument (Identifier "x" @721-722
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @724-727
+      expression (UnaryExpression operator=plus @724-726
+        argument (Identifier "x" @725-726
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @728-731
+      expression (UnaryExpression operator=not @728-730
+        argument (Identifier "x" @729-730
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @732-735
+      expression (UnaryExpression operator=bitwiseNot @732-734
+        argument (Identifier "x" @733-734
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @736-745
+      expression (UnaryExpression operator=typeof @736-744
+        argument (Identifier "x" @743-744
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @746-753
+      expression (UnaryExpression operator=void @746-752
+        argument (Identifier "x" @751-752
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @754-765
+      expression (UnaryExpression operator=delete @754-764
+        argument (MemberExpression @761-764
+          object (Identifier "x" @761-762
+            typeAnnotation -
+          )
+          property (Identifier "y" @763-764
+            typeAnnotation -
+          )
+        )
+      )
+    )
+    (ExpressionStatement @766-770
+      expression (UpdateExpression :prefix operator=increment @766-769
+        argument (Identifier "x" @768-769
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @771-775
+      expression (UpdateExpression operator=decrement @771-774
+        argument (Identifier "x" @771-772
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @776-784
+      expression (AwaitExpression @776-783
+        argument (Identifier "p" @782-783
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @785-795
+      expression (ConditionalExpression @785-794
+        test (Identifier "a" @785-786
+          typeAnnotation -
+        )
+        consequent (Identifier "b" @789-790
+          typeAnnotation -
+        )
+        alternate (Identifier "c" @793-794
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @796-803
+      expression (SequenceExpression :parenthesized @796-802
+        expressions
+          (Identifier "a" @797-798
+            typeAnnotation -
+          )
+          (Identifier "b" @800-801
+            typeAnnotation -
+          )
+      )
+    )
+    (ExpressionStatement @804-821
+      expression (LogicalExpression operator=nullish @804-820
+        left (LogicalExpression operator=or @804-815
+          left (LogicalExpression operator=and @804-810
+            left (Identifier "a" @804-805
+              typeAnnotation -
+            )
+            right (Identifier "b" @809-810
+              typeAnnotation -
+            )
+          )
+          right (Identifier "c" @814-815
+            typeAnnotation -
+          )
+        )
+        right (Identifier "d" @819-820
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @822-837
+      expression (BinaryExpression operator=instanceof @822-836
+        left (Identifier "a" @822-823
+          typeAnnotation -
+        )
+        right (Identifier "B" @835-836
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @838-845
+      expression (BinaryExpression operator=in @838-844
+        left (Identifier "a" @838-839
+          typeAnnotation -
+        )
+        right (Identifier "b" @843-844
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @846-860
+      expression (TemplateLiteral @846-859
+        parts
+          (TemplateElement "t" @846-850)
+          (Identifier "x" @850-851
+            typeAnnotation -
+          )
+          (TemplateElement "m" @851-855)
+          (Identifier "y" @855-856
+            typeAnnotation -
+          )
+          (TemplateElement "e" :tail @856-859)
+      )
+    )
+    (ExpressionStatement @861-871
+      expression (TaggedTemplateExpression @861-870
+        tag (Identifier "tag" @861-864
+          typeAnnotation -
+        )
+        typeArguments (TSTypeParameterInstantiation @864-867
+          params
+            (TSTypeReference @865-866
+              typeName (Identifier "T" @865-866
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+        )
+        quasi (TemplateLiteral @867-870
+          parts
+            (TemplateElement "x" :tail @867-870)
+        )
+      )
+    )
+    (ExpressionStatement @872-884
+      expression (ArrayExpression @872-883
+        elements
+          (Literal "1" literalKind=number @873-874)
+          -
+          (SpreadElement @878-882
+            argument (Identifier "s" @881-882
+              typeAnnotation -
+            )
+          )
+      )
+    )
+    (ExpressionStatement @885-962
+      expression (ObjectExpression :parenthesized @885-961
+        properties
+          (Property :shorthand kind=init @888-889
+            key (Identifier "a" @888-889
+              typeAnnotation -
+            )
+            value (Identifier "a" @888-889
+              typeAnnotation -
+            )
+          )
+          (Property kind=init @891-895
+            key (Identifier "b" @891-892
+              typeAnnotation -
+            )
+            value (Literal "1" literalKind=number @894-895)
+          )
+          (Property :computed kind=init @897-903
+            key (Identifier "c" @898-899
+              typeAnnotation -
+            )
+            value (Literal "2" literalKind=number @902-903)
+          )
+          (SpreadElement @905-909
+            argument (Identifier "s" @908-909
+              typeAnnotation -
+            )
+          )
+          (Property :method kind=init @911-917
+            key (Identifier "m" @911-912
+              typeAnnotation -
+            )
+            value (FunctionExpression @912-917
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @915-917)
+            )
+          )
+          (Property kind=get @919-929
+            key (Identifier "g" @923-924
+              typeAnnotation -
+            )
+            value (FunctionExpression @924-929
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @927-929)
+            )
+          )
+          (Property kind=set @931-942
+            key (Identifier "g" @935-936
+              typeAnnotation -
+            )
+            value (FunctionExpression @936-942
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @940-942)
+              params
+                (Identifier "v" @937-938
+                  typeAnnotation -
+                )
+            )
+          )
+          (Property :method kind=init @944-958
+            key (Identifier "ag" @951-953
+              typeAnnotation -
+            )
+            value (FunctionExpression :async :generator @953-958
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @956-958)
+            )
+          )
+      )
+    )
+    (ExpressionStatement @963-971
+      expression (MemberExpression @963-970
+        object (Identifier "o" @963-964
+          typeAnnotation -
+        )
+        property (PrivateIdentifier "priv" @965-970)
+      )
+    )
+    (ExpressionStatement @972-980
+      expression (MemberExpression @972-979
+        object (Super @972-977)
+        property (Identifier "x" @978-979
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @981-988
+      expression (MemberExpression @981-987
+        object (ThisExpression @981-985)
+        property (Identifier "y" @986-987
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @989-994
+      expression (Literal "null" literalKind=null @989-993)
+    )
+    (ExpressionStatement @995-1000
+      expression (Literal "true" literalKind=boolean @995-999)
+    )
+    (ExpressionStatement @1001-1007
+      expression (Literal "false" literalKind=boolean @1001-1006)
+    )
+    (ExpressionStatement @1008-1012
+      expression (Literal "12n" literalKind=bigint @1008-1011)
+    )
+    (ExpressionStatement @1013-1019
+      expression (Literal "/re/g" literalKind=regex @1013-1018)
+    )
+    (ExpressionStatement @1020-1026
+      expression (Literal "\"str\"" literalKind=string @1020-1025)
+    )
+    (ExpressionStatement @1027-1034
+      expression (TSAsExpression @1027-1033
+        expression (Identifier "x" @1027-1028
+          typeAnnotation -
+        )
+        typeAnnotation (TSTypeReference @1032-1033
+          typeName (Identifier "T" @1032-1033
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+      )
+    )
+    (ExpressionStatement @1035-1049
+      expression (TSSatisfiesExpression @1035-1048
+        expression (Identifier "x" @1035-1036
+          typeAnnotation -
+        )
+        typeAnnotation (TSTypeReference @1047-1048
+          typeName (Identifier "T" @1047-1048
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+      )
+    )
+    (ExpressionStatement @1050-1053
+      expression (TSNonNullExpression @1050-1052
+        expression (Identifier "x" @1050-1051
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @1054-1059
+      expression (TSTypeAssertion @1054-1058
+        typeAnnotation (TSTypeReference @1055-1056
+          typeName (Identifier "T" @1055-1056
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        expression (Identifier "x" @1057-1058
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @1060-1065
+      expression (TSInstantiationExpression @1060-1064
+        expression (Identifier "f" @1060-1061
+          typeAnnotation -
+        )
+        typeArguments (TSTypeParameterInstantiation @1061-1064
+          params
+            (TSTypeReference @1062-1063
+              typeName (Identifier "T" @1062-1063
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+        )
+      )
+    )
+    (FunctionDeclaration :generator @1066-1102
+      id (Identifier "gen" @1076-1079
+        typeAnnotation -
+      )
+      typeParameters -
+      returnType -
+      body (BlockStatement @1082-1102
+        body
+          (ExpressionStatement @1084-1090
+            expression (YieldExpression @1084-1089
+              argument -
+            )
+          )
+          (ExpressionStatement @1091-1100
+            expression (YieldExpression :delegate @1091-1099
+              argument (Identifier "a" @1098-1099
+                typeAnnotation -
+              )
+            )
+          )
+      )
+    )
+    (ExpressionStatement @1103-1118
+      expression (ArrowFunctionExpression :async :expression @1103-1117
+        id -
+        typeParameters -
+        returnType -
+        body (Identifier "a" @1116-1117
+          typeAnnotation -
+        )
+        params
+          (Identifier "a" @1110-1111
+            typeAnnotation -
+          )
+      )
+    )
+    (ExpressionStatement @1119-1145
+      expression (ArrowFunctionExpression :expression @1119-1144
+        id -
+        typeParameters -
+        returnType (TSKeywordType keyword=string @1132-1138)
+        body (Literal "\"\"" literalKind=string @1142-1144)
+        params
+          (Identifier "a" @1120-1129
+            typeAnnotation (TSKeywordType keyword=number @1123-1129)
+          )
+      )
+    )
+    (ExpressionStatement @1146-1153
+      expression (ArrowFunctionExpression :expression @1146-1152
+        id -
+        typeParameters -
+        returnType -
+        body (Identifier "a" @1151-1152
+          typeAnnotation -
+        )
+        params
+          (Identifier "a" @1146-1147
+            typeAnnotation -
+          )
+      )
+    )
+    (ClassDeclaration @1154-1611
+      decorators -
+      id (Identifier "K" @1160-1161
+        typeAnnotation -
+      )
+      typeParameters (TSTypeParameterDeclaration @1161-1164
+        params
+          (TSTypeParameter "T" @1162-1163
+            constraint -
+            default -
+          )
+      )
+      superClass (Identifier "B" @1173-1174
+        typeAnnotation -
+      )
+      superTypeArguments (TSTypeParameterInstantiation @1174-1177
+        params
+          (TSTypeReference @1175-1176
+            typeName (Identifier "T" @1175-1176
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+      )
+      body (ClassBody @1194-1611
+        body
+          (PropertyDefinition :static :readonly accessibility=none @1198-1233
+            decorators (Decorators @1198-1202
+              decorators
+                (Decorator @1198-1202
+                  expression (Identifier "dec" @1199-1202
+                    typeAnnotation -
+                  )
+                )
+            )
+            key (Identifier "f" @1219-1220
+              typeAnnotation -
+            )
+            typeAnnotation (TSKeywordType keyword=number @1222-1228)
+            value (Literal "1" literalKind=number @1231-1232)
+          )
+          (PropertyDefinition :optional :declare accessibility=none @1236-1255
+            decorators -
+            key (Identifier "g" @1244-1245
+              typeAnnotation -
+            )
+            typeAnnotation (TSKeywordType keyword=string @1248-1254)
+            value -
+          )
+          (PropertyDefinition :definite accessibility=private @1258-1277
+            decorators -
+            key (Identifier "h" @1266-1267
+              typeAnnotation -
+            )
+            typeAnnotation (TSKeywordType keyword=number @1270-1276)
+            value -
+          )
+          (PropertyDefinition accessibility=none @1280-1290
+            decorators -
+            key (PrivateIdentifier "priv" @1280-1285)
+            typeAnnotation -
+            value (Literal "1" literalKind=number @1288-1289)
+          )
+          (MethodDefinition kind=constructor accessibility=none @1293-1364
+            decorators -
+            key (Identifier "constructor" @1293-1304
+              typeAnnotation -
+            )
+            value (FunctionExpression @1304-1364
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @1352-1364
+                body
+                  (ExpressionStatement @1354-1362
+                    expression (CallExpression @1354-1361
+                      callee (Super @1354-1359)
+                      typeArguments -
+                    )
+                  )
+              )
+              params
+                (TSParameterProperty accessibility=public @1305-1321
+                  decorators -
+                  parameter (Identifier "a" @1312-1321
+                    typeAnnotation (TSKeywordType keyword=number @1315-1321)
+                  )
+                )
+                (TSParameterProperty :readonly accessibility=private @1323-1350
+                  decorators -
+                  parameter (Identifier "b" :optional @1340-1350
+                    typeAnnotation (TSKeywordType keyword=string @1344-1350)
+                  )
+                )
+            )
+          )
+          (StaticBlock @1367-1385
+            body
+              (ExpressionStatement @1376-1383
+                expression (CallExpression @1376-1382
+                  callee (Identifier "init" @1376-1380
+                    typeAnnotation -
+                  )
+                  typeArguments -
+                )
+              )
+          )
+          (MethodDefinition kind=method accessibility=none @1388-1431
+            decorators (Decorators @1388-1392
+              decorators
+                (Decorator @1388-1392
+                  expression (CallExpression @1389-1392
+                    callee (Identifier "d" @1389-1390
+                      typeAnnotation -
+                    )
+                    typeArguments -
+                  )
+                )
+            )
+            key (Identifier "m" @1400-1401
+              typeAnnotation -
+            )
+            value (FunctionExpression :async :generator @1401-1431
+              id -
+              typeParameters (TSTypeParameterDeclaration @1401-1404
+                params
+                  (TSTypeParameter "T" @1402-1403
+                    constraint -
+                    default -
+                  )
+              )
+              returnType (TSTypeReference @1415-1428
+                typeName (Identifier "Promise" @1415-1422
+                  typeAnnotation -
+                )
+                typeArguments (TSTypeParameterInstantiation @1422-1428
+                  params
+                    (TSKeywordType keyword=void @1423-1427)
+                )
+              )
+              body (BlockStatement @1429-1431)
+              params
+                (Identifier "x" @1408-1412
+                  typeAnnotation (TSTypeReference @1411-1412
+                    typeName (Identifier "T" @1411-1412
+                      typeAnnotation -
+                    )
+                    typeArguments -
+                  )
+                )
+            )
+          )
+          (MethodDefinition kind=get accessibility=none @1434-1465
+            decorators -
+            key (Identifier "acc" @1438-1441
+              typeAnnotation -
+            )
+            value (FunctionExpression @1441-1465
+              id -
+              typeParameters -
+              returnType (TSKeywordType keyword=number @1445-1451)
+              body (BlockStatement @1452-1465
+                body
+                  (ReturnStatement @1454-1463
+                    argument (Literal "1" literalKind=number @1461-1462)
+                  )
+              )
+            )
+          )
+          (MethodDefinition kind=set accessibility=none @1468-1481
+            decorators -
+            key (Identifier "acc" @1472-1475
+              typeAnnotation -
+            )
+            value (FunctionExpression @1475-1481
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @1479-1481)
+              params
+                (Identifier "v" @1476-1477
+                  typeAnnotation -
+                )
+            )
+          )
+          (TSAbstractMethodDefinition kind=method accessibility=none @1484-1504
+            decorators -
+            key (Identifier "am" @1493-1495
+              typeAnnotation -
+            )
+            value (TSEmptyBodyFunctionExpression @1495-1504
+              id -
+              typeParameters -
+              returnType (TSKeywordType keyword=void @1499-1503)
+              body -
+            )
+          )
+          (AccessorProperty accessibility=none @1507-1523
+            decorators -
+            key (Identifier "ap" @1516-1518
+              typeAnnotation -
+            )
+            typeAnnotation -
+            value (Literal "1" literalKind=number @1521-1522)
+          )
+          (MethodDefinition :override kind=method accessibility=none @1526-1542
+            decorators -
+            key (Identifier "om" @1535-1537
+              typeAnnotation -
+            )
+            value (FunctionExpression @1537-1542
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @1540-1542)
+            )
+          )
+          (MethodDefinition :computed kind=method accessibility=none @1545-1560
+            decorators -
+            key (Identifier "computed" @1546-1554
+              typeAnnotation -
+            )
+            value (FunctionExpression @1555-1560
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @1558-1560)
+            )
+          )
+          (MethodDefinition :optional :static kind=method accessibility=protected @1563-1609
+            decorators -
+            key (Identifier "pm" @1586-1588
+              typeAnnotation -
+            )
+            value (FunctionExpression :async @1588-1609
+              id -
+              typeParameters -
+              returnType (TSTypeReference @1593-1606
+                typeName (Identifier "Promise" @1593-1600
+                  typeAnnotation -
+                )
+                typeArguments (TSTypeParameterInstantiation @1600-1606
+                  params
+                    (TSKeywordType keyword=void @1601-1605)
+                )
+              )
+              body (BlockStatement @1607-1609)
+            )
+          )
+      )
+      implements
+        (TSClassImplements @1189-1190
+          expression (Identifier "I" @1189-1190
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        (TSClassImplements @1192-1193
+          expression (Identifier "J" @1192-1193
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+    )
+    (ClassDeclaration :abstract @1612-1653
+      decorators -
+      id (Identifier "AK" @1627-1629
+        typeAnnotation -
+      )
+      typeParameters -
+      superClass -
+      superTypeArguments -
+      body (ClassBody @1630-1653
+        body
+          (TSAbstractPropertyDefinition accessibility=none @1632-1651
+            decorators -
+            key (Identifier "x" @1641-1642
+              typeAnnotation -
+            )
+            typeAnnotation (TSKeywordType keyword=number @1644-1650)
+            value -
+          )
+      )
+    )
+    (VariableDeclaration kind=const @1654-1680
+      declarations
+        (VariableDeclarator @1660-1679
+          id (Identifier "ce" @1660-1662
+            typeAnnotation -
+          )
+          init (ClassExpression @1665-1679
+            decorators -
+            id (Identifier "Named" @1671-1676
+              typeAnnotation -
+            )
+            typeParameters -
+            superClass -
+            superTypeArguments -
+            body (ClassBody @1677-1679)
+          )
+        )
+    )
+    (TSInterfaceDeclaration @1681-1881
+      id (Identifier "I" @1691-1692
+        typeAnnotation -
+      )
+      typeParameters (TSTypeParameterDeclaration @1692-1695
+        params
+          (TSTypeParameter "T" @1693-1694
+            constraint -
+            default -
+          )
+      )
+      body (TSInterfaceBody @1712-1881
+        body
+          (TSPropertySignature @1716-1726
+            key (Identifier "p" @1716-1717
+              typeAnnotation -
+            )
+            typeAnnotation (TSKeywordType keyword=number @1719-1725)
+          )
+          (TSPropertySignature :optional @1729-1740
+            key (Identifier "q" @1729-1730
+              typeAnnotation -
+            )
+            typeAnnotation (TSKeywordType keyword=string @1733-1739)
+          )
+          (TSPropertySignature :readonly @1743-1757
+            key (Identifier "r" @1752-1753
+              typeAnnotation -
+            )
+            typeAnnotation (TSTypeReference @1755-1756
+              typeName (Identifier "T" @1755-1756
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+          )
+          (TSMethodSignature kind=method @1760-1777
+            key (Identifier "m" @1760-1761
+              typeAnnotation -
+            )
+            typeParameters (TSTypeParameterDeclaration @1761-1764
+              params
+                (TSTypeParameter "U" @1762-1763
+                  constraint -
+                  default -
+                )
+            )
+            returnType (TSKeywordType keyword=void @1772-1776)
+            params
+              (Identifier "a" @1765-1769
+                typeAnnotation (TSTypeReference @1768-1769
+                  typeName (Identifier "U" @1768-1769
+                    typeAnnotation -
+                  )
+                  typeArguments -
+                )
+              )
+          )
+          (TSConstructSignatureDeclaration @1780-1799
+            typeParameters -
+            returnType (TSTypeReference @1797-1798
+              typeName (Identifier "I" @1797-1798
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+            params
+              (Identifier "x" @1785-1794
+                typeAnnotation (TSKeywordType keyword=number @1788-1794)
+              )
+          )
+          (TSCallSignatureDeclaration @1802-1820
+            typeParameters -
+            returnType (TSKeywordType keyword=void @1815-1819)
+            params
+              (Identifier "y" @1803-1812
+                typeAnnotation (TSKeywordType keyword=string @1806-1812)
+              )
+          )
+          (TSIndexSignature @1823-1840
+            typeAnnotation (TSKeywordType keyword=any @1836-1839)
+            parameters
+              (Identifier "k" @1824-1833
+                typeAnnotation (TSKeywordType keyword=string @1827-1833)
+              )
+          )
+          (TSMethodSignature kind=get @1843-1859
+            key (Identifier "g" @1847-1848
+              typeAnnotation -
+            )
+            typeParameters -
+            returnType (TSKeywordType keyword=number @1852-1858)
+          )
+          (TSMethodSignature kind=set @1862-1879
+            key (Identifier "g" @1866-1867
+              typeAnnotation -
+            )
+            typeParameters -
+            returnType -
+            params
+              (Identifier "v" @1868-1877
+                typeAnnotation (TSKeywordType keyword=number @1871-1877)
+              )
+          )
+      )
+      extends
+        (TSInterfaceHeritage @1704-1705
+          expression (Identifier "A" @1704-1705
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        (TSInterfaceHeritage @1707-1711
+          expression (Identifier "B" @1707-1708
+            typeAnnotation -
+          )
+          typeArguments (TSTypeParameterInstantiation @1708-1711
+            params
+              (TSTypeReference @1709-1710
+                typeName (Identifier "T" @1709-1710
+                  typeAnnotation -
+                )
+                typeArguments -
+              )
+          )
+        )
+    )
+    (TSEnumDeclaration @1882-1910
+      id (Identifier "E" @1887-1888
+        typeAnnotation -
+      )
+      members
+        (TSEnumMember @1891-1892
+          id (Identifier "A" @1891-1892
+            typeAnnotation -
+          )
+          initializer -
+        )
+        (TSEnumMember @1894-1899
+          id (Identifier "B" @1894-1895
+            typeAnnotation -
+          )
+          initializer (Literal "2" literalKind=number @1898-1899)
+        )
+        (TSEnumMember @1901-1908
+          id (Literal "\"C\"" literalKind=string @1901-1904)
+          initializer (Literal "3" literalKind=number @1907-1908)
+        )
+    )
+    (TSEnumDeclaration :const @1911-1930
+      id (Identifier "CE" @1922-1924
+        typeAnnotation -
+      )
+      members
+        (TSEnumMember @1927-1928
+          id (Identifier "X" @1927-1928
+            typeAnnotation -
+          )
+          initializer -
+        )
+    )
+    (TSEnumDeclaration :declare @1931-1952
+      id (Identifier "DE" @1944-1946
+        typeAnnotation -
+      )
+      members
+        (TSEnumMember @1949-1950
+          id (Identifier "Y" @1949-1950
+            typeAnnotation -
+          )
+          initializer -
+        )
+    )
+    (TSModuleDeclaration kind=namespace @1953-1990
+      id (TSQualifiedName @1963-1966
+        left (Identifier "N" @1963-1964
+          typeAnnotation -
+        )
+        right (Identifier "M" @1965-1966
+          typeAnnotation -
+        )
+      )
+      body (TSModuleBlock @1967-1990
+        body
+          (ExportNamedDeclaration exportKind=value @1969-1988
+            declaration (VariableDeclaration kind=const @1976-1988
+              declarations
+                (VariableDeclarator @1982-1987
+                  id (Identifier "z" @1982-1983
+                    typeAnnotation -
+                  )
+                  init (Literal "1" literalKind=number @1986-1987)
+                )
+            )
+            source -
+            attributes -
+          )
+      )
+    )
+    (TSModuleDeclaration kind=module @1991-2005
+      id (Identifier "Mod" @1998-2001
+        typeAnnotation -
+      )
+      body (TSModuleBlock @2002-2005)
+    )
+    (TSModuleDeclaration :declare kind=module @2006-2030
+      id (Literal "\"amb\"" literalKind=string @2021-2026)
+      body (TSModuleBlock @2027-2030)
+    )
+    (TSModuleDeclaration :declare kind=global @2031-2049
+      id (Identifier "global" @2039-2045
+        typeAnnotation -
+      )
+      body (TSModuleBlock @2046-2049)
+    )
+    (IfStatement @2050-2086
+      test (Identifier "a" @2054-2055
+        typeAnnotation -
+      )
+      consequent (ExpressionStatement @2057-2059
+        expression (Identifier "b" @2057-2058
+          typeAnnotation -
+        )
+      )
+      alternate (IfStatement @2065-2086
+        test (Identifier "c" @2069-2070
+          typeAnnotation -
+        )
+        consequent (ExpressionStatement @2072-2074
+          expression (Identifier "d" @2072-2073
+            typeAnnotation -
+          )
+        )
+        alternate (BlockStatement @2080-2086
+          body
+            (ExpressionStatement @2082-2084
+              expression (Identifier "e" @2082-2083
+                typeAnnotation -
+              )
+            )
+        )
+      )
+    )
+    (ForStatement @2087-2118
+      init (VariableDeclaration kind=let @2092-2101
+        declarations
+          (VariableDeclarator @2096-2101
+            id (Identifier "i" @2096-2097
+              typeAnnotation -
+            )
+            init (Literal "0" literalKind=number @2100-2101)
+          )
+      )
+      test (BinaryExpression operator=less @2103-2109
+        left (Identifier "i" @2103-2104
+          typeAnnotation -
+        )
+        right (Literal "10" literalKind=number @2107-2109)
+      )
+      update (UpdateExpression operator=increment @2111-2114
+        argument (Identifier "i" @2111-2112
+          typeAnnotation -
+        )
+      )
+      body (BlockStatement @2116-2118)
+    )
+    (ForStatement @2119-2134
+      init -
+      test -
+      update -
+      body (BreakStatement @2128-2134
+        label -
+      )
+    )
+    (ForInStatement @2135-2163
+      left (VariableDeclaration kind=const @2140-2147
+        declarations
+          (VariableDeclarator @2146-2147
+            id (Identifier "k" @2146-2147
+              typeAnnotation -
+            )
+            init -
+          )
+      )
+      right (Identifier "o" @2151-2152
+        typeAnnotation -
+      )
+      body (ContinueStatement @2154-2163
+        label -
+      )
+    )
+    (ForOfStatement :await @2164-2191
+      left (VariableDeclaration kind=const @2175-2182
+        declarations
+          (VariableDeclarator @2181-2182
+            id (Identifier "v" @2181-2182
+              typeAnnotation -
+            )
+            init -
+          )
+      )
+      right (Identifier "it" @2186-2188
+        typeAnnotation -
+      )
+      body (EmptyStatement @2190-2191)
+    )
+    (LabeledStatement @2192-2227
+      label (Identifier "lbl" @2192-2195
+        typeAnnotation -
+      )
+      body (ForOfStatement @2197-2227
+        left (VariableDeclaration kind=const @2202-2209
+          declarations
+            (VariableDeclarator @2208-2209
+              id (Identifier "v" @2208-2209
+                typeAnnotation -
+              )
+              init -
+            )
+        )
+        right (Identifier "it" @2213-2215
+          typeAnnotation -
+        )
+        body (BreakStatement @2217-2227
+          label (Identifier "lbl" @2223-2226
+            typeAnnotation -
+          )
+        )
+      )
+    )
+    (WhileStatement @2228-2240
+      test (Identifier "x" @2235-2236
+        typeAnnotation -
+      )
+      body (BlockStatement @2238-2240)
+    )
+    (DoWhileStatement @2241-2257
+      body (BlockStatement @2244-2246)
+      test (Identifier "x" @2254-2255
+        typeAnnotation -
+      )
+    )
+    (SwitchStatement @2258-2314
+      discriminant (Identifier "x" @2266-2267
+        typeAnnotation -
+      )
+      cases
+        (SwitchCase @2271-2278
+          test (Literal "1" literalKind=number @2276-2277)
+        )
+        (SwitchCase @2279-2298
+          test (Literal "2" literalKind=number @2284-2285)
+          consequent
+            (ExpressionStatement @2287-2291
+              expression (CallExpression @2287-2290
+                callee (Identifier "f" @2287-2288
+                  typeAnnotation -
+                )
+                typeArguments -
+              )
+            )
+            (BreakStatement @2292-2298
+              label -
+            )
+        )
+        (SwitchCase @2299-2312
+          test -
+          consequent
+            (ExpressionStatement @2308-2312
+              expression (CallExpression @2308-2311
+                callee (Identifier "g" @2308-2309
+                  typeAnnotation -
+                )
+                typeArguments -
+              )
+            )
+        )
+    )
+    (TryStatement @2315-2363
+      block (BlockStatement @2319-2324
+        body
+          (ExpressionStatement @2321-2322
+            expression (Identifier "a" @2321-2322
+              typeAnnotation -
+            )
+          )
+      )
+      handler (CatchClause @2325-2349
+        param (Identifier "e" @2332-2342
+          typeAnnotation (TSKeywordType keyword=unknown @2335-2342)
+        )
+        body (BlockStatement @2344-2349
+          body
+            (ExpressionStatement @2346-2347
+              expression (Identifier "b" @2346-2347
+                typeAnnotation -
+              )
+            )
+        )
+      )
+      finalizer (BlockStatement @2358-2363
+        body
+          (ExpressionStatement @2360-2361
+            expression (Identifier "c" @2360-2361
+              typeAnnotation -
+            )
+          )
+      )
+    )
+    (TryStatement @2364-2379
+      block (BlockStatement @2368-2370)
+      handler (CatchClause @2371-2379
+        param -
+        body (BlockStatement @2377-2379)
+      )
+      finalizer -
+    )
+    (ThrowStatement @2380-2398
+      argument (NewExpression @2386-2397
+        callee (Identifier "Error" @2390-2395
+          typeAnnotation -
+        )
+        typeArguments -
+      )
+    )
+    (ReturnStatement @2399-2406
+      argument -
+    )
+    (WithStatement @2407-2418
+      object (Identifier "o" @2413-2414
+        typeAnnotation -
+      )
+      body (BlockStatement @2416-2418)
+    )
+    (DebuggerStatement @2419-2428)
+    (EmptyStatement @2429-2430)
+)
+
+### ast_lower.fixtures / types.ts #1
+(Program sourceType=module @0-2065
+  body
+    (ExpressionStatement @0-8
+      expression (CallExpression @0-7
+        callee (Identifier "f" @0-1
+          typeAnnotation -
+        )
+        typeArguments (TSTypeParameterInstantiation @1-4
+          params
+            (TSTypeReference @2-3
+              typeName (Identifier "T" @2-3
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+        )
+        arguments
+          (Identifier "x" @5-6
+            typeAnnotation -
+          )
+      )
+    )
+    (ExpressionStatement @9-20
+      expression (CallExpression @9-19
+        callee (MemberExpression :optional @9-13
+          object (Identifier "a" @9-10
+            typeAnnotation -
+          )
+          property (Identifier "b" @12-13
+            typeAnnotation -
+          )
+        )
+        typeArguments (TSTypeParameterInstantiation @13-16
+          params
+            (TSTypeReference @14-15
+              typeName (Identifier "T" @14-15
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+        )
+        arguments
+          (Identifier "x" @17-18
+            typeAnnotation -
+          )
+      )
+    )
+    (ExportDefaultDeclaration exportKind=value @21-41
+      declaration (Identifier "expr" @36-40
+        typeAnnotation -
+      )
+    )
+    (ExportNamedDeclaration exportKind=type @42-61
+      declaration -
+      source -
+      attributes -
+      specifiers
+        (ExportSpecifier exportKind=value @56-58
+          local (Identifier "TT" @56-58
+            typeAnnotation -
+          )
+          exported (Identifier "TT" @56-58
+            typeAnnotation -
+          )
+        )
+    )
+    (ExportNamedDeclaration exportKind=value @62-86
+      declaration -
+      source -
+      attributes -
+      specifiers
+        (ExportSpecifier exportKind=value @71-83
+          local (Identifier "x" @71-72
+            typeAnnotation -
+          )
+          exported (Identifier "default" @76-83
+            typeAnnotation -
+          )
+        )
+    )
+    (ImportDeclaration importKind=value @87-116
+      source (Literal "\"m\"" literalKind=string @112-115)
+      attributes -
+      specifiers
+        (ImportDefaultSpecifier @94-96
+          local (Identifier "dx" @94-96
+            typeAnnotation -
+          )
+        )
+        (ImportNamespaceSpecifier @98-106
+          local (Identifier "ns2" @103-106
+            typeAnnotation -
+          )
+        )
+    )
+    (ImportDeclaration importKind=value @117-151
+      source (Literal "\"m\"" literalKind=string @147-150)
+      attributes -
+      specifiers
+        (ImportSpecifier importKind=value @126-139
+          imported (Identifier "default" @126-133
+            typeAnnotation -
+          )
+          local (Identifier "dd" @137-139
+            typeAnnotation -
+          )
+        )
+    )
+    (ExpressionStatement @152-169
+      expression (AssignmentExpression :parenthesized operator=assign @152-168
+        left (ObjectPattern @153-163
+          typeAnnotation -
+          properties
+            (Property :computed kind=init @155-161
+              key (Identifier "k" @156-157
+                typeAnnotation -
+              )
+              value (Identifier "v" @160-161
+                typeAnnotation -
+              )
+            )
+        )
+        right (Identifier "o" @166-167
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @170-191
+      expression (AssignmentExpression operator=assign @170-190
+        left (ArrayPattern @170-186
+          typeAnnotation -
+          elements
+            (Identifier "a" @171-172
+              typeAnnotation -
+            )
+            (AssignmentPattern @174-179
+              left (Identifier "b" @174-175
+                typeAnnotation -
+              )
+              right (Literal "1" literalKind=number @178-179)
+            )
+            (RestElement @181-185
+              argument (Identifier "c" @184-185
+                typeAnnotation -
+              )
+              typeAnnotation -
+            )
+        )
+        right (Identifier "d" @189-190
+          typeAnnotation -
+        )
+      )
+    )
+    (ExpressionStatement @192-223
+      expression (AssignmentExpression :parenthesized operator=assign @192-222
+        left (ObjectPattern @193-217
+          typeAnnotation -
+          properties
+            (Property :shorthand kind=init @195-200
+              key (Identifier "a" @195-196
+                typeAnnotation -
+              )
+              value (AssignmentPattern @195-200
+                left (Identifier "a" @195-196
+                  typeAnnotation -
+                )
+                right (Literal "1" literalKind=number @199-200)
+              )
+            )
+            (Property kind=init @202-215
+              key (Identifier "b" @202-203
+                typeAnnotation -
+              )
+              value (AssignmentPattern @205-215
+                left (ObjectPattern @205-210
+                  typeAnnotation -
+                  properties
+                    (Property :shorthand kind=init @207-208
+                      key (Identifier "c" @207-208
+                        typeAnnotation -
+                      )
+                      value (Identifier "c" @207-208
+                        typeAnnotation -
+                      )
+                    )
+                )
+                right (ObjectExpression @213-215)
+              )
+            )
+        )
+        right (Identifier "o" @220-221
+          typeAnnotation -
+        )
+      )
+    )
+    (ForOfStatement @224-246
+      left (ObjectPattern @229-234
+        typeAnnotation -
+        properties
+          (Property :shorthand kind=init @231-232
+            key (Identifier "a" @231-232
+              typeAnnotation -
+            )
+            value (Identifier "a" @231-232
+              typeAnnotation -
+            )
+          )
+      )
+      right (Identifier "list" @238-242
+        typeAnnotation -
+      )
+      body (BlockStatement @244-246)
+    )
+    (ForInStatement @247-266
+      left (ArrayPattern @252-255
+        typeAnnotation -
+        elements
+          (Identifier "a" @253-254
+            typeAnnotation -
+          )
+      )
+      right (Identifier "obj" @259-262
+        typeAnnotation -
+      )
+      body (BlockStatement @264-266)
+    )
+    (ClassDeclaration @267-337
+      decorators -
+      id (Identifier "C2" @273-275
+        typeAnnotation -
+      )
+      typeParameters -
+      superClass -
+      superTypeArguments -
+      body (ClassBody @276-337
+        body
+          (MethodDefinition kind=method accessibility=none @278-288
+            decorators -
+            key (Literal "\"str\"" literalKind=string @278-283)
+            value (FunctionExpression @283-288
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @286-288)
+            )
+          )
+          (MethodDefinition kind=method accessibility=none @289-296
+            decorators -
+            key (Literal "42" literalKind=number @289-291)
+            value (FunctionExpression @291-296
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @294-296)
+            )
+          )
+          (PropertyDefinition :static accessibility=none @297-311
+            decorators -
+            key (PrivateIdentifier "p" @304-306)
+            typeAnnotation -
+            value (Literal "1" literalKind=number @309-310)
+          )
+          (MethodDefinition :computed kind=get accessibility=none @312-335
+            decorators -
+            key (Identifier "k" @317-318
+              typeAnnotation -
+            )
+            value (FunctionExpression @319-335
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @322-335
+                body
+                  (ReturnStatement @324-333
+                    argument (Literal "1" literalKind=number @331-332)
+                  )
+              )
+            )
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @338-368
+      id (Identifier "T1" @343-345
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSConditionalType @348-367
+        checkType (TSTypeReference @348-349
+          typeName (Identifier "A" @348-349
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        extendsType (TSTypeReference @358-359
+          typeName (Identifier "B" @358-359
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        trueType (TSTypeReference @362-363
+          typeName (Identifier "C" @362-363
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        falseType (TSTypeReference @366-367
+          typeName (Identifier "D" @366-367
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @369-425
+      id (Identifier "T2" @374-376
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSMappedType readonlyModifier=plus optionalModifier=plus @379-424
+        typeParameter (TSTypeParameter "K" @391-403
+          constraint (TSTypeOperator operator=keyof @396-403
+            typeAnnotation (TSTypeReference @402-403
+              typeName (Identifier "T" @402-403
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+          )
+          default -
+        )
+        nameType (TSTemplateLiteralType @407-414
+          parts
+            (TemplateElement "p" @407-411)
+            (TSTypeReference @411-412
+              typeName (Identifier "K" @411-412
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+            (TemplateElement "" :tail @412-414)
+        )
+        typeAnnotation (TSIndexedAccessType @418-422
+          objectType (TSTypeReference @418-419
+            typeName (Identifier "T" @418-419
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+          indexType (TSTypeReference @420-421
+            typeName (Identifier "K" @420-421
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @426-467
+      id (Identifier "T3" @431-433
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSMappedType readonlyModifier=minus optionalModifier=minus @436-466
+        typeParameter (TSTypeParameter "K" @449-455
+          constraint (TSTypeReference @454-455
+            typeName (Identifier "T" @454-455
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+          default -
+        )
+        nameType -
+        typeAnnotation (TSIndexedAccessType @460-464
+          objectType (TSTypeReference @460-461
+            typeName (Identifier "T" @460-461
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+          indexType (TSTypeReference @462-463
+            typeName (Identifier "K" @462-463
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @468-522
+      id (Identifier "T4" @473-475
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTupleType @478-521
+        elementTypes
+          (TSNamedTupleMember @479-488
+            label (Identifier "a" @479-480
+              typeAnnotation -
+            )
+            elementType (TSKeywordType keyword=string @482-488)
+          )
+          (TSNamedTupleMember :optional @490-500
+            label (Identifier "b" @490-491
+              typeAnnotation -
+            )
+            elementType (TSKeywordType keyword=number @494-500)
+          )
+          (TSRestType @502-520
+            typeAnnotation (TSNamedTupleMember @502-520
+              label (Identifier "rest" @505-509
+                typeAnnotation -
+              )
+              elementType (TSArrayType @511-520
+                elementType (TSKeywordType keyword=boolean @511-518)
+              )
+            )
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @523-565
+      id (Identifier "T5" @528-530
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTupleType @533-564
+        elementTypes
+          (TSKeywordType keyword=string @534-540)
+          (TSOptionalType @542-549
+            typeAnnotation (TSKeywordType keyword=number @542-548)
+          )
+          (TSRestType @551-563
+            typeAnnotation (TSArrayType @554-563
+              elementType (TSKeywordType keyword=boolean @554-561)
+            )
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @566-585
+      id (Identifier "T6" @571-573
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTypeQuery @576-584
+        exprName (Identifier "x" @583-584
+          typeAnnotation -
+        )
+        typeArguments -
+      )
+    )
+    (TSTypeAliasDeclaration @586-604
+      id (Identifier "T7" @591-593
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTypeOperator operator=keyof @596-603
+        typeAnnotation (TSTypeReference @602-603
+          typeName (Identifier "T" @602-603
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @605-629
+      id (Identifier "T8" @610-612
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTypeOperator operator=unique @615-628
+        typeAnnotation (TSKeywordType keyword=symbol @622-628)
+      )
+    )
+    (TSTypeAliasDeclaration @630-658
+      id (Identifier "T9" @635-637
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTypeOperator operator=readonly @640-657
+        typeAnnotation (TSArrayType @649-657
+          elementType (TSKeywordType keyword=string @649-655)
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @659-677
+      id (Identifier "T10" @664-667
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSIndexedAccessType @670-676
+        objectType (TSTypeReference @670-671
+          typeName (Identifier "T" @670-671
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        indexType (TSLiteralType @672-675
+          literal (Literal "\"k\"" literalKind=string @672-675)
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @678-725
+      id (Identifier "T11" @683-686
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSFunctionType @689-724
+        typeParameters -
+        returnType (TSKeywordType keyword=void @720-724)
+        params
+          (Identifier "a" @690-699
+            typeAnnotation (TSKeywordType keyword=number @693-699)
+          )
+          (RestElement @701-715
+            argument (Identifier "r" @704-705
+              typeAnnotation -
+            )
+            typeAnnotation (TSArrayType @707-715
+              elementType (TSKeywordType keyword=string @707-713)
+            )
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @726-758
+      id (Identifier "T12" @731-734
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSConstructorType @737-757
+        typeParameters -
+        returnType (TSTypeReference @756-757
+          typeName (Identifier "T" @756-757
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        params
+          (Identifier "a" @742-751
+            typeAnnotation (TSKeywordType keyword=number @745-751)
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @759-791
+      id (Identifier "T13" @764-767
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSConstructorType :abstract @770-790
+        typeParameters -
+        returnType (TSTypeReference @789-790
+          typeName (Identifier "T" @789-790
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @792-850
+      id (Identifier "T14" @797-800
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSConditionalType @803-849
+        checkType (TSTypeReference @803-804
+          typeName (Identifier "T" @803-804
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        extendsType (TSInferType :parenthesized @813-837
+          typeParameter (TSTypeParameter "U" @820-836
+            constraint (TSKeywordType keyword=string @830-836)
+            default -
+          )
+        )
+        trueType (TSTypeReference @840-841
+          typeName (Identifier "U" @840-841
+            typeAnnotation -
+          )
+          typeArguments -
+        )
+        falseType (TSKeywordType keyword=never @844-849)
+      )
+    )
+    (TSTypeAliasDeclaration @851-886
+      id (Identifier "T15" @856-859
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSFunctionType @862-885
+        typeParameters -
+        returnType (TSTypePredicate @874-885
+          parameterName (Identifier "x" @874-875
+            typeAnnotation -
+          )
+          typeAnnotation (TSKeywordType keyword=string @879-885)
+        )
+        params
+          (Identifier "x" @863-869
+            typeAnnotation (TSKeywordType keyword=any @866-869)
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @887-920
+      id (Identifier "T16" @892-895
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSFunctionType @898-919
+        typeParameters -
+        returnType (TSTypePredicate :asserts @910-919
+          parameterName (Identifier "x" @918-919
+            typeAnnotation -
+          )
+          typeAnnotation -
+        )
+        params
+          (Identifier "x" @899-905
+            typeAnnotation (TSKeywordType keyword=any @902-905)
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @921-964
+      id (Identifier "T17" @926-929
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSFunctionType @932-963
+        typeParameters -
+        returnType (TSTypePredicate :asserts @944-963
+          parameterName (Identifier "x" @952-953
+            typeAnnotation -
+          )
+          typeAnnotation (TSKeywordType keyword=string @957-963)
+        )
+        params
+          (Identifier "x" @933-939
+            typeAnnotation (TSKeywordType keyword=any @936-939)
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @965-981
+      id (Identifier "T18" @970-973
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSThisType @976-980)
+    )
+    (TSTypeAliasDeclaration @982-1012
+      id (Identifier "T19" @987-990
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSImportType @993-1011
+        argument (TSLiteralType @1000-1005
+          literal (Literal "\"mod\"" literalKind=string @1000-1005)
+        )
+        qualifier (Identifier "X" @1007-1008
+          typeAnnotation -
+        )
+        typeArguments (TSTypeParameterInstantiation @1008-1011
+          params
+            (TSTypeReference @1009-1010
+              typeName (Identifier "T" @1009-1010
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @1013-1045
+      id (Identifier "T20" @1018-1021
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTypeQuery @1024-1044
+        exprName (TSImportType @1031-1044
+          argument (TSLiteralType @1038-1043
+            literal (Literal "\"mod\"" literalKind=string @1038-1043)
+          )
+          qualifier -
+          typeArguments -
+        )
+        typeArguments -
+      )
+    )
+    (TSTypeAliasDeclaration @1046-1103
+      id (Identifier "T21" @1051-1054
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSUnionType @1057-1102
+        types
+          (TSLiteralType @1057-1062
+            literal (Literal "\"lit\"" literalKind=string @1057-1062)
+          )
+          (TSLiteralType @1065-1066
+            literal (Literal "1" literalKind=number @1065-1066)
+          )
+          (TSLiteralType @1069-1071
+            literal (UnaryExpression operator=minus @1069-1071
+              argument (Literal "1" literalKind=number @1070-1071)
+            )
+          )
+          (TSLiteralType @1074-1078
+            literal (Literal "true" literalKind=boolean @1074-1078)
+          )
+          (TSKeywordType keyword=null @1081-1085)
+          (TSKeywordType keyword=undefined @1088-1097)
+          (TSLiteralType @1100-1102
+            literal (Literal "1n" literalKind=bigint @1100-1102)
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @1104-1124
+      id (Identifier "T22" @1109-1112
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTypeReference @1115-1123
+        typeName (TSQualifiedName @1115-1120
+          left (TSQualifiedName @1115-1118
+            left (Identifier "A" @1115-1116
+              typeAnnotation -
+            )
+            right (Identifier "B" @1117-1118
+              typeAnnotation -
+            )
+          )
+          right (Identifier "C" @1119-1120
+            typeAnnotation -
+          )
+        )
+        typeArguments (TSTypeParameterInstantiation @1120-1123
+          params
+            (TSTypeReference @1121-1122
+              typeName (Identifier "D" @1121-1122
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @1125-1146
+      id (Identifier "T23" @1130-1133
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSArrayType @1136-1145
+        elementType (TSUnionType :parenthesized @1136-1143
+          types
+            (TSTypeReference @1137-1138
+              typeName (Identifier "A" @1137-1138
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+            (TSTypeReference @1141-1142
+              typeName (Identifier "B" @1141-1142
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+        )
+      )
+    )
+    (TSTypeAliasDeclaration @1147-1266
+      id (Identifier "T24" @1152-1155
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTypeLiteral @1158-1265
+        members
+          (TSPropertySignature @1160-1170
+            key (Identifier "a" @1160-1161
+              typeAnnotation -
+            )
+            typeAnnotation (TSKeywordType keyword=string @1163-1169)
+          )
+          (TSMethodSignature kind=method @1171-1181
+            key (Identifier "b" @1171-1172
+              typeAnnotation -
+            )
+            typeParameters -
+            returnType (TSKeywordType keyword=void @1176-1180)
+          )
+          (TSIndexSignature :readonly @1182-1208
+            typeAnnotation (TSKeywordType keyword=any @1204-1207)
+            parameters
+              (Identifier "k" @1192-1201
+                typeAnnotation (TSKeywordType keyword=string @1195-1201)
+              )
+          )
+          (TSConstructSignatureDeclaration @1209-1219
+            typeParameters -
+            returnType (TSTypeReference @1217-1218
+              typeName (Identifier "T" @1217-1218
+                typeAnnotation -
+              )
+              typeArguments -
+            )
+          )
+          (TSCallSignatureDeclaration @1220-1229
+            typeParameters -
+            returnType (TSKeywordType keyword=void @1224-1228)
+          )
+          (TSMethodSignature kind=get @1230-1246
+            key (Identifier "x" @1234-1235
+              typeAnnotation -
+            )
+            typeParameters -
+            returnType (TSKeywordType keyword=number @1239-1245)
+          )
+          (TSMethodSignature kind=set @1247-1263
+            key (Identifier "x" @1251-1252
+              typeAnnotation -
+            )
+            typeParameters -
+            returnType -
+            params
+              (Identifier "v" @1253-1262
+                typeAnnotation (TSKeywordType keyword=number @1256-1262)
+              )
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @1267-1292
+      id (Identifier "T25" @1272-1275
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTemplateLiteralType @1278-1291
+        parts
+          (TemplateElement "a" @1278-1282)
+          (TSKeywordType keyword=string @1282-1288)
+          (TemplateElement "b" :tail @1288-1291)
+      )
+    )
+    (TSTypeAliasDeclaration @1293-1315
+      id (Identifier "T26" @1298-1301
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSTypeQuery @1304-1314
+        exprName (TSQualifiedName @1311-1314
+          left (Identifier "x" @1311-1312
+            typeAnnotation -
+          )
+          right (Identifier "y" @1313-1314
+            typeAnnotation -
+          )
+        )
+        typeArguments -
+      )
+    )
+    (TSTypeAliasDeclaration @1316-1333
+      id (Identifier "T27" @1321-1324
+        typeAnnotation -
+      )
+      typeParameters -
+      typeAnnotation (TSIntersectionType @1327-1332
+        types
+          (TSTypeReference @1327-1328
+            typeName (Identifier "A" @1327-1328
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+          (TSTypeReference @1331-1332
+            typeName (Identifier "B" @1331-1332
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+      )
+    )
+    (TSTypeAliasDeclaration @1334-1366
+      id (Identifier "T28" @1339-1342
+        typeAnnotation -
+      )
+      typeParameters (TSTypeParameterDeclaration @1342-1361
+        params
+          (TSTypeParameter "T" :in :out @1343-1351
+            constraint -
+            default -
+          )
+          (TSTypeParameter "U" :const @1353-1360
+            constraint -
+            default -
+          )
+      )
+      typeAnnotation (TSTypeReference @1364-1365
+        typeName (Identifier "T" @1364-1365
+          typeAnnotation -
+        )
+        typeArguments -
+      )
+    )
+    (FunctionDeclaration @1367-1439
+      id (Identifier "fo" @1376-1378
+        typeAnnotation -
+      )
+      typeParameters -
+      returnType -
+      body (BlockStatement @1437-1439)
+      params
+        (Identifier "this" @1379-1389
+          typeAnnotation (TSKeywordType keyword=void @1385-1389)
+        )
+        (Identifier "x" :optional @1391-1401
+          typeAnnotation (TSKeywordType keyword=number @1395-1401)
+        )
+        (AssignmentPattern @1403-1408
+          left (Identifier "y" @1403-1404
+            typeAnnotation -
+          )
+          right (Literal "1" literalKind=number @1407-1408)
+        )
+        (ObjectPattern @1410-1418
+          typeAnnotation (TSTypeReference @1417-1418
+            typeName (Identifier "Z" @1417-1418
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+          properties
+            (Property :shorthand kind=init @1412-1413
+              key (Identifier "z" @1412-1413
+                typeAnnotation -
+              )
+              value (Identifier "z" @1412-1413
+                typeAnnotation -
+              )
+            )
+        )
+        (ArrayPattern @1420-1426
+          typeAnnotation (TSTypeReference @1425-1426
+            typeName (Identifier "W" @1425-1426
+              typeAnnotation -
+            )
+            typeArguments -
+          )
+          elements
+            (Identifier "w" @1421-1422
+              typeAnnotation -
+            )
+        )
+        (RestElement @1428-1435
+          argument (Identifier "rest" @1431-1435
+            typeAnnotation -
+          )
+          typeAnnotation -
+        )
+    )
+    (VariableDeclaration kind=const @1440-1488
+      declarations
+        (VariableDeclarator @1446-1487
+          id (Identifier "arrow" @1446-1451
+            typeAnnotation -
+          )
+          init (ArrowFunctionExpression :async :expression @1454-1487
+            id -
+            typeParameters (TSTypeParameterDeclaration @1460-1464
+              params
+                (TSTypeParameter "T" @1461-1462
+                  constraint -
+                  default -
+                )
+            )
+            returnType (TSTypeReference @1472-1482
+              typeName (Identifier "Promise" @1472-1479
+                typeAnnotation -
+              )
+              typeArguments (TSTypeParameterInstantiation @1479-1482
+                params
+                  (TSTypeReference @1480-1481
+                    typeName (Identifier "T" @1480-1481
+                      typeAnnotation -
+                    )
+                    typeArguments -
+                  )
+              )
+            )
+            body (Identifier "a" @1486-1487
+              typeAnnotation -
+            )
+            params
+              (Identifier "a" @1465-1469
+                typeAnnotation (TSTypeReference @1468-1469
+                  typeName (Identifier "T" @1468-1469
+                    typeAnnotation -
+                  )
+                  typeArguments -
+                )
+              )
+          )
+        )
+    )
+    (VariableDeclaration kind=const @1489-1511
+      declarations
+        (VariableDeclarator @1495-1510
+          id (Identifier "single" @1495-1501
+            typeAnnotation -
+          )
+          init (ArrowFunctionExpression :expression @1504-1510
+            id -
+            typeParameters -
+            returnType -
+            body (Identifier "x" @1509-1510
+              typeAnnotation -
+            )
+            params
+              (Identifier "x" @1504-1505
+                typeAnnotation -
+              )
+          )
+        )
+    )
+    (VariableDeclaration kind=const @1512-1545
+      declarations
+        (VariableDeclarator @1518-1544
+          id (Identifier "body" @1518-1522
+            typeAnnotation -
+          )
+          init (ArrowFunctionExpression @1525-1544
+            id -
+            typeParameters -
+            returnType -
+            body (BlockStatement @1531-1544
+              body
+                (ReturnStatement @1533-1542
+                  argument (Literal "1" literalKind=number @1540-1541)
+                )
+            )
+          )
+        )
+    )
+    (VariableDeclaration kind=const @1546-1627
+      declarations
+        (VariableDeclarator @1552-1626
+          id (Identifier "obj2" @1552-1556
+            typeAnnotation -
+          )
+          init (ObjectExpression @1559-1626
+            properties
+              (Property :method kind=init @1561-1573
+                key (Identifier "m" @1567-1568
+                  typeAnnotation -
+                )
+                value (FunctionExpression :async @1568-1573
+                  id -
+                  typeParameters -
+                  returnType -
+                  body (BlockStatement @1571-1573)
+                )
+              )
+              (Property :method kind=init @1575-1582
+                key (Identifier "g" @1576-1577
+                  typeAnnotation -
+                )
+                value (FunctionExpression :generator @1577-1582
+                  id -
+                  typeParameters -
+                  returnType -
+                  body (BlockStatement @1580-1582)
+                )
+              )
+              (Property :method kind=init @1584-1598
+                key (Identifier "ag" @1591-1593
+                  typeAnnotation -
+                )
+                value (FunctionExpression :async :generator @1593-1598
+                  id -
+                  typeParameters -
+                  returnType -
+                  body (BlockStatement @1596-1598)
+                )
+              )
+              (Property kind=init @1600-1606
+                key (Identifier "get" @1600-1603
+                  typeAnnotation -
+                )
+                value (Literal "1" literalKind=number @1605-1606)
+              )
+              (Property kind=init @1608-1614
+                key (Identifier "set" @1608-1611
+                  typeAnnotation -
+                )
+                value (Literal "2" literalKind=number @1613-1614)
+              )
+              (Property kind=init @1616-1624
+                key (Identifier "async" @1616-1621
+                  typeAnnotation -
+                )
+                value (Literal "3" literalKind=number @1623-1624)
+              )
+          )
+        )
+    )
+    (LabeledStatement @1628-1651
+      label (Identifier "label" @1628-1633
+        typeAnnotation -
+      )
+      body (BlockStatement @1635-1651
+        body
+          (BreakStatement @1637-1649
+            label (Identifier "label" @1643-1648
+              typeAnnotation -
+            )
+          )
+      )
+    )
+    (ExpressionStatement @1652-1666
+      expression (AssignmentExpression operator=assign @1652-1665
+        left (Identifier "x" @1652-1653
+          typeAnnotation -
+        )
+        right (ConditionalExpression @1656-1665
+          test (Identifier "y" @1656-1657
+            typeAnnotation -
+          )
+          consequent (Identifier "z" @1660-1661
+            typeAnnotation -
+          )
+          alternate (Identifier "w" @1664-1665
+            typeAnnotation -
+          )
+        )
+      )
+    )
+    (ExpressionStatement @1667-1675
+      expression (AssignmentExpression operator=orAssign @1667-1674
+        left (Identifier "x" @1667-1668
+          typeAnnotation -
+        )
+        right (Literal "1" literalKind=number @1673-1674)
+      )
+    )
+    (ExpressionStatement @1676-1684
+      expression (AssignmentExpression operator=andAssign @1676-1683
+        left (Identifier "x" @1676-1677
+          typeAnnotation -
+        )
+        right (Literal "2" literalKind=number @1682-1683)
+      )
+    )
+    (ExpressionStatement @1685-1693
+      expression (AssignmentExpression operator=nullishAssign @1685-1692
+        left (Identifier "x" @1685-1686
+          typeAnnotation -
+        )
+        right (Literal "3" literalKind=number @1691-1692)
+      )
+    )
+    (ExpressionStatement @1694-1703
+      expression (AssignmentExpression operator=shiftRightUnsignedAssign @1694-1702
+        left (Identifier "x" @1694-1695
+          typeAnnotation -
+        )
+        right (Literal "1" literalKind=number @1701-1702)
+      )
+    )
+    (VariableDeclaration kind=let @1704-1722
+      declarations
+        (VariableDeclarator @1708-1721
+          id (Identifier "tpl" @1708-1711
+            typeAnnotation -
+          )
+          init (TemplateLiteral @1714-1721
+            parts
+              (TemplateElement "plain" :tail @1714-1721)
+          )
+        )
+    )
+    (VariableDeclaration kind=let @1723-1741
+      declarations
+        (VariableDeclarator @1727-1740
+          id (Identifier "tpl2" @1727-1731
+            typeAnnotation -
+          )
+          init (TemplateLiteral @1734-1740
+            parts
+              (TemplateElement "" @1734-1737)
+              (Identifier "a" @1737-1738
+                typeAnnotation -
+              )
+              (TemplateElement "" :tail @1738-1740)
+          )
+        )
+    )
+    (VariableDeclaration kind=let @1742-1769
+      declarations
+        (VariableDeclarator @1746-1768
+          id (Identifier "nested" @1746-1752
+            typeAnnotation -
+          )
+          init (TemplateLiteral @1755-1768
+            parts
+              (TemplateElement "a" @1755-1759)
+              (TemplateLiteral @1759-1766
+                parts
+                  (TemplateElement "b" @1759-1763)
+                  (Identifier "c" @1763-1764
+                    typeAnnotation -
+                  )
+                  (TemplateElement "" :tail @1764-1766)
+              )
+              (TemplateElement "" :tail @1766-1768)
+          )
+        )
+    )
+    (ClassDeclaration :abstract @1770-1874
+      decorators -
+      id (Identifier "AC" @1785-1787
+        typeAnnotation -
+      )
+      typeParameters -
+      superClass -
+      superTypeArguments -
+      body (ClassBody @1788-1874
+        body
+          (TSAbstractMethodDefinition kind=get accessibility=none @1790-1815
+            decorators -
+            key (Identifier "g" @1803-1804
+              typeAnnotation -
+            )
+            value (TSEmptyBodyFunctionExpression @1804-1815
+              id -
+              typeParameters -
+              returnType (TSKeywordType keyword=number @1808-1814)
+              body -
+            )
+          )
+          (TSAbstractMethodDefinition kind=set accessibility=none @1816-1842
+            decorators -
+            key (Identifier "s" @1829-1830
+              typeAnnotation -
+            )
+            value (TSEmptyBodyFunctionExpression @1830-1842
+              id -
+              typeParameters -
+              returnType -
+              body -
+              params
+                (Identifier "v" @1831-1840
+                  typeAnnotation (TSKeywordType keyword=number @1834-1840)
+                )
+            )
+          )
+          (TSAbstractAccessorProperty accessibility=none @1843-1872
+            decorators -
+            key (Identifier "ap" @1861-1863
+              typeAnnotation -
+            )
+            typeAnnotation (TSKeywordType keyword=number @1865-1871)
+            value -
+          )
+      )
+    )
+    (TSDeclareFunction :declare @1875-1903
+      id (Identifier "df" @1892-1894
+        typeAnnotation -
+      )
+      typeParameters -
+      returnType (TSKeywordType keyword=void @1898-1902)
+      body -
+    )
+    (TSModuleDeclaration :declare kind=module @1904-1956
+      id (Identifier "M2" @1919-1921
+        typeAnnotation -
+      )
+      body (TSModuleBlock @1922-1956
+        body
+          (ExportNamedDeclaration exportKind=value @1924-1954
+            declaration (TSDeclareFunction @1931-1954
+              id (Identifier "inner" @1940-1945
+                typeAnnotation -
+              )
+              typeParameters -
+              returnType (TSKeywordType keyword=void @1949-1953)
+              body -
+            )
+            source -
+            attributes -
+          )
+      )
+    )
+    (TSEnumDeclaration @1957-1987
+      id (Identifier "EE" @1962-1964
+        typeAnnotation -
+      )
+      members
+        (TSEnumMember @1967-1974
+          id (Identifier "A" @1967-1968
+            typeAnnotation -
+          )
+          initializer (Literal "\"a\"" literalKind=string @1971-1974)
+        )
+        (TSEnumMember @1976-1985
+          id (Identifier "B" @1976-1977
+            typeAnnotation -
+          )
+          initializer (BinaryExpression operator=add @1980-1985
+            left (Identifier "A" @1980-1981
+              typeAnnotation -
+            )
+            right (Literal "1" literalKind=number @1984-1985)
+          )
+        )
+    )
+    (ClassDeclaration @1988-2064
+      decorators -
+      id (Identifier "CD" @1994-1996
+        typeAnnotation -
+      )
+      typeParameters -
+      superClass -
+      superTypeArguments -
+      body (ClassBody @1997-2064
+        body
+          (MethodDefinition kind=constructor accessibility=none @1999-2013
+            decorators -
+            key (Identifier "constructor" @1999-2010
+              typeAnnotation -
+            )
+            value (TSEmptyBodyFunctionExpression @2010-2013
+              id -
+              typeParameters -
+              returnType -
+              body -
+            )
+          )
+          (MethodDefinition kind=constructor accessibility=none @2014-2037
+            decorators -
+            key (Identifier "constructor" @2014-2025
+              typeAnnotation -
+            )
+            value (FunctionExpression @2025-2037
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @2035-2037)
+              params
+                (Identifier "x" :optional @2026-2033
+                  typeAnnotation (TSKeywordType keyword=any @2030-2033)
+                )
+            )
+          )
+          (MethodDefinition kind=method accessibility=none @2038-2048
+            decorators -
+            key (Identifier "m" @2038-2039
+              typeAnnotation -
+            )
+            value (TSEmptyBodyFunctionExpression @2039-2048
+              id -
+              typeParameters -
+              returnType (TSKeywordType keyword=void @2043-2047)
+              body -
+            )
+          )
+          (MethodDefinition kind=method accessibility=none @2049-2062
+            decorators -
+            key (Identifier "m" @2049-2050
+              typeAnnotation -
+            )
+            value (FunctionExpression @2050-2062
+              id -
+              typeParameters -
+              returnType -
+              body (BlockStatement @2060-2062)
+              params
+                (Identifier "x" :optional @2051-2058
+                  typeAnnotation (TSKeywordType keyword=any @2055-2058)
+                )
+            )
+          )
+      )
+    )
+)
+

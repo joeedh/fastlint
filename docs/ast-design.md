@@ -54,6 +54,17 @@ struct Node {
 - `text` points into the source for lowered nodes and into the file's
   string arena for synthesized ones, so `Identifier` and `Literal` read
   their name without a lookup on either path.
+- `GrammarRef` may narrow the link to a token range of the grammar node
+  (`firstToken`, `tokenCount`). A `TemplateElement` stands for one template
+  token, a method's `FunctionExpression` value for the tokens after the key,
+  a `ClassBody` for the braces and members, and a `TSQualifiedName` built
+  from a flat grammar `QualifiedName` for its prefix.
+- A node's span (`start`, `end`) is the union of its own token range and
+  its children's spans, computed at lowering. An `Identifier` with a type
+  annotation therefore spans `a?: number` although its grammar node is only
+  `a`, which is what typescript-eslint reports and what lets the printer
+  print a clean node verbatim without losing the tokens between it and its
+  children.
 
 - Allocated from `util::Pool<Node, 256>` owned by the file. The pool is
   released as a unit when the file leaves the parsed-file LRU. Nodes are
@@ -118,6 +129,19 @@ divergences and the layouts that need explanation.
   `ArrowFunctionExpression`, `TSDeclareFunction` and
   `TSEmptyBodyFunctionExpression`. The kinds stay separate for
   typescript-eslint parity; the view is what rules use.
+- **A parenthesized node spans its parentheses.** The node links to the
+  outermost `ParenthesizedExpression` (or `ParenthesizedType`) so the
+  parentheses are its own tokens and survive a reprint; typescript-eslint
+  excludes them from the range.
+- **Decorators live in a `Decorators` wrapper** on classes, methods,
+  properties and parameter properties, so those kinds keep one list.
+  Decorators on a plain parameter are not lowered; they stay in the
+  function's own tokens and print unchanged.
+- **`namespace A.B.C` has a `TSQualifiedName` id** rather than nested
+  module declarations, and a `declare global` block is a
+  `TSModuleDeclaration` with kind `global`.
+- **`null` in type position is `TSKeywordType`** with keyword `null`, as in
+  typescript-eslint's `TSNullKeyword`.
 
 ### Layout table (representative)
 

@@ -143,27 +143,28 @@ public:
     return m_fileName;
   }
 
-  span<const Node> nodes()
+  span<const Node> nodes() const
   {
-    return {m_nodes.data(), m_nodes.size()};
+    return {const_cast<Vector<Node> &>(m_nodes).data(), m_nodes.size()};
   }
-  span<const NodeId> children(NodeId id)
+  span<const NodeId> children(NodeId id) const
   {
     const Node &node = m_nodes[id];
-    return {m_childIds.data() + node.firstChild, size_t(node.childCount)};
+    return {const_cast<Vector<NodeId> &>(m_childIds).data() + node.firstChild,
+            size_t(node.childCount)};
   }
-  span<const Token> tokens()
+  span<const Token> tokens() const
   {
-    return {m_tokens.data(), m_tokens.size()};
+    return {const_cast<Vector<Token> &>(m_tokens).data(), m_tokens.size()};
   }
-  span<const Trivia> trivia()
+  span<const Trivia> trivia() const
   {
-    return {m_trivia.data(), m_trivia.size()};
+    return {const_cast<Vector<Trivia> &>(m_trivia).data(), m_trivia.size()};
   }
   /** Byte offsets of the first character of every line (0 = line 1). */
-  span<const uint32_t> lineStarts()
+  span<const uint32_t> lineStarts() const
   {
-    return {m_lineStarts.data(), m_lineStarts.size()};
+    return {const_cast<Vector<uint32_t> &>(m_lineStarts).data(), m_lineStarts.size()};
   }
 
   NodeId root() const

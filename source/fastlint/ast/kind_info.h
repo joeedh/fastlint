@@ -31,6 +31,8 @@ struct KindInfo {
   uint8_t enumCount;
   /** Every flag bit the kind may set. */
   uint32_t flagMask;
+  /** Bit i set when fixed slot i must hold a node. */
+  uint32_t requiredMask;
 };
 
 const KindInfo &kindInfo(NodeKind kind);

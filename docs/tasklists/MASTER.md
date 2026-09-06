@@ -501,13 +501,22 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   C++ views, kind names, child-name tables and the layout tables
   (2026-09-06; `node make.ts gen-ast`, `--check` runs in `make.ts check`).
   Later the C header and TS views for task 7.
-  - [ ] Dump format on top of the tables (with `dump-ast`).
+  - [x] Dump format on top of the tables (`ast/dump.cc`, 2026-09-06).
+    - [ ] `fastlint dump-ast <file>` subcommand.
 - [x] `Node`, `AstFile`, `util::Pool<Node, 256>`, `GrammarRef` (2026-09-06).
-- [ ] Lowering pass from the grammar tree, including `Error`/`Missing` and
-  the flag/enum fields that replace keyword children.
+- [x] Lowering pass from the grammar tree (`ast/lower.cc`, 2026-09-06):
+  every non-JSX grammar kind, `Error`/`Missing` handling, spans as the
+  union of own tokens and children, `Incomplete` on parents of missing
+  required slots. Fixture snapshots in tests/fixtures/ast/ and an
+  invariant check over the parser corpus.
   - [ ] JSX lowering (kinds exist from the start; grammar JSX nodes lower to
     `Error` until this lands).
-- [ ] Generic API + views, including the `FunctionLike` union view.
+  - [ ] An `ErrorNode` in a type slot lowers into the initializer slot;
+    place it by position instead.
+- [x] Generic API + views, including the `FunctionLike` union view
+  (generated; `is<T>`/`as<T>` on `Node`, 2026-09-06).
+  - [ ] Convenience predicates on `Node` (`isIdentifier("x")`,
+    `enclosingFunction()`, `ancestors()`, `descendants<T>()`).
 - [ ] Comment attachment rule + `Map<Node *, CommentList>` side table.
 - [ ] Preorder vector + kind-to-rules dispatch.
 - [ ] Binder (scopes/refs) v1.

@@ -18,10 +18,18 @@ using litestl::util::span;
 using litestl::util::Vector;
 using std::string_view;
 
-/** A node in a grammar tree, which is the file's or a template's. */
+constexpr uint32_t kNoToken = 0xffffffffu;
+
+/**
+ * A node in a grammar tree, which is the file's or a template's. The token
+ * range is the grammar node's unless `firstToken` is set, which lets an AST
+ * node stand for part of a grammar node (a template quasi, a method's value).
+ */
 struct GrammarRef {
   const syntax::GrammarTree *tree = nullptr;
   syntax::NodeId id = syntax::kNoNode;
+  uint32_t firstToken = kNoToken;
+  uint32_t tokenCount = 0;
 
   explicit operator bool() const
   {
@@ -39,6 +47,10 @@ struct Node {
   /** Name or raw text for kinds that carry one; points into the source or the file's
    * string arena. */
   string_view text;
+  /** Byte span: the node's own tokens and every descendant's. Zero-length until lowered
+   * or reprinted. */
+  uint32_t start = 0;
+  uint32_t end = 0;
   Node *parent = nullptr;
   /** Null for synthesized nodes. */
   GrammarRef grammar;

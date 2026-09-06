@@ -393,11 +393,15 @@ export function emitTables(def: Def): string {
       .map((f) => `uint32_t(Flag::${pascal(f.name)})`);
     const enums = node.fields.filter((f) => f.kind === "enum").length;
     const usesText = node.fields.some((f) => f.kind === "text");
+    let requiredMask = 0;
+    node.children.forEach((c, i) => {
+      if (!c.list && !c.optional) requiredMask |= 1 << i;
+    });
     out.push(
       `  {"${node.name}", ${fixed}, ${list ? "true" : "false"}, ${list?.nullableElements ? "true" : "false"}, ` +
         `${usesText ? "true" : "false"}, ${node.children.length > 0 ? `${node.name}Children` : "nullptr"}, ` +
         `${node.children.length}, ${enums > 0 ? `${node.name}Enums` : "nullptr"}, ${enums}, ` +
-        `${flags.length > 0 ? flags.join(" | ") : "0"}},`
+        `${flags.length > 0 ? flags.join(" | ") : "0"}, ${requiredMask}u},`
     );
   }
   out.push("};", "");

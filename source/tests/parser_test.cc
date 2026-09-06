@@ -683,8 +683,10 @@ TEST(parser, member_and_parameter_decorators)
   size_t inject = p.text().find("(Decorator \"@\"", paramX);
   CHECK(inject != std::string::npos);
   CHECK(inject < p.text().find("(Identifier \"x\""));
-  CHECK(p.text().find("(CallExpression", inject) < p.text().find("(Identifier \"inject\""));
-  CHECK(p.text().find("(Identifier \"inject\"", inject) < p.text().find("(Identifier \"x\""));
+  CHECK(p.text().find("(CallExpression", inject) <
+        p.text().find("(Identifier \"inject\""));
+  CHECK(p.text().find("(Identifier \"inject\"", inject) <
+        p.text().find("(Identifier \"x\""));
   size_t paramY = p.text().find("(Parameter : optional");
   CHECK(paramY != std::string::npos);
   CHECK(p.text().find("(Identifier \"opt\"", paramY) <

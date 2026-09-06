@@ -1,5 +1,6 @@
 add_fastlint_test(fastlint
   SOURCES
+    ast_lower_test.cc
     ast_test.cc
     fixture_test.cc
     parser_test.cc
