@@ -531,7 +531,13 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
 - [x] Preorder vector + kind-to-rules dispatch (`AstFile::preorder()`,
   `ast/dispatch.h` `Dispatcher` with enter/exit listeners per kind;
   2026-09-06). The rule framework in 6.1 builds on `Dispatcher`.
-- [ ] Binder (scopes/refs) v1.
+- [x] Binder (scopes/refs) v1 (`ast/binder.cc`, 2026-09-06): scopes,
+  declarations with value and type spaces, references with read, write and
+  init flags, unresolved list, `dumpBindings` snapshot over
+  tests/fixtures/binder/.
+  - [ ] `namespace A.B.C` declares only `A`; nest a scope per segment.
+  - [ ] `declare global` bodies declare into the module scope; give them a
+    global scope once lib globals exist.
 - [ ] Fixer API: `replace`, `insertBefore/After`, `remove(CommentPolicy)`,
   `set`, builders, dirty propagation, deferral of fixes into dirty regions.
 - [ ] Templates: compiler, per-string cache, `instantiate` with category

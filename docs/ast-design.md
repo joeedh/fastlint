@@ -301,14 +301,33 @@ struct CallExpression : View {
 
 ## Binder
 
-- A separate pass over the AST producing `Scope`, `Declaration` and
-  `Reference` records in file-owned vectors, keyed by `Node *`.
-- v1 scopes: module, function, block, class, catch, for-head, and TS
-  namespace and enum. Hoisting for `var` and function declarations. Both
-  the value and the type namespace are tracked so unused-import and
-  unused-type rules work. TDZ is not modelled.
+- A separate pass over the AST (`ast/binder.h`, `bind(file, bindings)`)
+  producing `Scope`, `Declaration` and `Reference` records in pools owned
+  by a `Bindings` object, with lookups keyed by `Node *`: `scopeOf(node)`,
+  `declarationOf(id)`, `referenceOf(id)`, plus `unresolved()`.
+- v1 scopes: module, function, class, block, switch, for-head (only when
+  the head declares with `let`, `const` or `using`), catch, static block,
+  TS namespace, enum, and a type scope for the type parameters of
+  interfaces, aliases, mapped, conditional and function types. `var` and
+  function declarations hoist to the nearest variable scope (module,
+  function, static block, namespace). A function body block opens no
+  extra scope. A function or class expression's own name is declared
+  inside its scope. TDZ is not modelled.
+- Both the value and the type namespace are tracked (`Space`), so a
+  `const I` and an `interface I` are two declarations chained by
+  `nextSameName`, and a reference resolves against the space its position
+  implies: type positions look up `Type`, expressions `Value`, and the
+  leftmost part of a qualified name, `export { x }`, and `import x =`
+  accept either.
+- A `Reference` records `Read`, `Write` and `Init` flags. A declarator
+  with an initializer, a loop head binding and a defaulted parameter or
+  pattern produce an `Init` write on the declared identifier, so
+  `prefer-const` counts writes without special cases. Property names,
+  labels, and import and export names are not references.
 - Covers `no-unused-vars`, `no-shadow`, `prefer-const`, `no-undef`,
   `no-redeclare`, `no-use-before-define`.
+- `dumpBindings` writes the scope tree for snapshot tests
+  (tests/fixtures/binder/).
 - Binder output is not updated by fixers. A rule that runs after a fix in
   the same pass sees pre-fix scopes; the fixpoint driver rebinds after
   applying a pass's fixes.

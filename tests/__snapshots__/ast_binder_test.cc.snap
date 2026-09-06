@@ -1,0 +1,168 @@
+### ast_binder.fixtures / scopes.ts #1
+module @0-1776
+  decl def@7 import value+type refs=1
+  decl named@14 import value+type refs=0
+  decl OnlyType@26 import type refs=1
+  decl ns@61 import value+type refs=2
+  decl T1@90 import type refs=2
+  decl hoisted@112 var value refs=3
+  decl counter@129 let value refs=7
+  decl fixed@148 const value refs=3
+  decl outer@171 function value refs=1
+  decl arrow@679 const value refs=1
+  decl named2@721 const value refs=1
+  decl Base@805 class value+type refs=2
+  decl Derived@1025 class value+type refs=1
+  decl Expr@1119 const value refs=1
+  decl Iface@1176 interface type refs=1
+  decl Alias@1252 type-alias type refs=3
+  decl Mapped@1314 type-alias type refs=0
+  decl Fn@1370 type-alias type refs=1
+  decl Qualified@1411 type-alias type refs=0
+  decl Color@1439 enum value+type refs=1
+  decl NS@1480 namespace value+type refs=0
+  decl Window@1597 interface type refs=0
+  ref hoisted@112 write+init -> module hoisted@112
+  ref counter@129 write+init -> module counter@129
+  ref fixed@148 write+init -> module fixed@148
+  ref arrow@679 write+init -> module arrow@679
+  ref named2@721 write+init -> module named2@721
+  ref Expr@1119 write+init -> module Expr@1119
+  ref counter@1632 read value+type -> module counter@129
+  ref fixed@1641 read value+type -> module fixed@148
+  ref Alias@1664 read type -> module Alias@1252
+  ref Fn@1692 read type -> module Fn@1370
+  ref outer@1713 read -> module outer@171
+  ref unknownName@1721 write -> unresolved
+  ref counter@1739 write -> module counter@129
+  ref hoisted@1757 write -> module hoisted@112
+  ref pair@1770 read -> unresolved
+  function @162-671
+    decl a@177 parameter value refs=3
+    decl b@188 parameter value refs=2
+    decl c@197 parameter value refs=0
+    decl e@204 parameter value refs=1
+    decl rest@218 parameter value refs=2
+    decl inner@248 var value refs=5
+    decl alsoHoisted@329 var value refs=2
+    ref b@188 write+init -> function b@188
+    ref a@192 read -> function a@177
+    ref Obj@210 read type -> unresolved
+    ref inner@248 write+init -> function inner@248
+    ref a@256 read -> function a@177
+    ref hoisted@260 read -> module hoisted@112
+    ref counter@271 read+write -> module counter@129
+    ref inner@288 read -> function inner@248
+    ref key@485 write -> unresolved
+    ref ns@492 read -> module ns@61
+    ref a@509 read -> function a@177
+    block @295-354
+      decl scoped@305 let value refs=2
+      ref scoped@305 write+init -> block scoped@305
+      ref inner@314 read -> function inner@248
+      ref alsoHoisted@329 write+init -> function alsoHoisted@329
+      ref scoped@343 read -> block scoped@305
+    for @357-416
+      decl i@366 let value refs=4
+      ref i@366 write+init -> for i@366
+      ref i@373 read -> for i@366
+      ref rest@377 read -> function rest@218
+      ref i@390 read+write -> for i@366
+      block @395-416
+        ref inner@401 read+write -> function inner@248
+        ref i@410 read -> for i@366
+    for @419-477
+      decl item@430 const value refs=2
+      ref item@430 write+init -> for item@430
+      ref rest@438 read -> function rest@218
+      block @444-477
+        ref use@450 read -> unresolved
+        ref item@454 read -> for item@430
+        ref alsoHoisted@460 read -> function alsoHoisted@329
+    block @496-498
+    switch @501-564
+      decl inCase@536 let value refs=1
+      ref inCase@536 write+init -> switch inCase@536
+      ref b@545 read -> function b@188
+    block @571-589
+      ref e@583 read -> function e@204
+    catch @590-624
+      decl err@597 catch-param value refs=1
+      block @602-624
+        ref inner@608 write -> function inner@248
+        ref err@616 read -> catch err@597
+  function @687-713
+    decl x@688 parameter value refs=1
+    ref x@702 read -> function x@688
+    ref counter@706 read -> module counter@129
+  function @730-796
+    decl self@739 function value refs=1
+    decl n@744 parameter value refs=2
+    ref n@772 read -> function n@744
+    ref self@776 read -> function self@739
+    ref n@781 read -> function n@744
+    ref def@790 read -> module def@7
+  class @799-1018
+    decl TParam@810 type-parameter type refs=3
+    ref TParam@864 read type -> class TParam@810
+    function @885-939
+      decl opt@903 parameter value refs=0
+      decl pub@923 parameter value refs=0
+      ref TParam@908 read type -> class TParam@810
+    function @948-981
+      ref TParam@952 read type -> class TParam@810
+    static @984-1016
+      ref Base@993 read -> module Base@805
+      ref counter@1006 read -> module counter@129
+  class @1019-1112
+    ref Base@1041 read -> module Base@805
+    ref Iface@1065 read type -> module Iface@1176
+    function @1090-1110
+      ref fixed@1102 read -> module fixed@148
+  class @1126-1163
+    decl Named@1132 class value+type refs=1
+    function @1141-1161
+      ref Named@1153 read -> class Named@1132
+  type @1166-1246
+    decl U@1182 type-parameter type refs=3
+    ref Iface2@1202 read type -> unresolved
+    ref U@1209 read type -> type U@1182
+    ref U@1220 read type -> type U@1182
+    type @1223-1244
+      decl v@1228 parameter value refs=0
+      ref U@1231 read type -> type U@1182
+      ref OnlyType@1235 read type -> module OnlyType@26
+  type @1247-1308
+    decl V@1258 type-parameter type refs=1
+    ref V@1263 read type -> type V@1258
+    ref Derived@1300 read type -> module Derived@1025
+    type @1263-1307
+      decl Item@1285 type-parameter type refs=1
+      ref Array@1273 read type -> unresolved
+      ref Item@1293 read type -> type Item@1285
+  type @1309-1364
+    type @1323-1363
+      decl K@1326 type-parameter type refs=1
+      ref Alias@1337 read type -> module Alias@1252
+      ref T1@1343 read type -> module T1@90
+      ref Alias@1349 read type -> module Alias@1252
+      ref T1@1355 read type -> module T1@90
+      ref K@1359 read type -> type K@1326
+  type @1365-1405
+    type @1375-1404
+      decl p@1376 parameter value refs=0
+      ref counter@1397 read -> module counter@129
+  type @1406-1432
+    ref ns@1423 read value+type -> module ns@61
+  enum @1434-1469
+    decl Red@1447 enum-member value refs=1
+    decl Green@1452 enum-member value refs=0
+    ref Red@1460 read -> enum Red@1447
+  namespace @1470-1520
+    decl v@1504 const value refs=1
+    ref v@1504 write+init -> namespace v@1504
+    ref Color@1508 read -> module Color@1439
+  namespace @1521-1569
+    decl w@1557 const value refs=0
+  type @1587-1619
+

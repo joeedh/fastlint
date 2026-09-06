@@ -1,5 +1,6 @@
 add_fastlint_test(fastlint
   SOURCES
+    ast_binder_test.cc
     ast_comments_test.cc
     ast_lower_test.cc
     ast_query_test.cc

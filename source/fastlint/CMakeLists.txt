@@ -1,4 +1,5 @@
 set(SRC
+  ast/binder.cc
   ast/comments.cc
   ast/dispatch.cc
   ast/dump.cc
@@ -20,6 +21,7 @@ set(SRC
   version.cc
 
   ast/access.h
+  ast/binder.h
   ast/comments.h
   ast/dispatch.h
   ast/dump.h
