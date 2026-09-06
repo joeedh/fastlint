@@ -67,7 +67,10 @@ scanner ──► parser ──► arena AST (per file) ──► rules ──�
   `tests/cases/conformance` corpus, plus oxc/tree-sitter corpora. Build this
   in week one; it turns "wide" into a grind-through list.
 
-## AST — flat arena, full fidelity
+## Grammar tree — flat arena, full fidelity
+
+The parser produces a read-only grammar tree. Rules do not see it; they see
+the AST lowered from it (next section, and docs/ast-design.md).
 
 ### Nodes
 
@@ -79,9 +82,9 @@ scanner ──► parser ──► arena AST (per file) ──► rules ──�
 - Span derives from the token range.
 - `Error` and `Missing` node kinds from day one — linters parse half-typed
   code constantly.
-- Typed accessors are views: `CallExpr(node).callee()` knows the child slot
-  and costs nothing. Generic API (`children()`, `ancestors()`,
-  `descendants(kind)`) works uniformly — rules don't reinvent traversal.
+- The grammar tree is never mutated. Its job is to own the tokens and
+  trivia the printer copies from, and to stay valid for the life of the
+  file so AST nodes can link back to it.
 
 ### Tokens & trivia (Roslyn / rowan model)
 
@@ -103,15 +106,39 @@ scanner ──► parser ──► arena AST (per file) ──► rules ──�
 - File ASTs are not the memory problem: bounded by an LRU of parsed files,
   reparse is fast. The type graph is (see below).
 
+## AST — the rule-facing tree
+
+Full design in docs/ast-design.md; the summary here is what the rest of
+this document depends on.
+
+- Lowered from the grammar tree in one pass. typescript-eslint kinds and
+  accessor names with a short list of divergences, fixed child layout per
+  kind declared once in `source/fastlint/ast/nodes.def`, views and name
+  tables generated from it.
+- A `Node` is `{ kind, flags, dirty, parent, GrammarRef grammar,
+  Vector<Node *, 3> children }`, allocated from a per-file `util::Pool` and
+  released with the file. `GrammarRef` names a tree and a node id, so a
+  node can link into the file's grammar tree or into a template's.
+- Typed accessors are views: `CallExpr(node).callee()` knows the child slot
+  and costs nothing. Generic API (`children()`, `ancestors()`,
+  `descendants(kind)`) works uniformly — rules don't reinvent traversal.
+- Comments live in a side table keyed by `Node *`, attached at lowering.
+
 ## Fixers — AST mutation, not text edits
 
-- Arena is append-only. A fix appends new nodes/tokens and repoints the
-  parent's child slot. Old nodes stay valid (rules holding NodeIds don't
-  dangle); undo = restore the slot.
-- Edited node + ancestor chain marked dirty; the flag drives the printer.
-- API: `replace(node, new)`, `insertBefore/After(node, new)`,
-  `remove(node, CommentPolicy)`; builders (`ast.call(callee, args)`, …)
-  synthesize nodes without original tokens.
+- Fixers edit the AST in place. `replace(old, fresh)` swaps the parent's
+  child pointer; `insertBefore/After` edit a list slot; `set` fills an
+  optional slot; `remove(node, CommentPolicy)` detaches. The grammar tree
+  is untouched, so untouched code still prints from it verbatim.
+- Every mutation sets `dirty` on the parent and each ancestor; the flag
+  drives the printer.
+- Templates are the preferred way to build replacement code:
+  `Template::compile("$a?.$b?.($c)")` parses once and caches by string,
+  `instantiate` deep-clones into the file's pool with the arguments
+  reparented in, and `match` binds placeholders against an existing node.
+  Instantiated nodes link to the template's grammar tree, so the printer
+  emits the template author's tokens. Builders (`ast.call(callee, args)`,
+  …) exist for the small cases and produce nodes with no grammar link.
 
 ### Comment policy on `remove`
 
@@ -122,19 +149,25 @@ scanner ──► parser ──► arena AST (per file) ──► rules ──�
 
 ### Printer (no formatter)
 
-- Clean node with original tokens → emit source slice verbatim, trivia
-  included. Untouched code carries zero risk.
-- Dirty node → recurse; children are verbatim (clean) or synthesized.
+- Clean node with a grammar link → emit the grammar node's source slice
+  verbatim, trivia included. Untouched code carries zero risk.
+- Dirty node with a grammar link → emit its own tokens (those not covered by
+  a child) verbatim and recurse into children in layout order. The link may
+  point at a template's grammar tree.
+- Synthesized node with no link → per-kind template with sniffed style. Only
+  builders produce these.
 - Synthesized whitespace, minimal rules only: indentation copied from the
   nearest clean sibling's line; per-file style sniffed once (semicolons, quote
-  char, tabs/spaces, trailing commas). Everything else is the formatter's job.
+  char, tabs/spaces, trailing commas); list inserts copy the separator from
+  a neighbour. Everything else is the formatter's job.
 
 ### Composing fixes
 
 - Disjoint subtrees compose in one pass — no text-range overlap arithmetic.
-- Overlap = target inside another fix's dirty subtree → defer to next pass.
-- Run to fixpoint (bounded, ESLint uses 10) with a reparse between passes so
-  positions and type queries are fresh.
+- A fix whose target is already dirty (ancestor-or-self check) is deferred
+  to the next pass. This replaces ESLint's text-range overlap arithmetic.
+- Run to fixpoint (bounded, ESLint uses 10) with a reparse, relower and
+  rebind between passes so positions and type queries are fresh.
 - Side product: this is a codemod engine. Treat as a differentiator.
 
 ## Types — `tsgo`
@@ -247,10 +280,10 @@ scanner ──► parser ──► arena AST (per file) ──► rules ──�
 
 ## Open questions
 
-- **Plugins.** ESLint's moat is its rule ecosystem; oxlint spent years as
-  "fast but can't run my rules." Options: built-in rules only (v1), or expose
-  the flat AST to TS/WASM via litestl's binding generator so rules can be
-  written in TS. Decide before the rule API hardens.
+- ~~Plugins~~ — resolved 2026-09-06: TS rules via litestl bindings (N-API
+  and WASM) and native plugins via a generated C ABI, both over the AST,
+  with the C++ views generated from the same `nodes.def` the host uses.
+  See docs/ast-design.md "Interop" and "Plugins", MASTER.md task 7.
 - **ESLint compatibility surface.** Support `// eslint-disable-*` comments and
   common rule names for adoption? Config format?
 - ~~tsgo API protocol shape~~ — resolved: structured, msgpack over stdio.

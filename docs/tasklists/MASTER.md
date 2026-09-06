@@ -462,43 +462,65 @@ Still open in 3.2:
 
 ## 4. AST design (reviewed)
 
-Goal: the ergonomic layer over the grammar tree. **Design reviewed before
-implementation.** Deliverable: `docs/ast-design.md` + header stubs.
+Goal: the rule-facing tree, lowered from the grammar tree. **Design reviewed
+before implementation.** Deliverable: `docs/ast-design.md` (signed off
+2026-09-06) + the implementation below.
 
 ### 4.1 Design doc
-- [ ] Node kind taxonomy: which grammar-tree kinds are exposed, which
-  collapse (parens? `as`/`satisfies`? type vs value identifiers).
-- [ ] Generic surface: `kind()`, `parent()`, `children()`, `ancestors()`,
+- [x] Node kind taxonomy: typescript-eslint kinds with listed divergences
+  (no `ChainExpression`, no `TSTypeAnnotation` wrapper, one
+  `TSKeywordType`, no `ParenthesizedExpression`, one `Literal` kind,
+  `Error`/`Missing` handling, shared `FunctionLike` layout).
+- [x] Generic surface: `kind()`, `parent()`, `children()`, `ancestors()`,
   `descendants(kind)`, `span()`, `tokens()`, `leadingComments()`,
   `trailingComments()`, `source()`.
-- [ ] Typed views: naming scheme, child-slot tables, `Optional<Node>` for
-  absent children, list accessors returning `Span<NodeId>`.
-- [ ] Iteration & querying: visitor-free traversal, kind filters, small
-  pattern-match helper (`match<CallExpr>(node, [&](CallExpr c){…})`).
-- [ ] Identifier/scope layer: binder producing scopes, declarations,
-  references — separate pass, same arena. Decide v1 scope (needed by
-  `no-unused-vars`, `no-shadow`, `prefer-const`).
-- [ ] Mutation & fixers: append-only arena, dirty flags, `replace/insert/
-  remove(CommentPolicy)`, builders. Printer contract.
-- [ ] Ownership/lifetime: arena per file, ids not pointers, rules never hold
-  across files.
-- [ ] Interop hooks for task 7: everything reachable by id + integer kind, so
-  bindings are flat and cheap.
-- [ ] Anti-goals: no per-node heap allocation, no virtual dispatch, no
-  node-class hierarchy.
-- [ ] **Review checkpoint with Joe.** Iterate until signed off.
+- [x] Typed views: value wrappers over the fixed child layout from
+  `nodes.def`; optional children are `nullptr`; at most one list per node,
+  always the tail, exposed as `span<Node *>`.
+- [x] Iteration & querying: preorder-vector dispatch by kind, template
+  `match`.
+- [x] Identifier/scope layer: binder v1 producing scopes, declarations,
+  references as a separate pass over the AST (needed by `no-unused-vars`,
+  `no-shadow`, `prefer-const`).
+- [x] Mutation & fixers: pooled mutable `Node` with a dirty flag,
+  `replace/insertBefore/insertAfter/remove(CommentPolicy)/set`, builders,
+  templates with `$placeholder`. Printer contract.
+- [x] Ownership/lifetime: one `AstFile` per source file owning the pool,
+  released as a unit; rules hold `Node *` for one rule pass only.
+- [x] Interop hooks for task 7: `kind`, `flags`, `parent`, `child(i)`,
+  `childCount`, `span`, `text` plus generated name tables; C ABI via
+  `ast/access.h`.
+- [x] Anti-goals: no per-node heap allocation outside the pool, no virtual
+  dispatch, no node-class hierarchy, no formatter.
+- [x] **Review checkpoint with Joe.** Signed off 2026-09-06. Decisions:
+  `Identifier` keeps `typeAnnotation`; JSX kinds present, lowering deferred;
+  `dirty` stays a flag.
 
 ### 4.2 Implementation
-- [ ] Kind tables + generated view headers (single `.def`, generator in
-  `tools/`).
-- [ ] Generic API + views.
-- [ ] Trivia/comment attachment rule + comment side table.
+- [ ] `source/fastlint/ast/nodes.def` + `tools/gen-ast.ts` generating the
+  C++ views, kind names, child-name tables and the dump format (later the C
+  header and TS views for task 7).
+- [ ] `Node`, `AstFile`, `util::Pool<Node, 256>`, `GrammarRef`.
+- [ ] Lowering pass from the grammar tree, including `Error`/`Missing` and
+  the flag/enum fields that replace keyword children.
+  - [ ] JSX lowering (kinds exist from the start; grammar JSX nodes lower to
+    `Error` until this lands).
+- [ ] Generic API + views, including the `FunctionLike` union view.
+- [ ] Comment attachment rule + `Map<Node *, CommentList>` side table.
+- [ ] Preorder vector + kind-to-rules dispatch.
 - [ ] Binder (scopes/refs) v1.
-- [ ] Fixer API + printer (verbatim for clean, synthesized for dirty,
-  indentation/style sniffing).
-- [ ] Fixpoint driver with reparse between passes.
-- [ ] Tests: round-trip (parse → print == source for every corpus file),
-  fixer unit tests with comment-preservation cases.
+- [ ] Fixer API: `replace`, `insertBefore/After`, `remove(CommentPolicy)`,
+  `set`, builders, dirty propagation, deferral of fixes into dirty regions.
+- [ ] Templates: compiler, per-string cache, `instantiate` with category
+  checks and precedence-aware parenthesization, `match`.
+- [ ] Printer (verbatim for clean, own tokens + children for dirty,
+  per-kind templates for synthesized, list separator rules, style
+  sniffing, span recomputation).
+- [ ] Fixpoint driver with rebind and reparse between passes.
+- [ ] `dump-ast` subcommand (docs/debugging.md).
+- [ ] Tests: round-trip (parse → lower → print == source for every corpus
+  file), fixer unit tests with comment-preservation cases, template
+  instantiate/match cases, binder snapshot tests.
 
 ---
 
@@ -605,16 +627,32 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
 ## 7. Plugin API (TS rules via litestl bindings)
 
 Goal: custom rules in TypeScript, loaded as an N-API native module or as
-WASM, over the same flat AST.
+WASM, and native rule plugins, all over the same AST (docs/ast-design.md
+"Interop" and "Plugins").
 
 ### 7.1 Binding surface
-- [ ] Bind arena/node/token/trivia access (ids + kinds), `TypeFacts`
-  predicates, `ctx.report`, fixer builders — all integer-handle based, no
-  object graph across the boundary.
+- [ ] Bind `Node` access (`kind`, `flags`, `parent`, `child(i)`,
+  `childCount`, `span`, `text`), `TypeFacts` predicates, `ctx.report`, the
+  fixer API, templates and `match` — all handle based, no object graph
+  across the boundary.
 - [ ] Generate TS `.d.ts` + runtime via litestl `binding/generators/
-  typescript`; kind enums shared from the same `.def` as C++.
+  typescript`; kind enums and child-name tables from the same `nodes.def`
+  as C++.
 - [ ] Batch-friendly traversal: expose `descendants(kind)` returning typed
   arrays so a TS rule does one call, not N.
+
+### 7.0 Native plugin C ABI
+- [ ] `tools/gen-ast.ts` emits `fastlint/plugin/ast.h`: opaque `fl_node`,
+  accessor functions, the exported `Node` layout, fixer/binder/template
+  entry points, layout version and `nodes.def` hash.
+- [ ] `ast/access.h`: the accessor interface the C++ views are written
+  against, with a host implementation (inline `Node` reads) and a plugin
+  implementation (C functions or exported layout).
+- [ ] `fastlint_plugin_init(const fl_host_api *)` entry point returning a
+  rule table; host-side `LoadLibrary`/`dlopen`, version check, merge into
+  the kind-to-rules dispatch.
+- [ ] Plugin-side build of the C++ views: a sample plugin compiled against
+  the header only, no litestl, exercising a fix through templates.
 
 ### 7.2 N-API build
 - [ ] `node make.ts build --napi`: cmake target producing `fastlint.node`;

@@ -3,7 +3,8 @@
 The rule-facing tree. The parser produces a grammar tree (docs/STRATEGY.md,
 MASTER.md task 3); this document describes the AST that is lowered from it,
 the API rules and fixers use, and the printer and template machinery that
-sit on it. Status: draft for review (MASTER.md 4.1).
+sit on it. Status: signed off 2026-09-06 (MASTER.md 4.1); implementation is
+MASTER.md 4.2.
 
 ## Goals
 
@@ -492,29 +493,14 @@ from one file.
   edited regions and leaves everything else to the user's formatter.
 - No AST mutation from rules outside a fix closure.
 
-## Documents to update on sign-off
+## Decisions at sign-off
 
-- CLAUDE.md "AST nodes are flat arena records addressed by `uint32_t` ids"
-  describes the grammar tree only. Rewrite to say the grammar tree is a flat
-  arena and the AST is pooled `Node` objects with an SBO child vector.
-- STRATEGY.md "Fixers" and "Printer": move mutation to the AST, remove the
-  append-only grammar-tree API, add the tree-qualified grammar link and
-  templates.
-- MASTER.md 4.2: add `nodes.def` + generator, lowering pass, comment side
-  table, template compiler and cache, `match`, precedence-aware
-  substitution; drop "append-only arena" and "dirty flags" from the grammar
-  tree items.
-- MASTER.md 7: add the generated C header, `ast/access.h`, the plugin entry
-  point and version check, and the plugin-side build of the C++ views.
-
-## Open questions
-
-- Whether `Identifier` carries `typeAnnotation` as a child (typescript-eslint
-  does) or the annotation lives on the declarator and parameter only. The
-  table above follows typescript-eslint; the alternative is one fewer null
-  slot on every identifier.
-- Whether JSX lowers in v1 or is deferred with the JSX kinds present but
-  unpopulated.
-- Whether `dirty` should be a counter per subtree so the printer can skip
-  clean subtrees under a dirty ancestor without walking them. The current
-  design walks them and checks the flag, which is cheap enough to start.
+- `Identifier` carries `typeAnnotation` as an optional child, matching
+  typescript-eslint. The null slot on every identifier costs one pointer and
+  keeps ported rules unchanged.
+- JSX kinds are in `nodes.def` from the start but the lowering pass does not
+  populate them in v1. A JSX grammar node lowers to `Error` until JSX
+  lowering lands as its own 4.2 item.
+- `dirty` stays a flag. The printer walks clean subtrees under a dirty
+  ancestor and checks the flag on each node. Promote it to a per-subtree
+  counter only if the printer shows up in a profile.

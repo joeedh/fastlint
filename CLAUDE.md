@@ -70,10 +70,12 @@ experimental; wrap a block in `<!-- commentlint-off -->` /
   Wrap intentional permanent allocations in `alloc::PermanentGuard`.
 - No exceptions in our code. Errors are return values; tests have no
   `CHECK_THROWS`.
-- AST nodes are flat arena records addressed by `uint32_t` ids. Do not put
-  SBO containers, pointers, or virtual dispatch inside nodes; children are
-  ranges into shared arena arrays. SBO containers belong in scratch and
-  rule-local state.
+- There are two trees (docs/ast-design.md). Grammar-tree nodes are flat
+  arena records addressed by `uint32_t` ids with children as ranges into
+  shared arena arrays; no pointers, SBO containers or virtual dispatch
+  inside them. AST nodes are mutable `Node` objects from a per-file
+  `util::Pool` with a `Vector<Node *, 3>` child vector and a `GrammarRef`
+  back to the grammar node; no virtual dispatch or node-class hierarchy.
 - Format with clang-format (`node make.ts format`, which also runs prettier
   over the TypeScript).
 
