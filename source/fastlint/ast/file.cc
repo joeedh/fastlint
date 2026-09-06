@@ -24,6 +24,18 @@ Node *AstFile::make(NodeKind kind, GrammarRef grammar)
   return node;
 }
 
+void AstFile::moveComments(const Node *from, const Node *to)
+{
+  CommentList moved;
+  if (!m_comments.remove(from, &moved)) {
+    return;
+  }
+  CommentList &dest = m_comments[to];
+  for (const Comment &c : moved) {
+    dest.append(c);
+  }
+}
+
 string_view AstFile::intern(string_view text)
 {
   if (text.empty()) {

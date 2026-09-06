@@ -115,6 +115,7 @@ public:
     uint32_t tokenIndex;
     uint32_t tokenCount;
     uint32_t triviaCount;
+    uint32_t lastTriviaEnd;
     uint32_t sourcePos;
     ScanMode mode;
     uint32_t diagnosticCount;
@@ -125,6 +126,7 @@ public:
     return {m_currentIndex,
             uint32_t(m_tokens.size()),
             uint32_t(m_trivia.size()),
+            m_lastTriviaEnd,
             uint32_t(m_pos),
             m_mode,
             uint32_t(m_diagnostics->size())};
@@ -137,6 +139,7 @@ public:
     m_nextIndex = state.tokenCount;
     m_tokens.resize(state.tokenCount);
     m_trivia.resize(state.triviaCount);
+    m_lastTriviaEnd = state.lastTriviaEnd;
     m_pos = state.sourcePos;
     m_mode = state.mode;
     m_gtRemaining = 0;

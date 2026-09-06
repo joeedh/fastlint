@@ -517,7 +517,11 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   (generated; `is<T>`/`as<T>` on `Node`, 2026-09-06).
   - [ ] Convenience predicates on `Node` (`isIdentifier("x")`,
     `enclosingFunction()`, `ancestors()`, `descendants<T>()`).
-- [ ] Comment attachment rule + `Map<Node *, CommentList>` side table.
+- [x] Comment attachment rule + `Map<const Node *, CommentList>` side table
+  (`ast/comments.cc`, 2026-09-06). Found and fixed a scanner bug on the
+  way: speculation rewind did not restore the trivia cursor, so tokens
+  after a rolled-back probe carried garbage trivia ranges; the fuzzer now
+  checks trivia ranges.
 - [ ] Preorder vector + kind-to-rules dispatch.
 - [ ] Binder (scopes/refs) v1.
 - [ ] Fixer API: `replace`, `insertBefore/After`, `remove(CommentPolicy)`,

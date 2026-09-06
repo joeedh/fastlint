@@ -327,12 +327,17 @@ ESLint's text-range overlap check with an ancestor-or-self check.
 
 ## Comments
 
-- Lowering attaches every comment to exactly one AST node, as leading or
-  trailing, using the trivia rule in STRATEGY.md: a comment on the same line
-  after a node's last token trails that node; anything else leads the next
-  node that starts after it. Comments before end-of-file trail `Program`.
-- Storage is a side table `Map<Node *, CommentList>` on the file. Most nodes
-  have no entry.
+- Lowering attaches every comment to exactly one AST node, as leading,
+  trailing or dangling, using the trivia rule in STRATEGY.md. A comment on
+  the same line after a node's last token trails that node; a list
+  separator between them does not count, so `1, // one` trails the `1`.
+  Otherwise the comment leads the outermost node starting at the next
+  token. If no node starts there (the comment sits before a closing
+  bracket) it trails the node that ended before it, and if there is no
+  such node either (an empty block) it dangles on the innermost node that
+  contains it. Comments before end-of-file trail `Program`.
+- Storage is a side table `Map<const Node *, CommentList>` on the file,
+  reached through `file.comments(node)`. Most nodes have no entry.
 - `remove` with the default policy moves the node's leading comments to the
   next sibling (or to the previous sibling's trailing list when the node is
   last) and drops its same-line trailing comment. Rules pass a policy to

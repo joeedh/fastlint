@@ -1,4 +1,5 @@
 set(SRC
+  ast/comments.cc
   ast/dump.cc
   ast/file.cc
   ast/generated/tables.cc
@@ -18,6 +19,7 @@ set(SRC
   version.cc
 
   ast/access.h
+  ast/comments.h
   ast/dump.h
   ast/file.h
   ast/generated/kinds.h

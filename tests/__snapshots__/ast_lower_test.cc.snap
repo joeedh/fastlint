@@ -1,3 +1,120 @@
+### ast_lower.fixtures / comments.ts #1
+(Program sourceType=module @69-532
+  ;trailing "// last line"
+  body
+    (ExportNamedDeclaration exportKind=value @69-403
+      ;leading "// file header"
+      ;leading "/** Doc comment on the class. */"
+      declaration (ClassDeclaration @76-403
+        decorators -
+        id (Identifier "Widget" @82-88
+          typeAnnotation -
+        )
+        typeParameters -
+        superClass -
+        superTypeArguments -
+        body (ClassBody @89-403
+          body
+            (PropertyDefinition accessibility=private @119-137
+              ;leading "// leading the property"
+              ;trailing "// trailing the property"
+              decorators -
+              key (Identifier "count" @127-132
+                typeAnnotation -
+              )
+              typeAnnotation -
+              value (Literal "0" literalKind=number @135-136)
+            )
+            (MethodDefinition kind=method accessibility=none @186-362
+              ;leading "/* before method */"
+              decorators -
+              key (Identifier "render" @186-192
+                typeAnnotation -
+              )
+              value (FunctionExpression @192-362
+                id -
+                typeParameters -
+                returnType (TSKeywordType keyword=void @217-221)
+                body (BlockStatement @222-362
+                  body
+                    (ExpressionStatement @291-299
+                      ;leading "// dangling in an empty statement list? no, leads the call"
+                      ;trailing "// after the call"
+                      ;trailing "// trailing the call on its own line"
+                      expression (CallExpression @291-298
+                        callee (Identifier "draw" @291-295
+                          typeAnnotation -
+                        )
+                        typeArguments -
+                        arguments
+                          (Identifier "x" @296-297
+                            typeAnnotation -
+                          )
+                      )
+                    )
+                )
+                params
+                  (Identifier "x" @205-214
+                    ;leading "/* param */"
+                    typeAnnotation (TSKeywordType keyword=number @208-214)
+                  )
+              )
+            )
+            (MethodDefinition kind=method accessibility=none @366-401
+              decorators -
+              key (Identifier "empty" @366-371
+                typeAnnotation -
+              )
+              value (FunctionExpression @371-401
+                id -
+                typeParameters -
+                returnType -
+                body (BlockStatement @374-401
+                  ;dangling "// only a comment"
+                )
+              )
+            )
+        )
+      )
+      source -
+      attributes -
+    )
+    (VariableDeclaration kind=const @405-459
+      declarations
+        (VariableDeclarator @411-458
+          id (Identifier "list" @411-415
+            typeAnnotation -
+          )
+          init (ArrayExpression @418-458
+            elements
+              (Literal "1" literalKind=number @422-423
+                ;trailing "// one"
+              )
+              (Literal "2" literalKind=number @454-455
+                ;leading "// two comes next"
+              )
+          )
+        )
+    )
+    (FunctionDeclaration @461-476
+      ;trailing "/* between statements */"
+      id (Identifier "f" @470-471
+        typeAnnotation -
+      )
+      typeParameters -
+      returnType -
+      body (BlockStatement @474-476)
+    )
+    (FunctionDeclaration @502-517
+      id (Identifier "g" @511-512
+        typeAnnotation -
+      )
+      typeParameters -
+      returnType -
+      body (BlockStatement @515-517)
+    )
+)
+
 ### ast_lower.fixtures / syntax.ts #1
 (Program sourceType=module @0-2431
   body

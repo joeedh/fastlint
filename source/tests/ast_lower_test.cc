@@ -34,7 +34,7 @@ struct Lowered {
   std::string dump() const
   {
     litestl::util::string out;
-    dumpAst(root, out);
+    dumpAst(file, out);
     return std::string(out.c_str());
   }
 };

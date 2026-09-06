@@ -275,6 +275,15 @@ checkTree(syntax::GrammarTree &tree, std::string_view source, std::string &detai
       return "token outside the source or overlapping the previous token";
     }
     previousEnd = token.offset + token.length;
+    if (size_t(token.leadingTriviaStart) + token.leadingTriviaCount >
+        tree.trivia().size())
+    {
+      describe("trivia start, count, trivia size",
+               token.leadingTriviaStart,
+               token.leadingTriviaCount,
+               tree.trivia().size());
+      return "token trivia range outside the trivia array";
+    }
   }
   for (uint32_t id = 0; id < nodes.size(); ++id) {
     const syntax::Node &node = nodes[id];

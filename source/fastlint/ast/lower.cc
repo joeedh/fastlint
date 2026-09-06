@@ -1,5 +1,6 @@
 #include "fastlint/ast/lower.h"
 
+#include "fastlint/ast/comments.h"
 #include "fastlint/ast/generated/kinds.h"
 #include "fastlint/syntax/tokens.h"
 #include "util/vector.h"
@@ -2619,7 +2620,9 @@ private:
 Node *lower(const syntax::GrammarTree &tree, AstFile &file)
 {
   Lowerer lowerer(tree, file);
-  return lowerer.run();
+  Node *root = lowerer.run();
+  attachComments(tree, file);
+  return root;
 }
 
 } // namespace fastlint::ast
