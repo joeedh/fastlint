@@ -23,6 +23,12 @@ set(SRC
   syntax/tokens.cc
   syntax/tree.cc
   syntax/unicode.cc
+  tsgo/client.cc
+  tsgo/json.cc
+  tsgo/msgpack.cc
+  tsgo/process.cc
+  tsgo/queries.cc
+  tsgo/source_file.cc
   version.cc
 
   ast/access.h
@@ -51,6 +57,14 @@ set(SRC
   syntax/tokens.h
   syntax/tree.h
   syntax/unicode.h
+  tsgo/client.h
+  tsgo/generated/compat.h
+  tsgo/generated/enums.h
+  tsgo/json.h
+  tsgo/msgpack.h
+  tsgo/process.h
+  tsgo/queries.h
+  tsgo/source_file.h
   version.h
 )
 

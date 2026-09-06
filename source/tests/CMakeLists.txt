@@ -14,6 +14,10 @@ add_fastlint_test(fastlint
     scanner_test.cc
     framework_test.cc
     snapshot_test.cc
+    tsgo_client_test.cc
+    tsgo_json_test.cc
+    tsgo_msgpack_test.cc
+    tsgo_source_file_test.cc
     version_test.cc
     test_sources.cc
     test_sources.h

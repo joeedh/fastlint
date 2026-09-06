@@ -128,8 +128,9 @@ and `initialize` negotiates nothing — it returns only
 **Consequences.** The C++ client pins a tsgo version, records it in the cache
 `meta` table, and refuses to run against an unrecognized one rather than
 guessing. `tsc --version` is the gate. A per-version parameter-name table
-lives beside the client, and `node tools/spikes/tsgo-api/main.ts compat`
-regenerates it when we move versions.
+lives beside the client as `source/fastlint/tsgo/generated/compat.h`, and
+`node tools/spikes/tsgo-api/main.ts compat --emit` regenerates it when we move
+versions.
 
 ## Session lifecycle
 

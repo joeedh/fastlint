@@ -582,25 +582,46 @@ Goal: type facts from tsgo, cached in SQLite, bounded memory. Depends on 2.x
 decisions.
 
 ### 5.1 tsgo client (C++)
-- [ ] Process management: spawn `tsc --api`, stdio or named pipe (per 2.3),
-  lifecycle, crash detection/restart, one per tsconfig project, concurrency
-  cap.
-- [ ] Wire protocol: the msgpack 3-tuple envelope (hand-rolled, ~60 lines —
-  see docs/tsgo-api.md "Transport") plus JSON payloads; request/response
-  correlation. No `batchRequests` in 7.0.2: batch through the plural
-  endpoints (`getTypesAtPositions`, `getTypeAtLocations`).
-- [ ] Version gate: read `tsc --version`, refuse an unpinned version, record
-  it in the cache `meta` table. Per-version parameter-name table beside the
-  client; regenerate with `main.ts compat`.
-- [ ] Snapshot/program management: `initialize`, `updateSnapshot`
-  (`openProjects`/`openFiles`/`fileChanges`), `getDefaultProjectForFile`,
-  `release` per snapshot. `createProgram` does not exist in 7.0.2.
-- [ ] `getSourceFile` decoder (44-byte header + 28-byte flat nodes) and the
-  node-id -> tsgo-index side table, rebuilt on content-hash change, so rules
-  can query expressions by `NodeHandle` rather than by position.
-- [ ] Serve file contents over `--callbacks=readFile,fileExists` from our
-  cache, so the server and our parser see the same bytes.
-- [ ] Typed request wrappers for the query set from 2.2.
+
+Landed 2026-09-06 under `source/fastlint/tsgo/`; docs/tsgo-client.md describes
+the pieces. Tests: `tsgo_json_test`, `tsgo_msgpack_test`,
+`tsgo_source_file_test` (fast) and `tsgo_client_test` (`[integration]`, against
+`tests/fixtures/projects/basic`).
+
+- [x] Process management: spawn `tsc --api --cwd=<dir>` over stdio pipes
+  (`process.h`, Win32 and POSIX), one `Client` per server, connection marked
+  broken on EOF or a malformed frame, `stop()` waits then kills.
+  - [ ] Restart after a crash and the per-run concurrency cap belong to the
+    driver that runs several projects (5.2 / the CLI).
+- [x] Wire protocol: the msgpack 3-tuple envelope (`msgpack.h`, encode/decode
+  with partial-frame detection) plus JSON payloads (`json.h`, own parser and
+  writer). One request in flight at a time; FS callbacks are answered while
+  waiting. No `batchRequests` in 7.0.2: `typesAtPositions` and
+  `typesAtLocations` wrap the plural endpoints.
+- [x] Version gate: `tsc --version` is parsed before the server starts and
+  compared with `kSupportedVersions` (7.0.2); `skipVersionCheck` exists for
+  probing. The parameter-name table is `generated/compat.h`, written by
+  `node tools/spikes/tsgo-api/main.ts compat --emit`.
+  - [ ] Record the version in the cache `meta` table once 5.3 exists.
+- [x] Snapshot/program management: `initialize`, `updateSnapshot` with
+  `SnapshotUpdate` (open/close projects and files, file changes,
+  `invalidateAll`), `openProject`, `getDefaultProjectForFile`, `release`.
+  `changedFiles` is flattened from the response's `changes`.
+- [x] `getSourceFile` decoder (`EncodedSourceFile`, 44-byte header + 28-byte
+  nodes, node-list pseudo-entries skipped) and `NodeIndexTable`, which pairs
+  our nodes with tsgo indices by span: same `end`, the largest tsgo `pos` not
+  past our `start`, and the k-th of a same-span run. Error and zero-width
+  nodes stay unmapped.
+  - [ ] Measure how many nodes stay unmapped on a real project; recovery
+    shapes are where the two trees disagree.
+- [x] Serve file contents over `--callbacks=readFile,fileExists` through a
+  `FileProvider`; `null` defers to the disk.
+- [x] Typed request wrappers (`queries.h`: `Session`, `TypeResponse`,
+  `SymbolResponse`, `SignatureResponse`) for the query set from 2.2, plus
+  `getTypeArguments`, `getTypeOfSymbol` and `getSymbolAtLocation`.
+- [x] `node make.ts gen-tsgo-enums` writes `generated/enums.h` (`TypeFlags`,
+  `ObjectFlags`, `SymbolFlags`, `ElementFlags`, `SignatureFlags`,
+  `SyntaxKind`) from the installed typescript package's `dist/enums/`.
 
 ### 5.2 Type facts layer
 - [ ] `TypeFacts` interface rules call: `typeOf(node)`, `isNullable`,
