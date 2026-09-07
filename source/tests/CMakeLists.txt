@@ -44,6 +44,7 @@ add_fastlint_test(fastlint
     rules_prefer_const_test.cc
     rules_prefer_nullish_coalescing_test.cc
     rules_restrict_template_expressions_test.cc
+    rules_no_unnecessary_type_assertion_test.cc
     scanner_test.cc
     framework_test.cc
     snapshot_test.cc

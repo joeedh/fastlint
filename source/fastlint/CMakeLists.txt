@@ -39,6 +39,7 @@ set(SRC
   rules/prefer_const.cc
   rules/prefer_nullish_coalescing.cc
   rules/restrict_template_expressions.cc
+  rules/no_unnecessary_type_assertion.cc
   rules/util.cc
   ast/comments.cc
   ast/dispatch.cc

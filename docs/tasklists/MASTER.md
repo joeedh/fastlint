@@ -856,6 +856,14 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     `ignorePrimitives` options and the `strictNullChecks` gate are ported.
     Not done: the ternary (`preferNullishOverTernary`) and if-statement
     (`preferNullishOverAssignment`) rewrites and their options.
+  - [x] `no-unnecessary-type-assertion`, non-null (`!`) form only. A `!` whose
+    operand is already non-nullable reports `unnecessaryAssertion`; an
+    assignment target (`x! = y`) or a nullable operand the context accepts
+    reports `contextuallyUnnecessary`; each is fixed by dropping the `!`. The
+    `strictNullChecks` gate and the used-before-assignment guard (an
+    uninitialized, non-definite variable is left alone) are ported. Not done:
+    the `as`/`<T>` cast forms, which need whole-type structural comparison, and
+    their `checkLiteralConstAssertions` and `typesToIgnore` options.
   - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
     output is untested (6.1 open item).
 - [ ] Each rule's type queries logged so the cache working set is measured.
