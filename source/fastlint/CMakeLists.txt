@@ -22,10 +22,11 @@ set(SRC
   rules/no_fallthrough.cc
   rules/no_non_null_assertion.cc
   rules/no_self_assign.cc
+  rules/no_shadow.cc
+  rules/no_unused_vars.cc
   rules/no_unreachable.cc
   rules/no_var.cc
   rules/prefer_as_const.cc
-  rules/no_shadow.cc
   rules/prefer_const.cc
   rules/util.cc
   ast/comments.cc

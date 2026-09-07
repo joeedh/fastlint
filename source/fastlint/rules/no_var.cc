@@ -42,12 +42,6 @@ const Node *enclosingLoop(const Node *node)
   return nullptr;
 }
 
-bool endsWith(string_view text, string_view suffix)
-{
-  return text.size() >= suffix.size() &&
-         text.substr(text.size() - suffix.size()) == suffix;
-}
-
 /** Whether `let` in place of this `var` keeps the program's meaning. */
 bool canFix(RuleContext &ctx, Node *node)
 {
@@ -67,9 +61,7 @@ bool canFix(RuleContext &ctx, Node *node)
   const Node *scopeNode = parent;
   const Node *loop = enclosingLoop(node);
   ast::Bindings &bindings = ctx.bindings();
-  bool script = ast::Program(ctx.file().root()).sourceType() == ast::SourceType::Script &&
-                !endsWith(ctx.filename(), ".ts") && !endsWith(ctx.filename(), ".tsx") &&
-                !endsWith(ctx.filename(), ".mts") && !endsWith(ctx.filename(), ".cts");
+  bool script = isScript(ctx);
 
   Vector<Node *, 4> ids;
   Vector<Declaration *, 4> declared;

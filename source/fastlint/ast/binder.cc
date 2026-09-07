@@ -172,6 +172,13 @@ private:
   {
     for (Reference *r : refs) {
       Declaration *d = r->scope->lookup(r->name(), r->space);
+      if (!d && (r->flags & Reference::TypeQuery) != 0) {
+        // `typeof x` may name a type-only import.
+        Declaration *t = r->scope->lookup(r->name(), Space::Type);
+        if (t && t->kind == DeclKind::Import) {
+          d = t;
+        }
+      }
       if (d) {
         r->resolved = d;
         d->references.append(r);
@@ -278,12 +285,9 @@ private:
       visit(a.right());
       break;
     }
-    case NodeKind::TSParameterProperty: {
-      TSParameterProperty p(target);
-      visit(p.decorators());
-      bindPattern(p.parameter(), kind, scope, init, declNode);
+    case NodeKind::TSParameterProperty:
+      bindPattern(TSParameterProperty(target).parameter(), kind, scope, init, declNode);
       break;
-    }
     default:
       visit(target);
       break;
@@ -340,6 +344,16 @@ private:
     }
   }
 
+  /** Parameter decorators are evaluated where the function is, not inside it. */
+  void paramDecorators(span<Node *> list)
+  {
+    for (Node *p : list) {
+      if (p && p->kind == NodeKind::TSParameterProperty) {
+        visit(TSParameterProperty(p).decorators());
+      }
+    }
+  }
+
   void function(Node *n)
   {
     FunctionLike fn(n);
@@ -349,6 +363,7 @@ private:
     if (id && declaration) {
       declare(id->text, id, n, DeclKind::Function, Space::Value);
     }
+    paramDecorators(fn.params());
     push(ScopeKind::Function, n);
     if (id && !declaration) {
       declare(id->text, id, n, DeclKind::Function, Space::Value);
@@ -785,9 +800,38 @@ private:
       visit(r.typeArguments());
       break;
     }
+    case NodeKind::TSInferType: {
+      // `infer I` is visible in the true branch of the conditional type it
+      // sits in, however deep inside the extends clause it appears.
+      Node *param = TSInferType(n).typeParameter();
+      if (!param) {
+        break;
+      }
+      Scope *owner = cur;
+      for (Scope *s = cur; s; s = s->parent) {
+        if (s->node && s->node->kind == NodeKind::TSConditionalType) {
+          owner = s;
+          break;
+        }
+      }
+      declare(param->text, param, param, DeclKind::TypeParameter, Space::Type, owner);
+      visitChildren(param);
+      break;
+    }
+    case NodeKind::TSExportAssignment:
+      entity(TSExportAssignment(n).expression(), Space::Either);
+      break;
     case NodeKind::TSTypeQuery: {
       TSTypeQuery q(n);
-      entity(q.exprName(), Space::Value);
+      Node *name = q.exprName();
+      while (name && name->kind == NodeKind::TSQualifiedName) {
+        name = name->children[0];
+      }
+      if (name && name->kind == NodeKind::Identifier) {
+        reference(name, Space::Value, Reference::Read | Reference::TypeQuery);
+      } else {
+        entity(q.exprName(), Space::Value);
+      }
       visit(q.typeArguments());
       break;
     }

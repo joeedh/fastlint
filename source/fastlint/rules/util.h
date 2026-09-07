@@ -81,4 +81,9 @@ uint32_t firstNonSpaceAt(string_view source, uint32_t start);
 /** Whether `id` is an unresolved (global) reference in the file's bindings. */
 bool isGlobalReference(const RuleContext &ctx, const ast::Node *id);
 
+/** A `.js`-family file with no import or export, whose top level is the global scope. */
+bool isScript(const RuleContext &ctx);
+/** A `.d.ts`, `.d.mts` or `.d.cts` file. */
+bool isDefinitionFile(const RuleContext &ctx);
+
 } // namespace fastlint::rules

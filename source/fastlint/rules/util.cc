@@ -296,4 +296,29 @@ bool isGlobalReference(const RuleContext &ctx, const Node *id)
   return ref && ref->resolved == nullptr;
 }
 
+namespace {
+
+bool endsWith(string_view text, string_view suffix)
+{
+  return text.size() >= suffix.size() &&
+         text.substr(text.size() - suffix.size()) == suffix;
+}
+
+} // namespace
+
+bool isScript(const RuleContext &ctx)
+{
+  string_view name = ctx.filename();
+  bool typescript = endsWith(name, ".ts") || endsWith(name, ".tsx") ||
+                    endsWith(name, ".mts") || endsWith(name, ".cts");
+  return !typescript &&
+         ast::Program(ctx.file().root()).sourceType() == ast::SourceType::Script;
+}
+
+bool isDefinitionFile(const RuleContext &ctx)
+{
+  string_view name = ctx.filename();
+  return endsWith(name, ".d.ts") || endsWith(name, ".d.mts") || endsWith(name, ".d.cts");
+}
+
 } // namespace fastlint::rules

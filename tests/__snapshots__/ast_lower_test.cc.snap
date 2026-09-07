@@ -1334,12 +1334,22 @@
               )
               body (BlockStatement @1429-1431)
               params
-                (Identifier "x" @1408-1412
-                  typeAnnotation (TSTypeReference @1411-1412
-                    typeName (Identifier "T" @1411-1412
-                      typeAnnotation -
+                (TSParameterProperty accessibility=none @1405-1412
+                  decorators (Decorators @1405-1407
+                    decorators
+                      (Decorator @1405-1407
+                        expression (Identifier "p" @1406-1407
+                          typeAnnotation -
+                        )
+                      )
+                  )
+                  parameter (Identifier "x" @1408-1412
+                    typeAnnotation (TSTypeReference @1411-1412
+                      typeName (Identifier "T" @1411-1412
+                        typeAnnotation -
+                      )
+                      typeArguments -
                     )
-                    typeArguments -
                   )
                 )
             )

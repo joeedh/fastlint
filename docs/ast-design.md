@@ -134,9 +134,10 @@ divergences and the layouts that need explanation.
   parentheses are its own tokens and survive a reprint; typescript-eslint
   excludes them from the range.
 - **Decorators live in a `Decorators` wrapper** on classes, methods,
-  properties and parameter properties, so those kinds keep one list.
-  Decorators on a plain parameter are not lowered; they stay in the
-  function's own tokens and print unchanged.
+  properties and parameter properties, so those kinds keep one list. A
+  decorated plain parameter is wrapped in a `TSParameterProperty` with
+  accessibility `none` and no flags, so its decorators have a home; the
+  binder and the printer treat that wrapper like any other.
 - **`namespace A.B.C` has a `TSQualifiedName` id** rather than nested
   module declarations, and a `declare global` block is a
   `TSModuleDeclaration` with kind `global`.
@@ -317,8 +318,11 @@ struct CallExpression : View {
   `const I` and an `interface I` are two declarations chained by
   `nextSameName`, and a reference resolves against the space its position
   implies: type positions look up `Type`, expressions `Value`, and the
-  leftmost part of a qualified name, `export { x }`, and `import x =`
-  accept either.
+  leftmost part of a qualified name, `export { x }`, `export =` and
+  `import x =` accept either. The name under `typeof` in a type looks up
+  `Value` and falls back to a type-only import, with the `TypeQuery` flag
+  on its reference. `infer I` declares in the scope of the conditional type
+  it sits in, so the true branch sees it.
 - A `Reference` records `Read`, `Write` and `Init` flags. A declarator
   with an initializer, a loop head binding and a defaulted parameter or
   pattern produce an `Init` write on the declared identifier, so

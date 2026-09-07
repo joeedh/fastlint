@@ -442,7 +442,8 @@ private:
       }
     } else {
       const Layout *layout = n->dirty && tree ? f.layout(n) : nullptr;
-      bool own = layout && layout->usable && layoutCovers(n, *layout);
+      bool own = layout && layout->usable && layoutCovers(n, *layout) &&
+                 importShapeKept(n, *layout);
       // A captured layout carries the node's own parentheses.
       if (parens && !own) {
         put('(');
@@ -476,6 +477,39 @@ private:
    * was empty at capture has no glue text around it, so the kind template
    * prints the node instead.
    */
+  /**
+   * Whether an import still has the same mix of default, namespace and named
+   * specifiers as when its layout was captured. The braces around the named
+   * ones sit in the gaps between specifiers, so a changed mix must reprint
+   * from the template.
+   */
+  static bool importShapeKept(const Node *n, const Layout &layout)
+  {
+    if (n->kind != NodeKind::ImportDeclaration) {
+      return true;
+    }
+    auto shape = [](const Node *c, int &out) {
+      if (!c) {
+        return;
+      }
+      out |= c->kind == NodeKind::ImportDefaultSpecifier     ? 1
+             : c->kind == NodeKind::ImportNamespaceSpecifier ? 2
+                                                             : 4;
+    };
+    int before = 0;
+    int after = 0;
+    int fixed = kindInfo(n->kind).fixedChildren;
+    for (const LayoutItem &item : layout.items) {
+      if (item.child && item.slot >= fixed) {
+        shape(item.child, before);
+      }
+    }
+    for (const Node *c : access::tail(const_cast<Node *>(n), fixed)) {
+      shape(c, after);
+    }
+    return before == after;
+  }
+
   static bool layoutCovers(const Node *n, const Layout &layout)
   {
     int fixed = kindInfo(n->kind).fixedChildren;

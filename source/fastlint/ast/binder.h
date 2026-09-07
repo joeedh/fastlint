@@ -94,6 +94,8 @@ struct Reference {
     Write = 2,
     /** The write that initializes a declaration (`let x = 1`, `for (const x of xs)`). */
     Init = 4,
+    /** The name under `typeof` in a type, which may be a type-only import. */
+    TypeQuery = 8,
   };
 
   Node *id;

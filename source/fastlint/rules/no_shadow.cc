@@ -136,12 +136,6 @@ Hoist hoistOf(string_view text)
   return Hoist::FunctionsAndTypes;
 }
 
-bool endsWith(string_view text, string_view suffix)
-{
-  return text.size() >= suffix.size() &&
-         text.substr(text.size() - suffix.size()) == suffix;
-}
-
 Options readOptions(RuleContext &ctx)
 {
   Options o;
@@ -154,13 +148,8 @@ Options readOptions(RuleContext &ctx)
         opt->getBool("ignoreFunctionTypeParameterNameValueShadow", true);
     o.allow = opt->get("allow");
   }
-  string_view name = ctx.filename();
-  bool typescript = endsWith(name, ".ts") || endsWith(name, ".tsx") ||
-                    endsWith(name, ".mts") || endsWith(name, ".cts");
-  o.module = typescript ||
-             ast::Program(ctx.file().root()).sourceType() == ast::SourceType::Module;
-  o.definitionFile =
-      endsWith(name, ".d.ts") || endsWith(name, ".d.mts") || endsWith(name, ".d.cts");
+  o.module = !isScript(ctx);
+  o.definitionFile = isDefinitionFile(ctx);
   return o;
 }
 

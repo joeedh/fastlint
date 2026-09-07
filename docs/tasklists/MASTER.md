@@ -774,7 +774,7 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   - [ ] `no-fallthrough`: `reportUnusedFallthroughComment`.
   - [ ] `lint::Regex` matches bytes; `\u` escapes above 0x7F and Unicode
     classes fail to compile.
-- [ ] Batch B (binder-heavy): `prefer-const` (fixable), `no-unused-vars`,
+- [x] Batch B (binder-heavy): `prefer-const` (fixable), `no-unused-vars`,
   `no-shadow`.
   - [x] `prefer-const`: ESLint port over the binder; the fix flips the
     declaration's kind byte. No `/* exported */` directive or
@@ -783,7 +783,13 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     a fixed ECMAScript builtin list since there is no `globals` config;
     a function expression's own name is treated as one scope out, which
     matches scope-manager's function-expression-name scope.
-  - [ ] `no-unused-vars`
+  - [x] `no-unused-vars`: typescript-eslint's extension ported; import
+    removal is a suggestion, or a fix with `enableAutofixRemoval.imports`.
+    Needed a decorated plain parameter to get a `TSParameterProperty`
+    wrapper so its decorators bind (in the enclosing scope), `infer I` to
+    declare in its conditional type's scope, `export =` to accept either
+    space, `typeof` to resolve type-only imports, and the printer to reprint
+    an import from the template when its specifier mix changes.
 - [ ] Batch C: `@typescript-eslint/consistent-type-imports` (fixable).
 - [x] Fixer additions the batch needed: `setData`/`setFlag` (operator and
   keyword changes in place), slot-owned parentheses on `detach`/placement,

@@ -1649,7 +1649,8 @@ private:
       return errorLeaf(id);
     }
     span<const NodeId> ch = kids(id);
-    size_t i = skipDecorators(ch);
+    size_t decorators = skipDecorators(ch);
+    size_t i = decorators;
     Node *name = i < ch.size() ? lowerBindingName(ch[i]) : nullptr;
     i++;
     Node *type = nullptr;
@@ -1684,9 +1685,9 @@ private:
     Accessibility access = accessibility(id);
     bool readonly = gflag(id, syntax::FLAG_READONLY);
     bool override = gflag(id, syntax::FLAG_OVERRIDE);
-    if (access != Accessibility::None || readonly || override) {
+    if (access != Accessibility::None || readonly || override || decorators > 0) {
       Node *p = mk(NodeKind::TSParameterProperty, id);
-      opt(p, nullptr);
+      opt(p, lowerDecorators(id, ch, decorators));
       req(p, result);
       p->setDataByte(0, uint8_t(access));
       if (readonly) {
