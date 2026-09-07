@@ -71,6 +71,15 @@ struct SignatureResponse {
   static SignatureResponse from(const JsonValue *value);
 };
 
+/** One index signature of a type. */
+struct IndexInfoResponse {
+  TypeResponse keyType;
+  TypeResponse valueType;
+  bool isReadonly = false;
+
+  static IndexInfoResponse from(const JsonValue *value);
+};
+
 enum class SignatureKind : int { Call = 0, Construct = 1 };
 
 /** Spelling of the type-id parameter `method` reads in the pinned version, from the
@@ -129,6 +138,23 @@ public:
    * kinds. */
   bool propertiesOfType(int typeId, Vector<SymbolResponse> &properties, string &error);
   bool typeOfSymbol(int symbolId, TypeResponse &type, string &error);
+  /** The type a symbol declares (a class or interface's instance type). */
+  bool declaredTypeOfSymbol(int symbolId, TypeResponse &type, string &error);
+  /** `name` is the property's escaped name; a null response when the type lacks it. */
+  bool propertyOfType(int typeId,
+                      std::string_view name,
+                      SymbolResponse &symbol,
+                      string &error);
+  bool apparentType(int typeId, TypeResponse &type, string &error);
+  /** A null response for an unconstrained type parameter. */
+  bool baseConstraintOfType(int typeId, TypeResponse &type, string &error);
+  /** Base types of a class or interface instance type; the server panics on other
+   * kinds. */
+  bool baseTypes(int typeId, Vector<TypeResponse> &types, string &error);
+  bool isArrayType(int typeId, bool &result, string &error);
+  /** The generic target of a type reference; a null response for other types. */
+  bool targetOfType(int typeId, TypeResponse &type, string &error);
+  bool indexInfosOfType(int typeId, Vector<IndexInfoResponse> &infos, string &error);
   bool symbolAtPosition(std::string_view file,
                         uint32_t position,
                         SymbolResponse &symbol,

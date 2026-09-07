@@ -28,6 +28,8 @@ add_fastlint_test(fastlint
     rules_no_fallthrough_test.cc
     rules_no_non_null_assertion_test.cc
     rules_no_self_assign_test.cc
+    rules_no_floating_promises_test.cc
+    rules_await_thenable_test.cc
     rules_no_unreachable_test.cc
     rules_no_var_test.cc
     rules_prefer_as_const_test.cc

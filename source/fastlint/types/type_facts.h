@@ -52,17 +52,51 @@ public:
   bool prefetch(span<const ast::Node *const> nodes);
 
   bool isAnyLike(TypeId type) const;
+  bool isTypeParameter(TypeId type) const;
   /** `undefined`, `null`, `void`, or a union with such a member. */
   bool isNullable(TypeId type) const;
   /** `Promise`, `PromiseLike`, an object with a callable `then`, or a union with such a
    * member. */
   bool isPromiseLike(TypeId type);
   bool isArrayLike(TypeId type);
-  /** Members of a union or intersection; empty for other types. */
-  span<const TypeId> unionMembers(TypeId type) const;
+  /** `T[]` or `readonly T[]`, not tuples; cached per row. */
+  bool isArray(TypeId type);
+  /** A tuple type; the pinned server omits the flag, so a reference's target is asked
+   * once and cached. */
+  bool isTuple(TypeId type);
+  /** Members of a union or intersection, fetched when the row was interned without
+   * them; empty for other types. */
+  span<const TypeId> unionMembers(TypeId type);
+  /** Type arguments of a generic reference (array element type, tuple elements, `T` of
+   * `Promise<T>`); fetched when the row was interned without them. */
+  span<const TypeId> typeArguments(TypeId type);
+  /** The apparent type: a primitive's interface, a type parameter's constraint. */
+  TypeId apparentType(TypeId type);
+  /** The base constraint of a type parameter, or 0 when it has none. */
+  TypeId constraintOf(TypeId type);
+  /** Value type of the type's `number` index signature, or 0 when it has none. */
+  TypeId numberIndexType(TypeId type);
+  /** Type of the property `name`, or 0 when the type has no such property. */
+  TypeId propertyType(TypeId type, std::string_view name);
+  /** Whether the type has a property keyed by the well-known symbol `Symbol.<name>`. */
+  bool hasWellKnownSymbolProperty(TypeId type, std::string_view name);
+  /** Some union member of the apparent type has a call signature. */
+  bool isCallable(TypeId type);
+  /** A `then` method whose first `callbacks` parameters are callable, on some member of
+   * the apparent type; `then(cb)` for 1, `then(ok, fail)` for 2. */
+  bool isThenable(TypeId type, int callbacks);
+  /** The type is the default library's `name` (`Promise`, `PromiseConstructor`), a class
+   * or interface deriving from it, an intersection containing it, a union of such types,
+   * or a type parameter constrained to one. */
+  bool isBuiltin(TypeId type, std::string_view name);
+  /** Some declaration of the symbol is in a `lib.*.d.ts` file. */
+  bool isDefaultLibrary(SymbolId symbol) const;
   bool callSignatures(TypeId type, Vector<Signature> &signatures);
+  /** Declared type of a symbol (a parameter, a property), interned with one hop. */
+  TypeId typeOfSymbol(SymbolId symbol);
   bool assignableTo(TypeId from, TypeId to, bool &result);
   SymbolId symbolOf(TypeId type) const;
+  uint32_t symbolFlags(SymbolId symbol) const;
   /** Declaration node handles of a symbol, as string ids. */
   span<const StringId> declarationsOf(SymbolId symbol) const;
   /** The canonical file path inside a declaration handle (`index.kind.path`). */
@@ -88,13 +122,24 @@ public:
 
 private:
   bool ensureTable();
-  /** Interns a response; `withChildren` fetches one hop (union members, type arguments).
-   */
-  TypeId internResponse(const tsgo::TypeResponse &type, bool withChildren);
+  /** Interns a response; `withChildren` fetches union members and type arguments, and
+   * their own down to `kChildDepth`, so a row's hash carries its whole shape. */
+  TypeId internResponse(const tsgo::TypeResponse &type, bool withChildren, int depth = 0);
   SymbolId internSymbol(const tsgo::SymbolResponse &symbol);
   SymbolId symbolOfSession(int typeSessionId, bool alias);
   bool thenable(TypeId type);
   bool nameIs(SymbolId symbol, std::string_view a, std::string_view b) const;
+  /** Interns a fresh row for a compound type whose children were not fetched. */
+  TypeId deepen(TypeId type);
+  bool fetchChildren(int sessionId,
+                     uint32_t flags,
+                     uint32_t objectFlags,
+                     int depth,
+                     ChildKind &kind,
+                     Vector<TypeId> &children);
+  TypeId typeOfSymbolSession(int symbolSessionId);
+  bool baseTypesOf(TypeId type, Vector<TypeId> &bases);
+  bool isBuiltinDeep(TypeId type, std::string_view name, int depth);
 
   tsgo::Session &m_session;
   TypeGraph &m_graph;
@@ -107,7 +152,12 @@ private:
   bool m_tableFailed = false;
   Map<const ast::Node *, TypeId> m_nodeTypes;
   Map<int, bool> m_arrayLike;
+  Map<int, bool> m_array;
+  Map<int, bool> m_tuple;
   Map<int, bool> m_promiseLike;
+  Map<int, bool> m_callable;
+  Map<int, TypeId> m_apparent;
+  Map<int, TypeId> m_constraint;
   string m_error;
   FactsStats m_stats;
 };

@@ -18,6 +18,7 @@ inline lint::span<const lint::Message> messagesOf(const lint::Message (&m)[N])
 }
 
 extern const lint::RuleDef kArrayType;
+extern const lint::RuleDef kAwaitThenable;
 extern const lint::RuleDef kCurly;
 extern const lint::RuleDef kEqeqeq;
 extern const lint::RuleDef kNoConsole;
@@ -26,6 +27,7 @@ extern const lint::RuleDef kNoDebugger;
 extern const lint::RuleDef kNoDuplicateCase;
 extern const lint::RuleDef kNoEmpty;
 extern const lint::RuleDef kNoFallthrough;
+extern const lint::RuleDef kNoFloatingPromises;
 extern const lint::RuleDef kNoNonNullAssertion;
 extern const lint::RuleDef kNoSelfAssign;
 extern const lint::RuleDef kNoShadow;

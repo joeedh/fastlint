@@ -66,6 +66,8 @@ struct FileResult {
   string output;
   /** Matched an `ignores` glob; nothing ran. */
   bool ignored = false;
+  /** Why the type source could not type the file; type-aware rules did not run. */
+  string typeError;
 
   void clear();
 };
@@ -75,7 +77,7 @@ struct LintOptions {
   /** Passes the fixpoint driver may take. */
   int maxPasses = 10;
   /** Null runs the syntactic rules only. */
-  types::TypeFacts *types = nullptr;
+  types::TypeSource *types = nullptr;
 };
 
 /** Parser options implied by a file name's extension. */

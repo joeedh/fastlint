@@ -32,17 +32,23 @@ Code lives under `source/fastlint/types/`.
   `assignableTo`) need it; `clearSessionIds()` drops every one when the
   snapshot is released. Hashes never include it.
 
-## One hop
+## Children
 
-- A type reached through `typeOf` or a signature's return type is interned
-  with its children fetched: `getTypesOfType` for unions and intersections,
-  `getTypeArguments` for references. Each child is interned shallowly, with
-  its own symbol but without children of its own.
-- A shallow row that is later reached directly is re-interned with children;
-  the new row supersedes it in the session-id lookup and the old one stays as
-  an orphan.
+- A type reached through `typeOf`, a signature's return type, a property or
+  an apparent type is interned with its children fetched: `getTypesOfType`
+  for unions and intersections, `getTypeArguments` for references. The
+  children are interned the same way, down to `kChildDepth` levels, so a
+  row's hash carries the whole shape of the type. A generic instantiation is
+  only told apart by its arguments, so a shallow `Array<T>` row would merge
+  `Array<number>` with `Array<Promise<number>>`; leaves below the depth limit
+  can still share a row that way.
+- A shallow row that is later asked about (`unionMembers`, `typeArguments`,
+  `isBuiltin`) is re-interned with children by `deepen`; the new row
+  supersedes it in the session-id lookup and the old one stays as an orphan.
 - Symbols are fetched with `getSymbolOfType` and `getAliasSymbolOfType` when
   a response names one the graph has not seen in this session.
+- The pinned server omits `isTupleType`, so `isTuple` asks for a reference's
+  target once (`getTargetOfType`) and reads its `Tuple` object flag.
 
 ## Working set
 
@@ -64,18 +70,67 @@ Code lives under `source/fastlint/types/`.
 | `isAnyLike` | row flags (`Any`, `Unknown`) |
 | `isNullable` | row flags (`Undefined`, `Null`, `Void`) or any union member's |
 | `isPromiseLike` | symbol or alias named `Promise`/`PromiseLike`, any union member, else a `then` property with a call signature (server) |
-| `isArrayLike` | `isArrayLikeType` on the live id, cached per row |
-| `unionMembers` | the children range of a union or intersection |
-| `callSignatures` | `getSignaturesOfType`, each return type interned with one hop, parameters as symbols |
+| `isArrayLike`, `isArray` | `isArrayLikeType` / `isArrayType` on the live id, cached per row |
+| `isTuple` | the row's flag, else the reference target's `Tuple` object flag, cached |
+| `isTypeParameter` | row flags |
+| `unionMembers` | the children range of a union or intersection, fetched for a shallow row |
+| `typeArguments` | the children range of a reference, fetched for a shallow row |
+| `apparentType` | `getApparentType` for primitives and type parameters, cached; other types are their own |
+| `constraintOf` | `getBaseConstraintOfType` of a type parameter, cached; 0 when unconstrained |
+| `propertyType` | `getPropertyOfType` then `getTypeOfSymbol` |
+| `numberIndexType` | the `number` entry of `getIndexInfosOfType` |
+| `hasWellKnownSymbolProperty` | a `getPropertiesOfType` name shaped `__@name@<id>` |
+| `isCallable` | `getSignaturesOfType` on some member of the apparent type, cached |
+| `isThenable(type, n)` | a `then` property on some member of the apparent type with a call signature whose first `n` parameters are callable |
+| `isBuiltin(type, name)` | the default library's symbol `name` on the type, an intersection member, every union member, a type parameter's constraint, or a class or interface base (`getDeclaredTypeOfSymbol` + `getBaseTypes`) |
+| `isDefaultLibrary` | a declaration handle whose file is `lib.*.d.ts` |
+| `callSignatures` | `getSignaturesOfType`, each return type interned with children, parameters as symbols |
+| `typeOfSymbol` | `getTypeOfSymbol` on the symbol's live id |
 | `assignableTo` | `isTypeAssignableTo` on the two live ids |
-| `symbolOf`, `declarationsOf` | the rows |
+| `symbolOf`, `symbolFlags`, `declarationsOf` | the rows |
+
+`isBuiltin` mirrors typescript-eslint's `isBuiltinSymbolLike`: `Promise`
+means the library's `Promise`, not any type with that name. The default
+library test is by file name, since the server does not say which files are
+its libs.
 
 `lastError()` carries the most recent server or transport failure; node
 queries return 0 instead of failing so a rule can keep walking.
+
+## Type sources
+
+`TypeSource` (`type_source.h`) is what the linter holds instead of a
+`TypeFacts`: `beginFile(file, path, text)` returns the facts for one file or
+null with an error, and `endFile` releases them. `ProjectTypes` is the
+implementation over one tsgo project.
+
+- `open(tsconfig)` starts the server with the tsconfig's directory as its
+  working directory (`tsc` resolved from there, then from the working
+  directory) and opens the project. `close` releases the snapshot, stops the
+  server and clears the graph's live ids.
+- The text handed to `beginFile` is what the server checks. `ProjectTypes`
+  is the server's `FileProvider`, serving every file it has been handed from
+  memory, so a fixpoint pass sees its own edits and a test case need not be
+  on disk. The text of every file seen is kept for the server's re-reads.
+- A file whose text differs from what the server holds gets an
+  `updateSnapshot` with it in `changed`; the graph's live ids are cleared,
+  the old snapshot released and a `Session` and `TypeFacts` made for the new
+  one. A file already on disk with the same bytes needs no update. The
+  first sight of a file compares its text with the disk, so a served text
+  that differs from the file (the typed rule tester) is a change too.
+- A file the disk lacks is sent as `created` and opened (`openFiles`), which
+  lands it in the server's inferred project; a configured project only
+  globs the disk. An open file keeps its text until it is closed, so a later
+  change closes it with the change and reopens it in a second update.
+- `defaultProjectForFile` picks the project each file is queried in, so a
+  tsconfig with references or an inferred-project file get the right
+  program.
+- `stats()` sums the `FactsStats` over every session; `rpcStats()` is the
+  client's call and byte counts. `fastlint lint --type-stats` prints both.
 
 ## Not yet
 
 - Rows persist through the store in docs/type-cache.md, but nothing evicts
   them yet; the LRU over rows is still open.
-- Children interned as members are shallow, so a union inside a union hashes
-  by its flags alone. Measure before deciding whether to deepen on demand.
+- `ProjectTypes` keeps the text of every file it has served for the whole
+  run; a large project pays its source size in memory.

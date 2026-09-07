@@ -755,7 +755,11 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   `--quiet`, `--max-warnings`; exit codes as ESLint.
   - [ ] Wire `FileCache`, `--no-cache`, `--cache-dir` and `cache verify` into
     the command (moved here from 5.4).
-  - [ ] Type server start-up for type-aware rules (6.3).
+  - [x] Type server start-up for type-aware rules: `--project <tsconfig>`
+    starts one `tsgo` server through `types::ProjectTypes`, which serves
+    the linter's text to the server so fixpoint passes are typed too
+    (docs/type-facts.md "Type sources"). `--type-stats` prints the query
+    counts.
   - [ ] Rules do not run on files with syntax errors (ESLint behaviour);
     revisit once recovery quality is measured.
 - [x] First rule end to end: `no-debugger` (fixable).
@@ -807,7 +811,28 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   `no-unnecessary-condition`, `no-unsafe-*` family (`any` flow),
   `restrict-template-expressions`, `strict-boolean-expressions`,
   `prefer-nullish-coalescing`, `no-unnecessary-type-assertion` (fixable).
+  - [x] Typed rule tester: `runTypedRuleTests` over
+    tests/fixtures/projects/basic (`[integration]`); each case is served
+    to the server as `src/case.ts`.
+  - [x] `TypeFacts` grew the questions the promise rules ask: apparent
+    type, type-parameter constraint, property type, `number` index type,
+    well-known symbol properties, callability, `isThenable(type, n)`,
+    `isBuiltin(type, name)` with base-type walking, `isTuple` via the
+    reference target (tsc 7.0.2 omits `isTupleType`), and `typeArguments`.
+    Children are now interned with their own children to a depth limit,
+    since shallow generic references collided (`Array<number>` and
+    `Array<Promise<number>>` were one row).
+  - [x] `no-floating-promises` (suggestions only, as upstream). Not done:
+    `allowForKnownSafePromises`/`allowForKnownSafeCalls` (type-or-value
+    specifiers).
+  - [x] `await-thenable`. The `await using` cases need the `esnext`
+    disposable lib, which the fixture project does not enable, so they are
+    untested.
+  - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
+    output is untested (6.1 open item).
 - [ ] Each rule's type queries logged so the cache working set is measured.
+  - [x] `--type-stats` prints the totals of a run; per-rule attribution is
+    still open.
 
 ### 6.4 Dogfood
 - [ ] Lint `C:/dev/TypeScript/packages/typescript/src` and our own `tools/`;

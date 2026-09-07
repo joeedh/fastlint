@@ -38,7 +38,11 @@ What a rule gets for one file.
   there is no schema validation yet.
 - `types()` is the `TypeFacts` for the file, or null when the linter runs
   without a type server. A rule with `typeAware` set is not created at all
-  in that case.
+  in that case. `LintOptions::types` names a `types::TypeSource`
+  (docs/type-facts.md "Type sources"), which the linter asks for the facts of
+  each file, and of each fixpoint pass, since a pass lints text the server
+  has not seen. A file the source cannot type is linted by the syntactic
+  rules alone and `FileResult::typeError` says why.
 - `on(kind, fn)`, `onExit(kind, fn)`, `on<View>(fn)`, `onExit<View>(fn)`
   register listeners. `fn` is an owning `function<void(Node *)>`; the
   context keeps it alive for the file. A view form registers on every kind
@@ -193,11 +197,19 @@ lint/format.h has two formatters over `FileResult`s.
 
 ```
 fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
-              [--fix] [--format pretty|json] [--color|--no-color] [--quiet]
+              [--project <tsconfig>] [--type-stats] [--fix]
+              [--format pretty|json] [--color|--no-color] [--quiet]
               [--max-warnings N] <file|dir>...
 ```
 
 - With no config file and no `--rule`, the recommended preset applies.
+- `--project` starts one `tsc --api` server over the tsconfig and runs the
+  type-aware rules; without it they are skipped. A linted file the project
+  does not include is typed in the server's inferred project. A file that
+  cannot be typed is reported on stderr and gets the syntactic rules only.
+- `--type-stats` prints the type queries of the run on stderr: node cache
+  hits and misses, nodes without a server counterpart, type, child and
+  symbol fetches, and the RPC call and byte counts.
 - `--fix` writes the fixed text back and prints `fixed N problems`.
 - `--quiet` drops warnings from the output and the counts.
 - Exit code 1 when any error remains (or warnings exceed `--max-warnings`),
@@ -229,6 +241,15 @@ test::runRuleTests(
 - `options` is a JSON array text whose elements follow the severity.
 - The rule's message ids are checked against its `messages` table, so a
   typo in either fails the test.
+- Suggestions are not checked; nothing applies them yet.
+
+A type-aware rule uses `runTypedRuleTests` with the same case shapes, from
+a test tagged `integration`. It starts one server over
+tests/fixtures/projects/basic and serves each case as `src/case.ts` of that
+project (or `src/<filename>` when the case names a file), so cases see
+`strict` and the default library. The cases run in one loop rather than
+subcases, since a subcase replay would restart the server per case. The
+test is skipped when no native `tsc` is found.
 
 ## Adding a rule
 
@@ -237,8 +258,10 @@ test::runRuleTests(
 2. Add `source/fastlint/rules/<name>.cc` defining `kRuleName`; declare it in
    rules/rules.h, register it in rules/builtin.cc, list the file in
    source/fastlint/CMakeLists.txt.
-3. Add `source/tests/rules_<name>_test.cc` using `runRuleTests`, ported from
-   the upstream cases, and list it in source/tests/CMakeLists.txt.
+3. Add `source/tests/rules_<name>_test.cc` using `runRuleTests` (or
+   `runTypedRuleTests` under `TEST_TAGGED(..., "integration")` for a
+   type-aware rule), ported from the upstream cases, and list it in
+   source/tests/CMakeLists.txt.
 4. Write `docs/rules/<name>.md`: what it reports, options, fix behaviour,
    and how it differs from the upstream rule.
 5. The registry test asserts every built-in rule has messages and a docs

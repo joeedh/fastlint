@@ -5,6 +5,7 @@
 #include "fastlint/ast/lower.h"
 #include "fastlint/lint/directives.h"
 #include "fastlint/syntax/parser.h"
+#include "fastlint/types/type_source.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -84,6 +85,7 @@ void FileResult::clear()
   changed = false;
   output = string();
   ignored = false;
+  typeError = string();
 }
 
 syntax::Parser::Options parserOptionsFor(string_view filename)
@@ -373,6 +375,29 @@ void Linter::lintSource(string_view source,
   }
   syntax::Parser::Options parserOptions = parserOptionsFor(filename);
 
+  // The type source sees the text of each pass, so its answers match the tree.
+  auto lintPass = [&](const syntax::GrammarTree &tree,
+                      const syntax::Diagnostics &diagnostics,
+                      ast::AstFile &file,
+                      ast::Bindings &bindings,
+                      Vector<ast::Fix> *fixes) {
+    types::TypeFacts *facts = nullptr;
+    if (options.types) {
+      string error;
+      facts = options.types->beginFile(file, filename, tree.source(), error);
+      if (!facts) {
+        out.typeError = std::move(error);
+      }
+    }
+    lintFile(tree, diagnostics, file, bindings, filename, config, facts, fixes, out);
+    if (facts && facts->lastError().size() > 0) {
+      out.typeError = facts->lastError();
+    }
+    if (options.types) {
+      options.types->endFile();
+    }
+  };
+
   auto lintText = [&](string_view text, Vector<ast::Fix> *fixes) {
     syntax::Diagnostics diagnostics;
     syntax::GrammarTree tree;
@@ -382,8 +407,7 @@ void Linter::lintSource(string_view source,
     ast::lower(tree, file);
     ast::Bindings bindings;
     ast::bind(file, bindings);
-    lintFile(
-        tree, diagnostics, file, bindings, filename, config, options.types, fixes, out);
+    lintPass(tree, diagnostics, file, bindings, fixes);
   };
 
   if (!options.fix) {
@@ -397,15 +421,7 @@ void Linter::lintSource(string_view source,
   ast::FixpointReport report = ast::runToFixpoint(
       source,
       [&](ast::Pass &pass) {
-        lintFile(pass.tree,
-                 pass.diagnostics,
-                 pass.file,
-                 pass.bindings,
-                 filename,
-                 config,
-                 options.types,
-                 &pass.fixes,
-                 out);
+        lintPass(pass.tree, pass.diagnostics, pass.file, pass.bindings, &pass.fixes);
       },
       fixpoint);
   // A reverted or cut-off run leaves diagnostics from a text that is not the

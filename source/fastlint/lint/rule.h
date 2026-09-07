@@ -22,7 +22,8 @@
 
 namespace fastlint::types {
 class TypeFacts;
-}
+class TypeSource;
+} // namespace fastlint::types
 
 namespace fastlint::lint {
 

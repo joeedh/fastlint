@@ -6,6 +6,7 @@
 #include "fastlint/lint/format.h"
 #include "fastlint/lint/linter.h"
 #include "fastlint/lint/registry.h"
+#include "fastlint/types/type_source.h"
 #include "util/string.h"
 #include "util/vector.h"
 
@@ -79,6 +80,8 @@ int lintCommand(int argc, char **argv)
   bool fix = false;
   bool json = false;
   bool quiet = false;
+  const char *project = nullptr;
+  bool typeStats = false;
   int maxWarnings = -1;
   int color = -1;
   Vector<std::string> ruleFlags;
@@ -92,6 +95,10 @@ int lintCommand(int argc, char **argv)
       ruleFlags.append(std::string(argv[++i]));
     } else if (std::strcmp(arg, "--fix") == 0) {
       fix = true;
+    } else if (std::strcmp(arg, "--project") == 0 && i + 1 < argc) {
+      project = argv[++i];
+    } else if (std::strcmp(arg, "--type-stats") == 0) {
+      typeStats = true;
     } else if (std::strcmp(arg, "--format") == 0 && i + 1 < argc) {
       const char *format = argv[++i];
       if (std::strcmp(format, "json") == 0) {
@@ -163,6 +170,17 @@ int lintCommand(int argc, char **argv)
   lint::Linter linter(registry, config);
   lint::LintOptions options;
   options.fix = fix;
+  // Type-aware rules run only with a project; without one they are skipped.
+  types::ProjectTypes types;
+  if (project) {
+    string typeError;
+    if (!types.open(project, typeError)) {
+      std::fprintf(
+          stderr, "%s: cannot start the type server: %s\n", project, typeError.c_str());
+      return 2;
+    }
+    options.types = &types;
+  }
   Vector<lint::FileResult> results;
   int errors = 0, warnings = 0, fixed = 0, unreadable = 0;
   for (const std::filesystem::path &path : files) {
@@ -177,6 +195,9 @@ int lintCommand(int argc, char **argv)
     linter.lintSource(bytes, name, options, result);
     if (result.ignored) {
       continue;
+    }
+    if (result.typeError.size() > 0) {
+      std::fprintf(stderr, "%s: no types: %s\n", name.c_str(), result.typeError.c_str());
     }
     if (fix && result.changed) {
       std::string output(result.output.c_str(), result.output.size());
@@ -221,6 +242,22 @@ int lintCommand(int argc, char **argv)
   }
   std::fputs(out.c_str(), stdout);
   std::fflush(stdout);
+  if (typeStats && project) {
+    types::FactsStats facts = types.stats();
+    const tsgo::RpcStats &rpc = types.rpcStats();
+    std::fprintf(stderr,
+                 "types: %d node hits, %d misses, %d unmapped; %d type, %d child, %d "
+                 "symbol fetches; %d rpc calls, %zu bytes out, %zu in\n",
+                 facts.nodeHits,
+                 facts.nodeMisses,
+                 facts.unmappedNodes,
+                 facts.typeFetches,
+                 facts.childFetches,
+                 facts.symbolFetches,
+                 rpc.calls,
+                 rpc.bytesSent,
+                 rpc.bytesReceived);
+  }
 
   if (unreadable > 0) {
     return 2;

@@ -5,6 +5,7 @@ namespace fastlint::rules {
 void addBuiltinRules(lint::Registry &registry)
 {
   registry.add(kArrayType);
+  registry.add(kAwaitThenable);
   registry.add(kCurly);
   registry.add(kEqeqeq);
   registry.add(kNoConsole);
@@ -13,6 +14,7 @@ void addBuiltinRules(lint::Registry &registry)
   registry.add(kNoDuplicateCase);
   registry.add(kNoEmpty);
   registry.add(kNoFallthrough);
+  registry.add(kNoFloatingPromises);
   registry.add(kNoNonNullAssertion);
   registry.add(kNoSelfAssign);
   registry.add(kNoShadow);

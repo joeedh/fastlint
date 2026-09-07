@@ -227,6 +227,9 @@ then all failures in full, then a summary (`412 passed, 2 failed, 3 skipped,
 - tsgo client (`[integration]`, requires `tsc`): fixture projects under
   `tests/fixtures/projects/*` with `tsconfig.json`; tests query known
   positions and check flags/structure; snapshot the interned rows.
+- Type-aware rules (`[integration]`): `runTypedRuleTests` serves each case
+  as `src/case.ts` of `tests/fixtures/projects/basic`; the placeholder file
+  on disk keeps the file in the project's program.
 - Protocol codec: msgpack encode/decode unit tests with captured frames
   (fixtures recorded once from a real session).
 - SQLite store: in-memory DB (`:memory:`) unit tests for schema, interning,

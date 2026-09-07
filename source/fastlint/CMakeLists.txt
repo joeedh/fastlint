@@ -11,6 +11,7 @@ set(SRC
   lint/registry.cc
   lint/regex.cc
   rules/array_type.cc
+  rules/await_thenable.cc
   rules/builtin.cc
   rules/curly.cc
   rules/eqeqeq.cc
@@ -20,6 +21,7 @@ set(SRC
   rules/no_duplicate_case.cc
   rules/no_empty.cc
   rules/no_fallthrough.cc
+  rules/no_floating_promises.cc
   rules/no_non_null_assertion.cc
   rules/no_self_assign.cc
   rules/no_shadow.cc
@@ -61,6 +63,7 @@ set(SRC
   tsgo/source_file.cc
   types/type_facts.cc
   types/type_graph.cc
+  types/type_source.cc
   version.cc
 
   ast/access.h
@@ -112,6 +115,7 @@ set(SRC
   tsgo/source_file.h
   types/type_facts.h
   types/type_graph.h
+  types/type_source.h
   version.h
 )
 

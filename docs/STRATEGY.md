@@ -215,10 +215,12 @@ this document depends on.
   `await` operands, conditions, assignment RHS). Nothing else is fetched.
 - Most rules stop at flags (`isNullable`, `isAnyLike`, `isPromiseLike`,
   `isEnumLiteral`, …): 4 bytes per queried node, no graph walk.
-- Shallow interned type graph, one hop materialized:
+- Shallow interned type graph, children materialized to a fixed depth:
   - `types { id, structural_hash, kind, flags, children_range }` — children
     are union/intersection members, type args, signature params/return,
-    array element. Deeper levels materialize on demand.
+    array element. A generic instantiation is only told apart by its
+    arguments, so children carry their own children down to a depth limit
+    (docs/type-facts.md "Children"); deeper levels materialize on demand.
   - Interned by structural hash: `Promise<void>` at 10k sites is one row;
     `string | undefined` is one row for the monorepo. This dedup is the
     memory win.

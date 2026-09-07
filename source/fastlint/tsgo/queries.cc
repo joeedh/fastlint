@@ -374,6 +374,104 @@ bool Session::typeOfSymbol(int symbolId, TypeResponse &type, string &error)
   return callType("getTypeOfSymbol", w, type, error);
 }
 
+bool Session::declaredTypeOfSymbol(int symbolId, TypeResponse &type, string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member("symbol", symbolId);
+  return callType("getDeclaredTypeOfSymbol", w, type, error);
+}
+
+bool Session::propertyOfType(int typeId,
+                             std::string_view name,
+                             SymbolResponse &symbol,
+                             string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member(typeIdParam("getPropertyOfType"), typeId);
+  w.member("name", name);
+  w.endObject();
+  JsonDocument result;
+  if (!m_client.call("getPropertyOfType", w.text(), result, error)) {
+    return false;
+  }
+  symbol = SymbolResponse::from(result.root());
+  return true;
+}
+
+bool Session::apparentType(int typeId, TypeResponse &type, string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member(typeIdParam("getApparentType"), typeId);
+  return callType("getApparentType", w, type, error);
+}
+
+bool Session::baseConstraintOfType(int typeId, TypeResponse &type, string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member(typeIdParam("getBaseConstraintOfType"), typeId);
+  return callType("getBaseConstraintOfType", w, type, error);
+}
+
+bool Session::baseTypes(int typeId, Vector<TypeResponse> &types, string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member(typeIdParam("getBaseTypes"), typeId);
+  return callTypes("getBaseTypes", w, types, error);
+}
+
+bool Session::targetOfType(int typeId, TypeResponse &type, string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member("objectId", typeId);
+  return callType("getTargetOfType", w, type, error);
+}
+
+bool Session::isArrayType(int typeId, bool &result, string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member(typeIdParam("isArrayType"), typeId);
+  return callBool("isArrayType", w, result, error);
+}
+
+IndexInfoResponse IndexInfoResponse::from(const JsonValue *v)
+{
+  IndexInfoResponse info;
+  if (!v || !v->isObject()) {
+    return info;
+  }
+  info.keyType = TypeResponse::from(v->get("keyType"));
+  info.valueType = TypeResponse::from(v->get("valueType"));
+  info.isReadonly = v->getBool("isReadonly", false);
+  return info;
+}
+
+bool Session::indexInfosOfType(int typeId,
+                               Vector<IndexInfoResponse> &infos,
+                               string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member(typeIdParam("getIndexInfosOfType"), typeId);
+  w.endObject();
+  JsonDocument result;
+  if (!m_client.call("getIndexInfosOfType", w.text(), result, error)) {
+    return false;
+  }
+  infos.clear();
+  const JsonValue *list = result.root();
+  for (int i = 0; list && i < list->size(); i++) {
+    infos.append(IndexInfoResponse::from(list->at(i)));
+  }
+  return true;
+}
+
 bool Session::symbolAtPosition(std::string_view file,
                                uint32_t position,
                                SymbolResponse &symbol,
