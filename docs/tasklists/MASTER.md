@@ -776,6 +776,11 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     classes fail to compile.
 - [ ] Batch B (binder-heavy): `prefer-const` (fixable), `no-unused-vars`,
   `no-shadow`.
+  - [x] `prefer-const`: ESLint port over the binder; the fix flips the
+    declaration's kind byte. No `/* exported */` directive or
+    `markVariableAsUsed`, so names other rules mark as used are reported.
+  - [ ] `no-shadow`
+  - [ ] `no-unused-vars`
 - [ ] Batch C: `@typescript-eslint/consistent-type-imports` (fixable).
 - [x] Fixer additions the batch needed: `setData`/`setFlag` (operator and
   keyword changes in place), slot-owned parentheses on `detach`/placement,

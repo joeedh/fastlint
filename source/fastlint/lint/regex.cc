@@ -38,7 +38,8 @@ int hexValue(char c)
   return -1;
 }
 
-/** Adds the ranges of a `\d`, `\w` or `\s` class; the caller negates the upper-case forms. */
+/** Adds the ranges of a `\d`, `\w` or `\s` class; the caller negates the upper-case
+ * forms. */
 void addNamedClass(Regex::Class &cls, char name)
 {
   switch (name) {

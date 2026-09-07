@@ -31,6 +31,7 @@ extern const lint::RuleDef kNoSelfAssign;
 extern const lint::RuleDef kNoUnreachable;
 extern const lint::RuleDef kNoVar;
 extern const lint::RuleDef kPreferAsConst;
+extern const lint::RuleDef kPreferConst;
 
 /** Registers every built-in rule with `registry`. */
 void addBuiltinRules(lint::Registry &registry);

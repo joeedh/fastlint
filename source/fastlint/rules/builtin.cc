@@ -18,6 +18,7 @@ void addBuiltinRules(lint::Registry &registry)
   registry.add(kNoUnreachable);
   registry.add(kNoVar);
   registry.add(kPreferAsConst);
+  registry.add(kPreferConst);
 }
 
 } // namespace fastlint::rules
