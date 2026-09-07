@@ -790,7 +790,12 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     declare in its conditional type's scope, `export =` to accept either
     space, `typeof` to resolve type-only imports, and the printer to reprint
     an import from the template when its specifier mix changes.
-- [ ] Batch C: `@typescript-eslint/consistent-type-imports` (fixable).
+- [x] Batch C: `@typescript-eslint/consistent-type-imports` (fixable).
+  Type-only use comes from the binder's reference spaces and the `TypeQuery`
+  flag; fixes flip the import kind byte, move specifiers between imports
+  and insert new imports before the reported one. The printer now keeps
+  children's comments when a node reprints from its template. Not done: the
+  decorator-metadata caveat (needs tsconfig) and a `jsxPragma` option.
 - [x] Fixer additions the batch needed: `setData`/`setFlag` (operator and
   keyword changes in place), slot-owned parentheses on `detach`/placement,
   loop-head declarations print without `;`.

@@ -270,6 +270,10 @@ private:
   Vector<DeadRange> dead;
   /** Set after a moved `//` comment; the next text must start a new line. */
   bool pendingNewline = false;
+  /** The node whose kind template is printing; its children's comments print here. */
+  Node *templating = nullptr;
+  /** How far into `templating`'s comment list the dangling ones have printed. */
+  size_t danglingNext = 0;
 
   // ------------------------------------------------------------- output
 
@@ -368,13 +372,22 @@ private:
 
   void movedComments(const Node *n, CommentPlace place)
   {
+    comments(n, place, false);
+  }
+
+  /**
+   * Prints the comments of `n` at `place` that the surrounding text no
+   * longer carries: moved ones, and with `own` the unmoved ones as well.
+   */
+  void comments(const Node *n, CommentPlace place, bool own)
+  {
     const CommentList *list = f.comments(n);
     if (!list) {
       return;
     }
     string_view source = f.grammar() ? f.grammar()->source() : string_view();
     for (const Comment &c : *list) {
-      if (!c.moved || c.place != place || c.offset + c.length > source.size()) {
+      if ((!c.moved && !own) || c.place != place || c.offset + c.length > source.size()) {
         continue;
       }
       string_view text = source.substr(c.offset, c.length);
@@ -422,7 +435,12 @@ private:
     if (!n) {
       return;
     }
-    movedComments(n, CommentPlace::Leading);
+    // A parent printing from its template lost the text around its children.
+    bool ownComments = templating && n->parent == templating;
+    if (ownComments && n->grammar.tree) {
+      flushDangling(n->start);
+    }
+    comments(n, CommentPlace::Leading, ownComments);
     uint32_t begin = uint32_t(out.size());
     bool parens = n->hasFlag(Flag::Parenthesized);
     const GrammarTree *tree = n->grammar.tree;
@@ -461,7 +479,7 @@ private:
         n->end = uint32_t(out.size());
       }
     }
-    movedComments(n, CommentPlace::Trailing);
+    comments(n, CommentPlace::Trailing, ownComments);
   }
 
   // --------------------------------------------------------------- layout
@@ -1023,6 +1041,48 @@ private:
   }
 
   void printTemplate(Node *n)
+  {
+    Node *savedNode = templating;
+    size_t savedNext = danglingNext;
+    templating = n;
+    danglingNext = 0;
+    printTemplateBody(n);
+    flushDangling(UINT32_MAX);
+    templating = savedNode;
+    danglingNext = savedNext;
+  }
+
+  /**
+   * Prints the unmoved dangling comments of the template-printed node that
+   * start before source offset `before`, since the text they sat in is gone.
+   */
+  void flushDangling(uint32_t before)
+  {
+    const CommentList *list = templating ? f.comments(templating) : nullptr;
+    if (!list) {
+      return;
+    }
+    string_view source = f.grammar() ? f.grammar()->source() : string_view();
+    for (; danglingNext < list->size(); danglingNext++) {
+      const Comment &c = (*list)[int(danglingNext)];
+      if (c.moved || c.place != CommentPlace::Dangling ||
+          c.offset + c.length > source.size())
+      {
+        continue;
+      }
+      if (c.offset >= before) {
+        break;
+      }
+      put(source.substr(c.offset, c.length));
+      if (c.multiLine) {
+        put(' ');
+      } else {
+        pendingNewline = true;
+      }
+    }
+  }
+
+  void printTemplateBody(Node *n)
   {
     switch (n->kind) {
     case NodeKind::Program:

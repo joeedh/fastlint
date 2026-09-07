@@ -410,6 +410,10 @@ are its methods (`identifier`, `literal`, `member`, `call`, `unary`,
   comment too, or `DropAll` to drop everything. `KeepTrailing` is
   lossless.
 - `replace` moves the old node's comments to the new node.
+- A node printed from its kind template has lost the text that held its
+  children's leading and trailing comments and its own dangling ones, so
+  the printer emits them itself: a child's before and after the child, a
+  dangling one before the first child that follows it in the source.
 - Directive comments (`eslint-disable`, `@ts-ignore`, `fastlint-disable`)
   are indexed by position in the grammar tree; rules never look for them by
   walking comments.

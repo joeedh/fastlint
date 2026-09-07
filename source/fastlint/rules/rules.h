@@ -30,6 +30,7 @@ extern const lint::RuleDef kNoNonNullAssertion;
 extern const lint::RuleDef kNoSelfAssign;
 extern const lint::RuleDef kNoShadow;
 extern const lint::RuleDef kNoUnusedVars;
+extern const lint::RuleDef kConsistentTypeImports;
 extern const lint::RuleDef kNoUnreachable;
 extern const lint::RuleDef kNoVar;
 extern const lint::RuleDef kPreferAsConst;

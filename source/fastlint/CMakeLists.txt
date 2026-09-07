@@ -23,6 +23,7 @@ set(SRC
   rules/no_non_null_assertion.cc
   rules/no_self_assign.cc
   rules/no_shadow.cc
+  rules/consistent_type_imports.cc
   rules/no_unused_vars.cc
   rules/no_unreachable.cc
   rules/no_var.cc

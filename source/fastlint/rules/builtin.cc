@@ -17,6 +17,7 @@ void addBuiltinRules(lint::Registry &registry)
   registry.add(kNoSelfAssign);
   registry.add(kNoShadow);
   registry.add(kNoUnusedVars);
+  registry.add(kConsistentTypeImports);
   registry.add(kNoUnreachable);
   registry.add(kNoVar);
   registry.add(kPreferAsConst);
