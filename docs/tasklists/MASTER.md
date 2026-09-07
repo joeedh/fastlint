@@ -807,10 +807,12 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   (`throw err` + newline shifted every later line number by one).
 
 ### 6.3 Type-aware rules (initial set)
-- [ ] `no-floating-promises`, `await-thenable`, `no-misused-promises`,
+- [x] `no-floating-promises`, `await-thenable`, `no-misused-promises`,
   `no-unnecessary-condition`, `no-unsafe-*` family (`any` flow),
   `restrict-template-expressions`, `strict-boolean-expressions`,
-  `prefer-nullish-coalescing`, `no-unnecessary-type-assertion` (fixable).
+  `prefer-nullish-coalescing`, `no-unnecessary-type-assertion` (fixable). Each is
+  ported to its high-value core with the deferred parts documented per rule in
+  the sub-items below and in `docs/rules/<name>.md`.
   - [x] Typed rule tester: `runTypedRuleTests` over
     tests/fixtures/projects/basic (`[integration]`); each case is served
     to the server as `src/case.ts`.
