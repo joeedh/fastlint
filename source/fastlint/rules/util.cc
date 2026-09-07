@@ -243,6 +243,13 @@ uint32_t lineOf(const RuleContext &ctx, uint32_t offset)
   return ctx.file().grammar()->lineOf(offset);
 }
 
+uint32_t columnOf(const RuleContext &ctx, uint32_t offset)
+{
+  const syntax::GrammarTree *tree = ctx.file().grammar();
+  uint32_t line = tree->lineOf(offset);
+  return offset - tree->lineStarts()[int(line) - 1] + 1;
+}
+
 uint32_t findToken(string_view source, uint32_t from, uint32_t to, string_view token)
 {
   if (to > source.size()) {

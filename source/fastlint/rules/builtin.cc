@@ -15,6 +15,7 @@ void addBuiltinRules(lint::Registry &registry)
   registry.add(kNoFallthrough);
   registry.add(kNoNonNullAssertion);
   registry.add(kNoSelfAssign);
+  registry.add(kNoShadow);
   registry.add(kNoUnreachable);
   registry.add(kNoVar);
   registry.add(kPreferAsConst);

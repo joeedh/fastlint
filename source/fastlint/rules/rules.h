@@ -28,6 +28,7 @@ extern const lint::RuleDef kNoEmpty;
 extern const lint::RuleDef kNoFallthrough;
 extern const lint::RuleDef kNoNonNullAssertion;
 extern const lint::RuleDef kNoSelfAssign;
+extern const lint::RuleDef kNoShadow;
 extern const lint::RuleDef kNoUnreachable;
 extern const lint::RuleDef kNoVar;
 extern const lint::RuleDef kPreferAsConst;

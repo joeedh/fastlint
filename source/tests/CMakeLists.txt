@@ -31,6 +31,7 @@ add_fastlint_test(fastlint
     rules_no_unreachable_test.cc
     rules_no_var_test.cc
     rules_prefer_as_const_test.cc
+    rules_no_shadow_test.cc
     rules_prefer_const_test.cc
     scanner_test.cc
     framework_test.cc

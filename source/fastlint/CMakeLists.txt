@@ -25,6 +25,7 @@ set(SRC
   rules/no_unreachable.cc
   rules/no_var.cc
   rules/prefer_as_const.cc
+  rules/no_shadow.cc
   rules/prefer_const.cc
   rules/util.cc
   ast/comments.cc

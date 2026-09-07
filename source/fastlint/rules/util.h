@@ -67,6 +67,8 @@ bool hasCommentBetween(const syntax::GrammarTree &tree, uint32_t from, uint32_t 
 
 /** One-based line of `offset` in the context's file. */
 uint32_t lineOf(const RuleContext &ctx, uint32_t offset);
+/** One-based byte column of `offset` in the context's file. */
+uint32_t columnOf(const RuleContext &ctx, uint32_t offset);
 
 /** The offset of `token` between `from` and `to` in the source, or `from` when absent. */
 uint32_t findToken(string_view source, uint32_t from, uint32_t to, string_view token);

@@ -779,7 +779,10 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   - [x] `prefer-const`: ESLint port over the binder; the fix flips the
     declaration's kind byte. No `/* exported */` directive or
     `markVariableAsUsed`, so names other rules mark as used are reported.
-  - [ ] `no-shadow`
+  - [x] `no-shadow`: typescript-eslint's extension ported. Globals come from
+    a fixed ECMAScript builtin list since there is no `globals` config;
+    a function expression's own name is treated as one scope out, which
+    matches scope-manager's function-expression-name scope.
   - [ ] `no-unused-vars`
 - [ ] Batch C: `@typescript-eslint/consistent-type-imports` (fixable).
 - [x] Fixer additions the batch needed: `setData`/`setFlag` (operator and
