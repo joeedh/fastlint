@@ -90,8 +90,8 @@ docs/tasklists/MASTER.md.
   filters it to project sources.
 - `RpcStats::readSeconds` is the wall time spent blocked on the server's
   stdout; the difference from a call's elapsed time is our own encoding,
-  parsing and interning. The JSON writer and parser buffer in `std::string`
-  because litestl strings reallocate on every appended byte.
+  parsing and interning. The JSON writer and parser buffer in `std::string`,
+  as boundary adapters may.
 - `Session` methods return false only on a transport or server failure. A
   null answer is `present == false` on the response struct.
 - The type-id parameter is spelled per endpoint (`objectId` or `type`) from

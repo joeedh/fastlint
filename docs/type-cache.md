@@ -151,6 +151,8 @@ What the measurement changed:
   request in `JsonWriter`, and decoding string values in the JSON parser.
   The closure phase went from 25 s to 0.1 s on 200 files and the fetch from
   58 s to 1.2 s on 50 files once those gathered into a `std::string` first.
+  litestl's `string` has since grown geometrically (litestl commit 765241e),
+  so a byte-at-a-time append is amortized O(1) again.
   litestl's `string` grows to the exact size on every append; any bulk text
   belongs in a `std::string` at the boundary.
 - tsgo spans are UTF-16 units over BOM-stripped text (docs/tsgo-client.md);

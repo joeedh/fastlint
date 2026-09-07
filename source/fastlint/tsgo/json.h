@@ -147,8 +147,7 @@ private:
   void separate();
   void quoted(std::string_view text);
 
-  // A std::string, since the litestl string reallocates on every appended byte and a
-  // request naming thousands of nodes would go quadratic. JSON is a boundary adapter.
+  // JSON is a boundary adapter, so the buffer is a std::string.
   std::string m_out;
   /** One entry per open container: true once it holds a value. */
   Vector<bool, 8> m_hasValue;
