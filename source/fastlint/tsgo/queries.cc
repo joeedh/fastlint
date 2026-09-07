@@ -73,6 +73,10 @@ TypeResponse TypeResponse::from(const JsonValue *v)
     } else if (value->isString()) {
       t.valueKind = JsonKind::String;
       t.stringValue = toString(value->asString());
+    } else if (value->kind == JsonKind::Bool) {
+      // A boolean literal (`true`/`false`) arrives as a JSON boolean.
+      t.valueKind = JsonKind::String;
+      t.stringValue = value->asBool() ? "true" : "false";
     } else if (value->isObject()) {
       // A bigint literal arrives as {base10Value, negative}.
       t.valueKind = JsonKind::String;

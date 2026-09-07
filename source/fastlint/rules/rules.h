@@ -47,6 +47,7 @@ extern const lint::RuleDef kRestrictTemplateExpressions;
 extern const lint::RuleDef kNoUnnecessaryTypeAssertion;
 extern const lint::RuleDef kStrictBooleanExpressions;
 extern const lint::RuleDef kNoMisusedPromises;
+extern const lint::RuleDef kNoUnnecessaryCondition;
 
 /** Registers every built-in rule with `registry`. */
 void addBuiltinRules(lint::Registry &registry);

@@ -42,6 +42,7 @@ set(SRC
   rules/no_unnecessary_type_assertion.cc
   rules/strict_boolean_expressions.cc
   rules/no_misused_promises.cc
+  rules/no_unnecessary_condition.cc
   rules/util.cc
   ast/comments.cc
   ast/dispatch.cc

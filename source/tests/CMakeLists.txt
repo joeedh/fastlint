@@ -47,6 +47,7 @@ add_fastlint_test(fastlint
     rules_no_unnecessary_type_assertion_test.cc
     rules_strict_boolean_expressions_test.cc
     rules_no_misused_promises_test.cc
+    rules_no_unnecessary_condition_test.cc
     scanner_test.cc
     framework_test.cc
     snapshot_test.cc

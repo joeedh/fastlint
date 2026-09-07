@@ -883,6 +883,18 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     void-return checks (they need contextual property typing and a heritage
     walk), the array-predicate `predicate` check, the `strict` flag-unions mode,
     the `using`/dispose cases and rest-parameter void spreading.
+  - [x] `no-unnecessary-condition`, truthiness and nullish checks. A condition
+    that is always truthy/falsy/`never` (`alwaysTruthy`, `alwaysFalsy`, `never`)
+    and a `??`/`??=` left that is never or always nullish (`neverNullish`,
+    `alwaysNullish`) are reported over the if/while/for/do/ternary tests, the
+    logical operands and the `!` argument; the array-index exemption, the
+    `allowConstantLoopConditions` option and the `strictNullChecks` gate are
+    ported. Fixed a tsgo decode bug: a boolean literal's value arrives as a JSON
+    boolean, which was dropped, leaving `literalText` empty for `true`/`false`.
+    Not done: the literal-comparison checks (`comparisonBetweenLiteralTypes`,
+    `noOverlapBooleanExpression`), the optional-chain check
+    (`neverOptionalChain`), the array-predicate callback checks and the
+    type-predicate check.
   - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
     output is untested (6.1 open item).
 - [ ] Each rule's type queries logged so the cache working set is measured.

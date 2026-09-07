@@ -34,6 +34,7 @@ void addBuiltinRules(lint::Registry &registry)
   registry.add(kNoUnnecessaryTypeAssertion);
   registry.add(kStrictBooleanExpressions);
   registry.add(kNoMisusedPromises);
+  registry.add(kNoUnnecessaryCondition);
 }
 
 } // namespace fastlint::rules
