@@ -157,6 +157,11 @@ void NodeIndexTable::build(const ast::AstFile &file, const EncodedSourceFile &en
     return a - b;
   });
 
+  Utf16Offsets utf16;
+  if (file.grammar()) {
+    utf16.build(file.grammar()->source());
+  }
+
   // Same-span ancestors of a node precede it in our preorder, as they do in tsgo's table,
   // so the k-th of ours with a span takes the k-th tsgo node with that span.
   uint32_t runStart = 0, runEnd = 0;
@@ -173,11 +178,13 @@ void NodeIndexTable::build(const ast::AstFile &file, const EncodedSourceFile &en
       runEnd = node->end;
       runCount = 0;
     }
+    uint32_t start = utf16.at(node->start);
+    uint32_t end = utf16.at(node->end);
 
     int lo = 0, hi = int(order.size());
     while (lo < hi) {
       int mid = (lo + hi) / 2;
-      if (nodes[order[mid]].end < node->end) {
+      if (nodes[order[mid]].end < end) {
         lo = mid + 1;
       } else {
         hi = mid;
@@ -187,9 +194,9 @@ void NodeIndexTable::build(const ast::AstFile &file, const EncodedSourceFile &en
     // includes leading trivia, so it is at most our start.
     int groupStart = -1, groupCount = 0;
     uint32_t groupPos = 0;
-    for (int i = lo; i < int(order.size()) && nodes[order[i]].end == node->end; i++) {
+    for (int i = lo; i < int(order.size()) && nodes[order[i]].end == end; i++) {
       uint32_t pos = nodes[order[i]].pos;
-      if (pos > node->start) {
+      if (pos > start) {
         break;
       }
       if (groupStart < 0 || pos != groupPos) {
@@ -206,6 +213,65 @@ void NodeIndexTable::build(const ast::AstFile &file, const EncodedSourceFile &en
       m_mapped++;
     }
   }
+}
+
+void Utf16Offsets::build(std::string_view source)
+{
+  clear();
+  uint32_t delta = 0;
+  size_t i = 0;
+  // The server drops a UTF-8 byte order mark before scanning; our scanner keeps it as
+  // whitespace, so it is three bytes that count for nothing.
+  if (source.size() >= 3 && source.substr(0, 3) == "\xef\xbb\xbf") {
+    delta = 3;
+    m_marks.append(Mark{0, 3, delta});
+    i = 3;
+  }
+  for (; i < source.size();) {
+    unsigned char lead = static_cast<unsigned char>(source[i]);
+    if (lead < 0x80) {
+      i++;
+      continue;
+    }
+    // Two- and three-byte sequences are one UTF-16 unit; four-byte ones are a surrogate
+    // pair. A stray continuation byte counts as one unit, as the server's decoder does.
+    uint32_t bytes = lead >= 0xf0 ? 4 : lead >= 0xe0 ? 3 : lead >= 0xc0 ? 2 : 1;
+    if (i + bytes > source.size()) {
+      bytes = uint32_t(source.size() - i);
+    }
+    uint32_t units = bytes == 4 ? 2 : 1;
+    delta += bytes - units;
+    m_marks.append(Mark{uint32_t(i), bytes, delta});
+    i += bytes;
+  }
+}
+
+void Utf16Offsets::clear()
+{
+  m_marks.clear();
+}
+
+uint32_t Utf16Offsets::at(uint32_t byteOffset) const
+{
+  // The last character starting at or before the offset decides the delta.
+  int lo = 0, hi = int(m_marks.size());
+  while (lo < hi) {
+    int mid = (lo + hi) / 2;
+    if (m_marks[mid].start <= byteOffset) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  if (lo == 0) {
+    return byteOffset;
+  }
+  const Mark &mark = m_marks[lo - 1];
+  uint32_t deltaBefore = lo >= 2 ? m_marks[lo - 2].deltaAfter : 0;
+  if (byteOffset < mark.start + mark.bytes) {
+    return mark.start - deltaBefore;
+  }
+  return byteOffset - mark.deltaAfter;
 }
 
 int NodeIndexTable::lookup(const ast::Node *node) const

@@ -613,8 +613,12 @@ the pieces. Tests: `tsgo_json_test`, `tsgo_msgpack_test`,
   our nodes with tsgo indices by span: same `end`, the largest tsgo `pos` not
   past our `start`, and the k-th of a same-span run. Error and zero-width
   nodes stay unmapped.
-  - [ ] Measure how many nodes stay unmapped on a real project; recovery
-    shapes are where the two trees disagree.
+  - [x] Measured with `fastlint cache-bench --unmapped` on visualnovel (541
+    files, 378k expression nodes): 80% unmapped at first, because tsgo spans
+    are UTF-16 code units over BOM-stripped text while ours are UTF-8 bytes.
+    `Utf16Offsets` converts; 0.6% remain (`constructor`/`new` keyword
+    identifiers, parameter identifiers whose ESTree span includes the type
+    annotation), none of which tsgo has a node for.
 - [x] Serve file contents over `--callbacks=readFile,fileExists` through a
   `FileProvider`; `null` defers to the disk.
 - [x] Typed request wrappers (`queries.h`: `Session`, `TypeResponse`,
@@ -702,8 +706,19 @@ it. Tests: `types_graph_test` (fast) and `types_facts_test` (`[integration]`).
   measured on a real monorepo.
 
 ### 5.5 Measurement
-- [ ] Cold vs warm run timings on a real project; memory high-water mark;
-  cache size on disk.
+- [x] Cold vs warm run timings on a real project; memory high-water mark;
+  cache size on disk. `fastlint cache-bench` (docs/type-cache.md
+  "Measurement"); visualnovel, 541 files, release: cold 11.5 s, warm 1.3 s,
+  peak working set 97 MB, database 31 MB, 377k node types.
+  - [x] Found and fixed three quadratic litestl string appends (file read,
+    JSON writer, JSON parser); closure 25 s → 0.1 s, fetch 58 s → 1.2 s on
+    the subsets measured.
+  - [ ] Batch the per-symbol `getSymbolOfType` calls (23.7k of 33.3k rpc
+    calls) through `batchRequests` or defer symbol interning.
+  - [ ] Store writes: 2.8 s per 377k node types in per-file transactions;
+    batch files per transaction or cache prepared statements.
+  - [ ] Working-set eviction (the 5.2 LRU item) before a monorepo-sized
+    graph.
 
 ---
 

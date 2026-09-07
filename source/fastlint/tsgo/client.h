@@ -38,6 +38,9 @@ struct RpcStats {
   int callbacks = 0;
   size_t bytesSent = 0;
   size_t bytesReceived = 0;
+  /** Wall time spent blocked on the server's stdout; the rest of a call is our own work.
+   */
+  double readSeconds = 0;
 };
 
 /** One project inside a snapshot. */

@@ -440,6 +440,28 @@ bool Session::sourceFile(std::string_view file, EncodedSourceFile &encoded, stri
   return encoded.decode(span<const uint8_t>(payload.data(), payload.size()), error);
 }
 
+bool Session::sourceFileNames(Vector<string> &names, string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.endObject();
+  JsonDocument result;
+  if (!m_client.call("getSourceFileNames", w.text(), result, error)) {
+    return false;
+  }
+  names.clear();
+  const JsonValue *list = result.root();
+  for (int i = 0; list && i < list->size(); i++) {
+    std::string_view name = list->at(i)->asString();
+    string copy;
+    for (char c : name) {
+      copy += c;
+    }
+    names.append(std::move(copy));
+  }
+  return true;
+}
+
 bool Session::release(string &error)
 {
   return m_client.release(m_snapshot, error);

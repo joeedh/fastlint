@@ -248,8 +248,12 @@ Two routes, both verified:
 Route 2 is the one to build. The encoded format suits us: a 44-byte header
 (protocol version, an xxh3 content hash, section offsets) then 28 bytes per
 node (`{kind, pos, end, nextSibling, parent, data, flags}`), flat, in source
-order, indexed by exactly the number a handle carries. `pos`/`end` are UTF-8
-byte offsets, matching our scanner. The fixture's 747-byte file encodes to
+order, indexed by exactly the number a handle carries. `pos`/`end` are UTF-16
+code unit offsets into the text with any byte order mark removed, as
+everywhere in TypeScript; our scanner counts UTF-8 bytes, so
+`tsgo::Utf16Offsets` converts before matching (an ASCII fixture hid this
+until visualnovel's `§` comments and BOM-prefixed files unmapped 80% of
+their nodes). The fixture's 747-byte file encodes to
 7127 bytes over 201 nodes; `getSourceFile` costs 0.5–1.3ms for it. Node-list
 pseudo-nodes appear in the table with kind `0xFFFFFFFF` and must be skipped.
 Full format documentation is in tsc/internal/api/encoder/encoder.go.
@@ -274,11 +278,10 @@ are in source order with byte-offset spans, so it is a linear merge, not a
 search. The table is rebuilt whenever the file's content hash changes, which
 is exactly when we would refetch types anyway.
 
-Positions remain the fallback for token-level queries. One trap:
-`getTypeAtPosition` converts its argument with `positionMap.UTF16ToUTF8`, so
-its `position` is a **UTF-16 offset**, while node `pos`/`end` in the encoded
-tree are UTF-8 byte offsets. The two agree only on ASCII. Handles avoid the
-conversion entirely, which is a second reason to prefer them.
+Positions remain the fallback for token-level queries. `getTypeAtPosition`
+takes a UTF-16 offset as well (it converts with `positionMap.UTF16ToUTF8`
+internally), so every offset that crosses the protocol is UTF-16 and only
+agrees with our byte offsets on ASCII text without a BOM.
 
 ## Enum values for C++
 

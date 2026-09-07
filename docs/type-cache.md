@@ -115,6 +115,58 @@ Touching a widely imported file therefore invalidates every importer, which
 is coarse but correct. Per-type provenance (v2) waits on measuring v1 on a
 real monorepo.
 
+## Measurement
+
+`fastlint cache-bench [--cache <db>] [--limit N] [--keep] [--json] [--unmapped]
+<tsconfig>` (source/cli/cache_bench.cc) runs a cold pass from an empty
+database and a warm pass over the same one. Each pass opens the project in
+tsgo, lists its source files with `getSourceFileNames`, loads their import
+closure, and for every file either replays `node_types` or fetches the type
+of every expression node and stores it. It reports time per phase, the pipe
+wait inside the fetch, peak working set and database size. `--unmapped`
+tallies expression nodes without a tsgo counterpart by kind and prints
+samples from the worst file.
+
+Release build on visualnovel (541 project files, 378k expression nodes),
+2026-09-06:
+
+| | cold | warm |
+| --- | --- | --- |
+| total | 11.5 s | 1.3 s |
+| tsgo start + project open | 0.23 s | 0.24 s |
+| graph load from the store | 0 | 0.31 s (41,920 types, 23,742 symbols) |
+| import closure | 0.34 s | 0.34 s |
+| parse + lower | 0.24 s | 0.19 s |
+| type fetch | 7.7 s (3.8 s waiting on the pipe) | 0 |
+| store writes | 2.8 s | 0 |
+| replay | 0 | 0.11 s (367k node types) |
+| rpc | 33,323 calls, 29 MB sent, 74 MB received | 3 calls |
+| peak working set | 97 MB | 97 MB |
+| database | 31 MB | 31 MB |
+
+What the measurement changed:
+
+- Three byte-at-a-time appends into litestl strings were quadratic and
+  dominated everything: reading a file in `DiskFileSystem`, building a
+  request in `JsonWriter`, and decoding string values in the JSON parser.
+  The closure phase went from 25 s to 0.1 s on 200 files and the fetch from
+  58 s to 1.2 s on 50 files once those gathered into a `std::string` first.
+  litestl's `string` grows to the exact size on every append; any bulk text
+  belongs in a `std::string` at the boundary.
+- tsgo spans are UTF-16 units over BOM-stripped text (docs/tsgo-client.md);
+  before the conversion 80% of expression nodes were unmapped, after it 0.3%.
+
+What is left, in order of payoff:
+
+- 23,744 of the 33,323 calls fetch one symbol each (`getSymbolOfType` while
+  interning). Batching them through `batchRequests` or deferring symbol
+  interning would remove most of the remaining pipe wait.
+- Store writes are 2.8 s for 377k node types in per-file transactions; one
+  transaction per batch of files, or a prepared-statement cache, would cut
+  that.
+- The whole graph stays in memory (the LRU from docs/type-facts.md is still
+  open); 97 MB for this project is fine, a monorepo will need the eviction.
+
 ## Verify
 
 `Store::verify` runs `PRAGMA integrity_check` and then counts dangling

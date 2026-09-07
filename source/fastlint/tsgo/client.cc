@@ -313,7 +313,11 @@ bool Client::receive(Frame &frame, string &error)
       }
       return true;
     }
+    auto readStart = std::chrono::steady_clock::now();
     int n = m_process.read(buffer, int(sizeof buffer));
+    m_stats.readSeconds +=
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - readStart)
+            .count();
     if (n <= 0) {
       m_broken = true;
       return fail(error, "tsc closed the connection");
@@ -341,7 +345,8 @@ void Client::answerCallback(const Frame &frame)
         w.beginObject();
         w.member("content", std::string_view(content.c_str(), content.size()));
         w.endObject();
-        reply = w.str();
+        reply = string();
+        reply += w.str();
       }
     } else if (method == "fileExists") {
       int exists = m_options.files->fileExists(path);

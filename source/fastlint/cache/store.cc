@@ -55,9 +55,7 @@ std::string_view columnText(sqlite3_stmt *stmt, int index)
 string toString(std::string_view text)
 {
   string out;
-  for (char c : text) {
-    out += c;
-  }
+  out += std::string(text);
   return out;
 }
 
@@ -657,9 +655,7 @@ bool Store::getRuleResult(uint64_t fileHash,
     found = true;
     const char *bytes = static_cast<const char *>(sqlite3_column_blob(s.stmt, 0));
     int size = sqlite3_column_bytes(s.stmt, 0);
-    for (int i = 0; i < size; i++) {
-      payload += bytes[i];
-    }
+    payload = toString(std::string_view(bytes ? bytes : "", size_t(size)));
     return true;
   }
   return rc == SQLITE_DONE || fail(error, "reading a rule result");

@@ -139,6 +139,9 @@ public:
   bool typeToString(int typeId, string &text, string &error);
   /** Fetches and decodes the server's parse tree of `file`. */
   bool sourceFile(std::string_view file, EncodedSourceFile &encoded, string &error);
+  /** Every source file in the project's program, lib and package files included, by the
+   * name the server knows it under. */
+  bool sourceFileNames(Vector<string> &names, string &error);
   bool release(string &error);
 
 private:

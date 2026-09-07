@@ -68,17 +68,30 @@ docs/tasklists/MASTER.md.
   `index.kind.path`; `canonicalPath` lower-cases on a case-insensitive file
   system, which `Client::caseSensitiveFileNames()` reports from `initialize`.
 - `NodeIndexTable::build(file, encoded)` pairs our AST nodes with tsgo
-  indices. Both tables are in source order with byte-offset spans, so a node
-  matches the tsgo nodes with the same `end`; among those, the group with the
-  largest `pos` not past our `start` (a tsgo `pos` includes leading trivia),
-  and within a same-span run the k-th of ours takes the k-th of theirs.
-  Error nodes and zero-width nodes stay unmapped, and so does anything our
-  parser shapes differently.
-- `getTypeAtPosition` takes UTF-16 offsets and lands on tokens; handles avoid
-  both problems and are the route for expression types.
+  indices. Both tables are in source order, so a node matches the tsgo nodes
+  with the same `end`; among those, the group with the largest `pos` not past
+  our `start` (a tsgo `pos` includes leading trivia), and within a same-span
+  run the k-th of ours takes the k-th of theirs. Error nodes and zero-width
+  nodes stay unmapped, and so does anything our parser shapes differently.
+- tsgo spans are UTF-16 code units over the text with its byte order mark
+  removed; ours are UTF-8 bytes. `Utf16Offsets` (source_file.h) records the
+  multi-byte characters of a file once and converts each node's span before
+  matching. Measured on visualnovel (541 files, 378k expression nodes), 0.6%
+  of expression nodes stay unmapped afterwards: `constructor` and `new`
+  keyword identifiers, and parameter identifiers whose ESTree span includes
+  the type annotation, none of which tsgo represents as a node.
+- `getTypeAtPosition` also takes UTF-16 offsets and lands on tokens; handles
+  avoid that and are the route for expression types.
 
 ## Queries
 
+- `Session::sourceFileNames` lists every file in the project's program, lib
+  and package files included, under the names the server uses; the bench
+  filters it to project sources.
+- `RpcStats::readSeconds` is the wall time spent blocked on the server's
+  stdout; the difference from a call's elapsed time is our own encoding,
+  parsing and interning. The JSON writer and parser buffer in `std::string`
+  because litestl strings reallocate on every appended byte.
 - `Session` methods return false only on a transport or server failure. A
   null answer is `present == false` on the response struct.
 - The type-id parameter is spelled per endpoint (`objectId` or `type`) from

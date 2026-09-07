@@ -9,14 +9,12 @@ namespace fastlint::tsgo {
 
 namespace {
 
-void appendView(string &out, std::string_view text)
+void appendView(std::string &out, std::string_view text)
 {
-  for (char c : text) {
-    out += c;
-  }
+  out.append(text);
 }
 
-void appendUtf8(string &out, uint32_t cp)
+void appendUtf8(std::string &out, uint32_t cp)
 {
   if (cp < 0x80) {
     out += char(cp);
@@ -112,7 +110,12 @@ private:
       return parseArray(depth);
     case '"': {
       JsonValue *v = m_doc.make(JsonKind::String);
-      return parseString(v->text) ? v : nullptr;
+      std::string buffer;
+      if (!parseString(buffer)) {
+        return nullptr;
+      }
+      v->text += buffer;
+      return v;
     }
     case 't':
       if (consumeWord("true")) {
@@ -208,7 +211,8 @@ private:
     return true;
   }
 
-  bool parseString(string &out)
+  /** Decodes into a std::string so the per-character appends stay linear. */
+  bool parseString(std::string &out)
   {
     m_at++;
     while (true) {
@@ -332,10 +336,12 @@ private:
       if (peek() != '"') {
         return fail("expected a member name");
       }
-      string key;
-      if (!parseString(key)) {
+      std::string buffer;
+      if (!parseString(buffer)) {
         return nullptr;
       }
+      string key;
+      key += buffer;
       skipSpace();
       if (peek() != ':') {
         return fail("expected ':'");
@@ -480,7 +486,7 @@ JsonValue *JsonDocument::make(JsonKind kind)
 
 // ---------------------------------------------------------------- JsonWriter
 
-void appendJsonString(string &out, std::string_view text)
+void appendJsonString(std::string &out, std::string_view text)
 {
   static const char hex[] = "0123456789abcdef";
   out += '"';
@@ -644,7 +650,7 @@ void JsonWriter::raw(std::string_view json)
 
 void JsonWriter::clear()
 {
-  m_out = string();
+  m_out.clear();
   m_hasValue.clear();
   m_afterKey = false;
 }

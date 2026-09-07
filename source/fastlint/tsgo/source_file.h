@@ -23,8 +23,10 @@ using string = litestl::util::string;
 /** Marks a node-list pseudo-entry in the encoded node table. */
 constexpr uint32_t kNodeListKind = 0xFFFFFFFF;
 
-/** One record of the flat node table `getSourceFile` returns; spans are UTF-8 byte
- * offsets and `pos` includes leading trivia (tsc/internal/api/encoder/encoder.go). */
+/** One record of the flat node table `getSourceFile` returns; spans are UTF-16 code unit
+ * offsets, as everywhere in TypeScript, and `pos` includes leading trivia
+ * (tsc/internal/api/encoder/encoder.go). Our scanner counts UTF-8 bytes; `Utf16Offsets`
+ * converts. */
 struct EncodedNode {
   uint32_t kind = 0;
   uint32_t pos = 0;
@@ -60,13 +62,40 @@ string nodeHandle(int index, uint32_t kind, std::string_view canonicalPath);
  * case-insensitive file system. */
 string canonicalPath(std::string_view path, bool caseSensitive);
 
+/** Converts UTF-8 byte offsets in a source text to the server's UTF-16 code unit
+ * offsets, which also skip a leading byte order mark. Only the non-ASCII characters are
+ * recorded, so an ASCII file costs nothing. */
+class Utf16Offsets {
+public:
+  void build(std::string_view source);
+  void clear();
+  /** The UTF-16 offset of the character starting at `byteOffset`; an offset inside a
+   * multi-byte character maps to that character's start. */
+  uint32_t at(uint32_t byteOffset) const;
+  bool ascii() const
+  {
+    return m_marks.size() == 0;
+  }
+
+private:
+  /** One multi-byte character. */
+  struct Mark {
+    uint32_t start;
+    uint32_t bytes;
+    /** Bytes minus code units over every multi-byte character up to and including this
+     * one. */
+    uint32_t deltaAfter;
+  };
+  Vector<Mark> m_marks;
+};
+
 /** Maps our AST nodes to tsgo node indices for one file. Rebuilt whenever the file's
- * content changes, since both tables are keyed by byte offset. */
+ * content changes, since both tables are keyed by offset. */
 class NodeIndexTable {
 public:
-  /** Pairs every node of `file` whose span an encoded node shares. Nodes without a
-   * counterpart (zero-width, error, or shaped differently by our parser) are left
-   * unmapped. */
+  /** Pairs every node of `file` whose span an encoded node shares, after converting our
+   * byte offsets to the server's UTF-16 units. Nodes without a counterpart (zero-width,
+   * error, or shaped differently by our parser) are left unmapped. */
   void build(const ast::AstFile &file, const EncodedSourceFile &encoded);
   void clear();
 

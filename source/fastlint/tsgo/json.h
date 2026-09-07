@@ -5,6 +5,7 @@
 #include "util/vector.h"
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 namespace fastlint::tsgo {
@@ -134,9 +135,9 @@ public:
 
   std::string_view text() const
   {
-    return std::string_view(m_out.c_str(), m_out.size());
+    return m_out;
   }
-  const string &str() const
+  const std::string &str() const
   {
     return m_out;
   }
@@ -146,7 +147,9 @@ private:
   void separate();
   void quoted(std::string_view text);
 
-  string m_out;
+  // A std::string, since the litestl string reallocates on every appended byte and a
+  // request naming thousands of nodes would go quadratic. JSON is a boundary adapter.
+  std::string m_out;
   /** One entry per open container: true once it holds a value. */
   Vector<bool, 8> m_hasValue;
   /** True between `key()` and its value, where no comma may be inserted. */
@@ -154,6 +157,6 @@ private:
 };
 
 /** Appends `text` to `out` as a quoted JSON string with escapes. */
-void appendJsonString(string &out, std::string_view text);
+void appendJsonString(std::string &out, std::string_view text);
 
 } // namespace fastlint::tsgo

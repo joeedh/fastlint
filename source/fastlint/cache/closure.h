@@ -7,18 +7,19 @@
 #include "util/vector.h"
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 namespace fastlint::cache {
 
 using litestl::util::Map;
 
+/** One allocation; a per-character append into a litestl string reallocates every time.
+ */
 inline string toString(std::string_view text)
 {
   string out;
-  for (char c : text) {
-    out += c;
-  }
+  out += std::string(text);
   return out;
 }
 

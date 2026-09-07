@@ -66,17 +66,19 @@ bool DiskFileSystem::readFile(std::string_view path, string &out)
   if (!file) {
     return false;
   }
+  // Gathered in a std::string and converted once; a byte-at-a-time append into the
+  // litestl string reallocates on every byte.
+  std::string bytes;
   char buffer[65536];
   for (;;) {
     size_t read = fread(buffer, 1, sizeof buffer, file);
     if (read == 0) {
       break;
     }
-    for (size_t i = 0; i < read; i++) {
-      out += buffer[i];
-    }
+    bytes.append(buffer, read);
   }
   fclose(file);
+  out += bytes;
   return true;
 }
 
