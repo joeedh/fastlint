@@ -7,6 +7,7 @@
 #include "fastlint/ast/binder.h"
 #include "fastlint/ast/file.h"
 #include "fastlint/ast/fixer.h"
+#include "fastlint/syntax/diagnostics.h"
 #include "fastlint/syntax/parser.h"
 #include "fastlint/syntax/tree.h"
 #include "util/function.h"
@@ -29,6 +30,8 @@ struct FixpointOptions {
 /** What one pass sees. The trees live until the pass's fixes have been applied. */
 struct Pass {
   const syntax::GrammarTree &tree;
+  /** The parser's diagnostics for the text this pass sees. */
+  const syntax::Diagnostics &diagnostics;
   AstFile &file;
   Bindings &bindings;
   /** Zero-based; pass 0 sees the original text. */

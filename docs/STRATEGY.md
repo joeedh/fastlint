@@ -287,8 +287,14 @@ this document depends on.
   and WASM) and native plugins via a generated C ABI, both over the AST,
   with the C++ views generated from the same `nodes.def` the host uses.
   See docs/ast-design.md "Interop" and "Plugins", MASTER.md task 7.
-- **ESLint compatibility surface.** Support `// eslint-disable-*` comments and
-  common rule names for adoption? Config format?
+- ~~ESLint compatibility surface~~ — resolved 2026-09-07: `// eslint-disable*`
+  comments are accepted as aliases of the `fastlint-` spellings (config
+  `eslintDirectives`), `@typescript-eslint/`-prefixed names resolve to our
+  rules, and directives naming rules we do not have are ignored rather than
+  reported. Rule names, messages and test cases follow ESLint and
+  typescript-eslint so semantics can be ported by reading both sources side
+  by side. The config is our own JSON file rather than ESLint's JS flat
+  config; see docs/rules.md.
 - ~~tsgo API protocol shape~~ — resolved: structured, msgpack over stdio.
   See docs/tsgo-api.md.
 - ~~Is the protocol versioned or stable?~~ — resolved: neither. It negotiates

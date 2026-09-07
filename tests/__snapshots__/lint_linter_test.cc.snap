@@ -1,0 +1,11 @@
+### lint_linter.pretty_and_json_output #1
+src/a.ts
+  1:1  error    Unexpected 'debugger' statement.  no-debugger
+  2:1  warning  Call to 'eval' is banned.         no-calls
+
+2 problems (1 error, 1 warning)
+  1 error and 0 warnings potentially fixable with the --fix option.
+
+### lint_linter.pretty_and_json_output #2
+[{"filePath":"src/a.ts","messages":[{"ruleId":"no-debugger","severity":2,"message":"Unexpected 'debugger' statement.","line":1,"column":1,"endLine":1,"endColumn":10,"messageId":"unexpected","fixable":true},{"ruleId":"no-calls","severity":1,"message":"Call to 'eval' is banned.","line":2,"column":1,"endLine":2,"endColumn":10,"messageId":"named"}],"errorCount":1,"warningCount":1,"fixableErrorCount":1,"fixableWarningCount":0},{"filePath":"src/b.ts","messages":[],"errorCount":0,"warningCount":0,"fixableErrorCount":0,"fixableWarningCount":0}]
+

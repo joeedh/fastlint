@@ -254,6 +254,9 @@ int main(int argc, char **argv)
       return 0;
     }
   }
+  if (argc > 1 && std::strcmp(argv[1], "lint") == 0) {
+    return lintCommand(argc, argv);
+  }
   if (argc > 1 && std::strcmp(argv[1], "parse") == 0) {
     return parseCommand(argc, argv);
   }
@@ -273,12 +276,13 @@ int main(int argc, char **argv)
     return cacheBenchCommand(argc, argv);
   }
   std::printf("%s\n", fastlint::buildBanner().c_str());
-  std::printf("commands: parse [--summary] [--limit N] <file|dir>..., "
+  std::printf("commands: lint [--config <file>] [--rule name:severity] [--fix] "
+              "[--format pretty|json] <file|dir>..., "
+              "parse [--summary] [--limit N] <file|dir>..., "
               "dump-tree [--errors] [--spans] <file>, "
               "dump-ast [--errors] [--bindings] <file>, "
               "fuzz [--iterations N] [--seed S] <file|dir>..., "
               "bench [--repeat N] [--json] <file|dir>..., "
               "cache-bench [--cache <db>] [--limit N] [--keep] [--json] <tsconfig>\n");
-  std::printf("no rules yet; see docs/tasklists/MASTER.md\n");
   return 0;
 }

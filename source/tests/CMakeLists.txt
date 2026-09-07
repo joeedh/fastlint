@@ -12,7 +12,11 @@ add_fastlint_test(fastlint
     cache_closure_test.cc
     cache_store_test.cc
     fixture_test.cc
+    lint_config_test.cc
+    lint_directives_test.cc
+    lint_linter_test.cc
     parser_test.cc
+    rules_no_debugger_test.cc
     scanner_test.cc
     framework_test.cc
     snapshot_test.cc
@@ -27,4 +31,5 @@ add_fastlint_test(fastlint
     test_sources.h
   LIBS
     fastlint_lib
+    fastlint_rule_tester
 )

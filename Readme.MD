@@ -42,7 +42,7 @@ node make.ts run -- --version
 
 ## Layout
 
-- source/fastlint — the library.
+- source/fastlint — the library; source/fastlint/rules holds the built-in rules.
 - source/cli — the `fastlint` executable.
 - source/testing — the in-house test framework; see docs/tests.md.
 - source/tests — tests for the library and the framework itself.
@@ -53,6 +53,7 @@ node make.ts run -- --version
 
 - docs/STRATEGY.md — architecture and the reasoning behind each choice.
 - docs/tasklists/MASTER.md — the master task list.
+- docs/rules.md — the rule framework, config, disable directives and output.
 - docs/tests.md — the test framework, snapshot format, and test strategy.
 - docs/debugging.md — debugging aids per subsystem.
 - docs/tsgo-api.md — what the `tsc --api` protocol actually serves.

@@ -53,7 +53,7 @@ runToFixpoint(std::string_view source, PassFn pass, const FixpointOptions &optio
     Bindings bindings;
     bind(file, bindings);
     Vector<Fix> fixes;
-    Pass ctx{tree, file, bindings, i, fixes};
+    Pass ctx{tree, diagnostics, file, bindings, i, fixes};
     pass(ctx);
     report.passes++;
 

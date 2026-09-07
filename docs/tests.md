@@ -238,10 +238,14 @@ then all failures in full, then a summary (`412 passed, 2 failed, 3 skipped,
   in-memory type working set never exceeds a configured high-water mark.
 
 ### Rules
-- `RuleTester`-shaped harness in `testing/rule_tester.h`: `valid` cases and
-  `invalid` cases with expected `(rule, line, col, messageId)` and, for
-  fixable rules, expected output. Plus a snapshot of the full formatted
-  diagnostics for each invalid case, so message text changes are reviewed.
+- `RuleTester`-shaped harness in `testing/rule_tester.h` (library
+  `fastlint_rule_tester`, since it links the linter): `runRuleTests(rule,
+  {valid...}, {invalid...})`. Invalid cases list expected
+  `(messageId, line, col, endLine, endCol, message)` and, for fixable rules,
+  the output after `--fix`. One `SUBCASE` per case. See docs/rules.md
+  "Testing a rule".
+- Formatter output is snapshot-tested in `lint_linter_test.cc`, so a change
+  to the pretty or JSON layout is reviewed.
 - Type-aware rules use the fixture projects, tagged `[integration]`.
 - Every rule ships with tests in the same commit; the rule registry test
   asserts each registered rule has a test file and a docs page.

@@ -1,0 +1,423 @@
+#include "fastlint/lint/linter.h"
+
+#include "fastlint/ast/dispatch.h"
+#include "fastlint/ast/fixpoint.h"
+#include "fastlint/ast/lower.h"
+#include "fastlint/lint/directives.h"
+#include "fastlint/syntax/parser.h"
+
+#include <algorithm>
+#include <cstdio>
+
+namespace fastlint::lint {
+
+namespace {
+
+void append(string &out, string_view text)
+{
+  for (char c : text) {
+    out += c;
+  }
+}
+
+string copy(string_view text)
+{
+  string out;
+  append(out, text);
+  return out;
+}
+
+string_view view(const string &s)
+{
+  return string_view(s.c_str(), s.size());
+}
+
+bool endsWith(string_view text, string_view suffix)
+{
+  return text.size() >= suffix.size() &&
+         text.substr(text.size() - suffix.size()) == suffix;
+}
+
+void locate(const syntax::GrammarTree &tree, Diagnostic &d)
+{
+  auto position = [&](uint32_t offset, uint32_t &line, uint32_t &column) {
+    line = tree.lineOf(offset);
+    uint32_t lineStart = line > 0 ? tree.lineStarts()[int(line) - 1] : 0;
+    column = offset - lineStart + 1;
+  };
+  position(d.start, d.line, d.column);
+  position(d.end, d.endLine, d.endColumn);
+}
+
+void count(FileResult &out)
+{
+  out.errorCount = out.warningCount = 0;
+  out.fixableErrorCount = out.fixableWarningCount = 0;
+  for (const Diagnostic &d : out.diagnostics) {
+    if (d.severity == Severity::Error) {
+      out.errorCount++;
+      out.fixableErrorCount += d.fixable ? 1 : 0;
+    } else if (d.severity == Severity::Warn) {
+      out.warningCount++;
+      out.fixableWarningCount += d.fixable ? 1 : 0;
+    }
+  }
+}
+
+void sortByPosition(Vector<Diagnostic> &diagnostics)
+{
+  std::stable_sort(diagnostics.data(),
+                   diagnostics.data() + diagnostics.size(),
+                   [](const Diagnostic &a, const Diagnostic &b) {
+                     return a.start != b.start ? a.start < b.start : a.end < b.end;
+                   });
+}
+
+} // namespace
+
+void FileResult::clear()
+{
+  diagnostics.clear();
+  errorCount = warningCount = 0;
+  fixableErrorCount = fixableWarningCount = 0;
+  fixesApplied = 0;
+  changed = false;
+  output = string();
+  ignored = false;
+}
+
+syntax::Parser::Options parserOptionsFor(string_view filename)
+{
+  syntax::Parser::Options options;
+  if (endsWith(filename, ".js") || endsWith(filename, ".mjs") ||
+      endsWith(filename, ".cjs"))
+  {
+    options.javaScript = true;
+  } else if (endsWith(filename, ".jsx")) {
+    options.javaScript = true;
+    options.jsx = true;
+  } else if (endsWith(filename, ".tsx")) {
+    options.jsx = true;
+  }
+  return options;
+}
+
+// ------------------------------------------------------------------ RuleContext
+
+RuleContext::~RuleContext()
+{
+  // Listeners may hold references into the states, so they go first.
+  m_listeners.clear();
+  for (const State &state : m_states) {
+    state.destroy(state.value);
+  }
+}
+
+void RuleContext::report(Report report)
+{
+  if (report.node && !report.ownSpan) {
+    report.start = report.node->start;
+    report.end = report.node->end;
+  }
+  m_reports->append(std::move(report));
+}
+
+const Message *findMessage(const RuleDef &rule, const char *id)
+{
+  string_view wanted(id);
+  for (const Message &message : rule.meta.messages) {
+    if (wanted == message.id) {
+      return &message;
+    }
+  }
+  return nullptr;
+}
+
+void interpolate(string_view text, span<const Placeholder> data, string &out)
+{
+  size_t at = 0;
+  while (at < text.size()) {
+    size_t open = text.find("{{", at);
+    if (open == string_view::npos) {
+      append(out, text.substr(at));
+      return;
+    }
+    size_t close = text.find("}}", open + 2);
+    if (close == string_view::npos) {
+      append(out, text.substr(at));
+      return;
+    }
+    append(out, text.substr(at, open - at));
+    string_view name = text.substr(open + 2, close - open - 2);
+    while (!name.empty() && name.front() == ' ') {
+      name = name.substr(1);
+    }
+    while (!name.empty() && name.back() == ' ') {
+      name = name.substr(0, name.size() - 1);
+    }
+    bool found = false;
+    for (const Placeholder &p : data) {
+      if (p.name == name) {
+        append(out, p.value);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      append(out, text.substr(open, close + 2 - open));
+    }
+    at = close + 2;
+  }
+}
+
+// ----------------------------------------------------------------------- Linter
+
+void Linter::lintFile(const syntax::GrammarTree &tree,
+                      const syntax::Diagnostics &diagnostics,
+                      ast::AstFile &file,
+                      ast::Bindings &bindings,
+                      string_view filename,
+                      const ResolvedConfig &config,
+                      types::TypeFacts *types,
+                      Vector<ast::Fix> *fixes,
+                      FileResult &out)
+{
+  out.clear();
+  out.filename = copy(filename);
+
+  for (const string &name : config.unknownRules) {
+    Diagnostic d;
+    d.message = copy("Definition for rule '");
+    append(d.message, view(name));
+    append(d.message, "' was not found.");
+    d.start = d.end = 0;
+    locate(tree, d);
+    out.diagnostics.append(std::move(d));
+  }
+
+  if (!diagnostics.empty()) {
+    for (const syntax::Diagnostic &sd : diagnostics.items()) {
+      Diagnostic d;
+      d.fatal = true;
+      d.start = sd.offset;
+      d.end = sd.offset + sd.length;
+      d.message = copy("Parsing error: ");
+      append(d.message, view(sd.message));
+      locate(tree, d);
+      out.diagnostics.append(std::move(d));
+    }
+    sortByPosition(out.diagnostics);
+    count(out);
+    return;
+  }
+
+  // One context per enabled rule; its reports are keyed to it.
+  struct Active {
+    RuleContext *context;
+    Vector<Report> reports;
+    Severity severity;
+  };
+  Vector<Active> active;
+  for (const RuleSetting &setting : config.rules) {
+    if (setting.severity == Severity::Off) {
+      continue;
+    }
+    if (setting.rule->meta.typeAware && !types) {
+      continue;
+    }
+    active.append(
+        {litestl::alloc::New<RuleContext>("rule context", setting.rule, setting.setting),
+         {},
+         setting.severity});
+  }
+  string_view source = tree.source();
+  for (Active &a : active) {
+    a.context->m_file = &file;
+    a.context->m_bindings = &bindings;
+    a.context->m_source = source;
+    a.context->m_filename = filename;
+    a.context->m_types = types;
+    a.context->m_reports = &a.reports;
+    a.context->m_rule->create(*a.context);
+  }
+
+  ast::Dispatcher dispatcher;
+  for (Active &a : active) {
+    for (RuleContext::Entry &entry : a.context->m_listeners) {
+      if (entry.exit) {
+        dispatcher.onExit(entry.kind, ast::Listener(entry.listener));
+      } else {
+        dispatcher.on(entry.kind, ast::Listener(entry.listener));
+      }
+    }
+  }
+  if (dispatcher.listenerCount() > 0) {
+    dispatcher.run(file);
+  }
+
+  // Reports become diagnostics; the fix of each is kept aside until the
+  // directives have decided which survive.
+  struct Pending {
+    Diagnostic diagnostic;
+    ast::Node *target;
+    FixFn fix;
+  };
+  Vector<Pending> pending;
+  for (Active &a : active) {
+    const RuleDef &rule = *a.context->m_rule;
+    for (Report &r : a.reports) {
+      Pending p;
+      p.diagnostic.rule = &rule;
+      p.diagnostic.severity = a.severity;
+      p.diagnostic.start = r.start;
+      p.diagnostic.end = r.end;
+      p.diagnostic.messageId = r.messageId;
+      p.diagnostic.fixable = bool(r.fix);
+      const Message *message = findMessage(rule, r.messageId);
+      if (message) {
+        interpolate(message->text,
+                    span<const Placeholder>(r.data.data(), r.data.size()),
+                    p.diagnostic.message);
+      } else {
+        p.diagnostic.message = copy("Unknown message id '");
+        append(p.diagnostic.message, r.messageId ? r.messageId : "");
+        append(p.diagnostic.message, "'.");
+      }
+      for (Suggestion &s : r.suggestions) {
+        SuggestionResult result{s.messageId, {}};
+        const Message *text = findMessage(rule, s.messageId);
+        if (text) {
+          interpolate(text->text,
+                      span<const Placeholder>(s.data.data(), s.data.size()),
+                      result.message);
+        }
+        p.diagnostic.suggestions.append(std::move(result));
+      }
+      locate(tree, p.diagnostic);
+      p.target = r.node;
+      p.fix = std::move(r.fix);
+      pending.append(std::move(p));
+    }
+  }
+  std::stable_sort(pending.data(),
+                   pending.data() + pending.size(),
+                   [](const Pending &a, const Pending &b) {
+                     return a.diagnostic.start != b.diagnostic.start
+                                ? a.diagnostic.start < b.diagnostic.start
+                                : a.diagnostic.end < b.diagnostic.end;
+                   });
+
+  DirectiveSet directives;
+  directives.collect(tree, m_registry, config.eslintDirectives);
+  for (Pending &p : pending) {
+    if (directives.suppressor(
+            p.diagnostic.ruleId(), p.diagnostic.start, p.diagnostic.line) >= 0)
+    {
+      continue;
+    }
+    if (fixes && p.fix && p.target) {
+      fixes->append(ast::Fix{p.target, std::move(p.fix)});
+    }
+    out.diagnostics.append(std::move(p.diagnostic));
+  }
+  for (const DirectiveProblem &problem : directives.problems()) {
+    Diagnostic d;
+    d.start = problem.offset;
+    d.end = problem.offset + problem.length;
+    d.message = problem.message;
+    locate(tree, d);
+    out.diagnostics.append(std::move(d));
+  }
+  if (config.unusedDirectives != Severity::Off) {
+    for (const Directive &directive : directives.directives()) {
+      if (directive.used || directive.kind == DirectiveKind::Enable) {
+        continue;
+      }
+      Diagnostic d;
+      d.severity = config.unusedDirectives;
+      d.start = directive.offset;
+      d.end = directive.offset + directive.length;
+      d.message = copy("Unused ");
+      append(d.message, directive.eslint ? "eslint" : "fastlint");
+      append(d.message, "-disable directive (no problems were reported");
+      if (!directive.rule.empty()) {
+        append(d.message, " from '");
+        append(d.message, directive.rule);
+        append(d.message, "'");
+      }
+      append(d.message, ").");
+      locate(tree, d);
+      out.diagnostics.append(std::move(d));
+    }
+  }
+
+  for (Active &a : active) {
+    litestl::alloc::Delete(a.context);
+  }
+  sortByPosition(out.diagnostics);
+  count(out);
+}
+
+void Linter::lintSource(string_view source,
+                        string_view filename,
+                        const LintOptions &options,
+                        FileResult &out)
+{
+  out.clear();
+  out.filename = copy(filename);
+  ResolvedConfig config;
+  m_config.resolve(filename, config);
+  if (config.ignored) {
+    out.ignored = true;
+    return;
+  }
+  syntax::Parser::Options parserOptions = parserOptionsFor(filename);
+
+  auto lintText = [&](string_view text, Vector<ast::Fix> *fixes) {
+    syntax::Diagnostics diagnostics;
+    syntax::GrammarTree tree;
+    syntax::Parser parser(text, parserOptions, diagnostics);
+    parser.parseFile(tree);
+    ast::AstFile file(&tree);
+    ast::lower(tree, file);
+    ast::Bindings bindings;
+    ast::bind(file, bindings);
+    lintFile(
+        tree, diagnostics, file, bindings, filename, config, options.types, fixes, out);
+  };
+
+  if (!options.fix) {
+    lintText(source, nullptr);
+    return;
+  }
+
+  ast::FixpointOptions fixpoint;
+  fixpoint.maxPasses = options.maxPasses;
+  fixpoint.parser = parserOptions;
+  ast::FixpointReport report = ast::runToFixpoint(
+      source,
+      [&](ast::Pass &pass) {
+        lintFile(pass.tree,
+                 pass.diagnostics,
+                 pass.file,
+                 pass.bindings,
+                 filename,
+                 config,
+                 options.types,
+                 &pass.fixes,
+                 out);
+      },
+      fixpoint);
+  // A reverted or cut-off run leaves diagnostics from a text that is not the
+  // output; lint the output once more without fixing.
+  if (report.reverted || !report.converged) {
+    lintText(view(report.text), nullptr);
+  }
+  out.fixesApplied = report.applied;
+  out.changed = view(report.text) != source;
+  if (out.changed) {
+    out.output = std::move(report.text);
+  }
+}
+
+} // namespace fastlint::lint

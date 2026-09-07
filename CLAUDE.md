@@ -23,6 +23,9 @@ built both as an N-API addon and as WASM.
 - docs/type-cache.md — the SQLite store and its invalidation: vendoring,
   schema, graph save and load by hash, import closure hashes, freshness,
   versioning and verify.
+- docs/rules.md — the rule framework: rule interface and context, single-walk
+  dispatch, reports and fixes, disable directives, config, output formats, the
+  rule tester and the `lint` command. One page per rule under docs/rules/.
 - docs/tests.md — the in-house test framework (`fastlint::test`), snapshot
   format, and per-component test strategy.
 - docs/debugging.md — debugging aids per subsystem (dump commands, trace

@@ -1,0 +1,355 @@
+#include "fastlint/lint/config.h"
+
+#include "fastlint/lint/glob.h"
+
+#include <cstdio>
+#include <filesystem>
+#include <string>
+
+namespace fastlint::lint {
+
+namespace {
+
+constexpr const char *kConfigName = "fastlint.config.json";
+
+void append(string &out, string_view text)
+{
+  for (char c : text) {
+    out += c;
+  }
+}
+
+string copy(string_view text)
+{
+  string out;
+  append(out, text);
+  return out;
+}
+
+string_view view(const string &s)
+{
+  return string_view(s.c_str(), s.size());
+}
+
+} // namespace
+
+const RuleSetting *ResolvedConfig::find(const RuleDef *rule) const
+{
+  for (const RuleSetting &setting : rules) {
+    if (setting.rule == rule) {
+      return &setting;
+    }
+  }
+  return nullptr;
+}
+
+const char *Config::severityName(Severity severity)
+{
+  switch (severity) {
+  case Severity::Off:
+    return "off";
+  case Severity::Warn:
+    return "warn";
+  case Severity::Error:
+    return "error";
+  }
+  return "off";
+}
+
+bool Config::parseSeverity(const JsonValue *value, Severity &out)
+{
+  if (!value) {
+    return false;
+  }
+  if (value->isArray()) {
+    return parseSeverity(value->at(0), out);
+  }
+  if (value->isNumber()) {
+    int n = value->asInt(-1);
+    if (n < 0 || n > 2) {
+      return false;
+    }
+    out = Severity(n);
+    return true;
+  }
+  if (value->isString()) {
+    string_view text = value->asString();
+    if (text == "off") {
+      out = Severity::Off;
+    } else if (text == "warn") {
+      out = Severity::Warn;
+    } else if (text == "error") {
+      out = Severity::Error;
+    } else {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+string Config::find(string_view dir)
+{
+  std::filesystem::path at{std::string(dir)};
+  for (;;) {
+    std::filesystem::path candidate = at / kConfigName;
+    std::error_code ec;
+    if (std::filesystem::is_regular_file(candidate, ec)) {
+      return copy(candidate.generic_string());
+    }
+    std::filesystem::path parent = at.parent_path();
+    if (parent == at || parent.empty()) {
+      return string();
+    }
+    at = parent;
+  }
+}
+
+bool Config::load(string_view path, const Registry &registry, string &error)
+{
+  std::string bytes;
+  std::FILE *file = std::fopen(std::string(path).c_str(), "rb");
+  if (!file) {
+    error = copy("cannot read ");
+    append(error, path);
+    return false;
+  }
+  char buffer[16384];
+  for (;;) {
+    size_t read = std::fread(buffer, 1, sizeof buffer, file);
+    if (read == 0) {
+      break;
+    }
+    bytes.append(buffer, read);
+  }
+  std::fclose(file);
+  std::filesystem::path p{std::string(path)};
+  std::string dir = p.parent_path().generic_string();
+  return parse(bytes, dir, registry, error);
+}
+
+bool Config::parse(string_view text,
+                   string_view baseDir,
+                   const Registry &registry,
+                   string &error)
+{
+  m_layers.clear();
+  m_ignores.clear();
+  m_unknownRules.clear();
+  m_baseDir = copy(baseDir);
+  if (!m_doc.parse(text)) {
+    error = copy("config: ");
+    append(error, view(m_doc.error()));
+    return false;
+  }
+  const JsonValue *root = m_doc.root();
+  if (!root || !root->isObject()) {
+    error = copy("config: the top level must be an object");
+    return false;
+  }
+
+  Layer base;
+  if (const JsonValue *extends = root->get("extends")) {
+    if (extends->isString()) {
+      if (!addPreset(extends->asString(), registry, base, error)) {
+        return false;
+      }
+    } else if (extends->isArray()) {
+      for (int i = 0; i < extends->size(); i++) {
+        if (!addPreset(extends->at(i)->asString(), registry, base, error)) {
+          return false;
+        }
+      }
+    } else {
+      error = copy("config: \"extends\" must be a string or an array of strings");
+      return false;
+    }
+  }
+  if (const JsonValue *rules = root->get("rules")) {
+    if (!addRules(rules, registry, base, error)) {
+      return false;
+    }
+  }
+  m_layers.append(std::move(base));
+
+  if (const JsonValue *overrides = root->get("overrides")) {
+    if (!overrides->isArray()) {
+      error = copy("config: \"overrides\" must be an array");
+      return false;
+    }
+    for (int i = 0; i < overrides->size(); i++) {
+      const JsonValue *item = overrides->at(i);
+      const JsonValue *files = item->get("files");
+      Layer layer;
+      if (files && files->isString()) {
+        layer.files.append(copy(files->asString()));
+      } else if (files && files->isArray()) {
+        for (int j = 0; j < files->size(); j++) {
+          layer.files.append(copy(files->at(j)->asString()));
+        }
+      }
+      if (layer.files.isEmpty()) {
+        error = copy("config: every override needs a \"files\" glob");
+        return false;
+      }
+      if (const JsonValue *rules = item->get("rules")) {
+        if (!addRules(rules, registry, layer, error)) {
+          return false;
+        }
+      }
+      m_layers.append(std::move(layer));
+    }
+  }
+
+  if (const JsonValue *ignores = root->get("ignores")) {
+    for (int i = 0; i < ignores->size(); i++) {
+      m_ignores.append(copy(ignores->at(i)->asString()));
+    }
+  }
+  if (const JsonValue *unused = root->get("reportUnusedDisableDirectives")) {
+    if (unused->kind == tsgo::JsonKind::Bool) {
+      m_unusedDirectives = unused->asBool() ? Severity::Warn : Severity::Off;
+    } else if (!parseSeverity(unused, m_unusedDirectives)) {
+      error = copy("config: \"reportUnusedDisableDirectives\" must be a severity");
+      return false;
+    }
+  }
+  if (const JsonValue *eslint = root->get("eslintDirectives")) {
+    m_eslintDirectives = eslint->asBool(true);
+  }
+  return true;
+}
+
+bool Config::addPreset(string_view name,
+                       const Registry &registry,
+                       Layer &layer,
+                       string &error)
+{
+  bool all = name == "fastlint:all";
+  if (!all && name != "fastlint:recommended") {
+    error = copy("config: unknown preset \"");
+    append(error, name);
+    error += '"';
+    return false;
+  }
+  for (const RuleDef *rule : registry.rules()) {
+    if (all || rule->meta.recommended) {
+      layer.entries.append({rule, Severity::Error, nullptr});
+    }
+  }
+  return true;
+}
+
+bool Config::addRules(const JsonValue *rules,
+                      const Registry &registry,
+                      Layer &layer,
+                      string &error)
+{
+  if (!rules->isObject()) {
+    error = copy("config: \"rules\" must be an object");
+    return false;
+  }
+  for (int i = 0; i < rules->size(); i++) {
+    string_view name = view(rules->keys[i]);
+    const JsonValue *setting = rules->items[i];
+    Severity severity;
+    if (!parseSeverity(setting, severity)) {
+      error = copy("config: rule \"");
+      append(error, name);
+      append(error, "\" needs a severity (\"off\", \"warn\", \"error\" or 0-2)");
+      return false;
+    }
+    const RuleDef *rule = registry.find(name);
+    if (!rule) {
+      m_unknownRules.append(copy(name));
+      continue;
+    }
+    layer.entries.append({rule, severity, setting});
+  }
+  return true;
+}
+
+void Config::setRule(const RuleDef *rule, Severity severity)
+{
+  m_cliEntries.append({rule, severity, nullptr});
+}
+
+void Config::relativePath(string_view filename, string &out) const
+{
+  std::string path(filename);
+  for (char &c : path) {
+    if (c == '\\') {
+      c = '/';
+    }
+  }
+  std::string base(m_baseDir.c_str(), m_baseDir.size());
+  for (char &c : base) {
+    if (c == '\\') {
+      c = '/';
+    }
+  }
+  if (!base.empty() && base.back() != '/') {
+    base += '/';
+  }
+  if (!base.empty() && path.size() > base.size() &&
+      path.compare(0, base.size(), base) == 0)
+  {
+    path = path.substr(base.size());
+  }
+  out = string();
+  append(out, path);
+}
+
+void Config::resolve(string_view filename, ResolvedConfig &out) const
+{
+  out.rules.clear();
+  out.unknownRules.clear();
+  out.unusedDirectives = m_unusedDirectives;
+  out.eslintDirectives = m_eslintDirectives;
+  out.ignored = false;
+  for (const string &name : m_unknownRules) {
+    out.unknownRules.append(name);
+  }
+
+  string relative;
+  relativePath(filename, relative);
+  string_view path = view(relative);
+  for (const string &pattern : m_ignores) {
+    if (globMatch(view(pattern), path)) {
+      out.ignored = true;
+    }
+  }
+
+  auto apply = [&](const Entry &entry) {
+    for (RuleSetting &setting : out.rules) {
+      if (setting.rule == entry.rule) {
+        setting.severity = entry.severity;
+        // A bare severity keeps the options an earlier layer gave.
+        if (entry.setting && entry.setting->isArray()) {
+          setting.setting = entry.setting;
+        }
+        return;
+      }
+    }
+    out.rules.append({entry.rule, entry.severity, entry.setting});
+  };
+  for (const Layer &layer : m_layers) {
+    bool matches = layer.files.isEmpty();
+    for (const string &pattern : layer.files) {
+      if (globMatch(view(pattern), path)) {
+        matches = true;
+      }
+    }
+    if (!matches) {
+      continue;
+    }
+    for (const Entry &entry : layer.entries) {
+      apply(entry);
+    }
+  }
+  for (const Entry &entry : m_cliEntries) {
+    apply(entry);
+  }
+}
+
+} // namespace fastlint::lint

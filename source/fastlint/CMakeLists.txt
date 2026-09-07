@@ -3,6 +3,14 @@ set(SRC
   cache/closure.cc
   cache/imports.cc
   cache/store.cc
+  lint/config.cc
+  lint/directives.cc
+  lint/format.cc
+  lint/glob.cc
+  lint/linter.cc
+  lint/registry.cc
+  rules/builtin.cc
+  rules/no_debugger.cc
   ast/comments.cc
   ast/dispatch.cc
   ast/dump.cc
@@ -41,6 +49,14 @@ set(SRC
   cache/closure.h
   cache/imports.h
   cache/store.h
+  lint/config.h
+  lint/directives.h
+  lint/format.h
+  lint/glob.h
+  lint/linter.h
+  lint/registry.h
+  lint/rule.h
+  rules/rules.h
   ast/comments.h
   ast/dispatch.h
   ast/dump.h

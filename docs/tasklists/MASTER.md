@@ -726,19 +726,39 @@ it. Tests: `types_graph_test` (fast) and `types_facts_test` (`[integration]`).
 
 Goal: enough rules to lint a real project; rule API proven for task 7.
 
-### 6.1 Rule framework
-- [ ] Rule interface: metadata (name, docs URL, fixable, type-aware flag),
+### 6.1 Rule framework (docs/rules.md)
+- [x] Rule interface: metadata (name, docs URL, fixable, type-aware flag),
   `create(ctx)` registering kind-indexed callbacks; `ctx.report(node, msg,
-  fix?)`.
-- [ ] Dispatch: single tree walk, per-kind callback lists — no per-rule
-  traversal.
-- [ ] Config: `fastlint.config.{json,ts}`; severity; per-rule options;
-  overrides by glob; `extends` presets.
-- [ ] Disable directives: `// fastlint-disable[-next-line] rule`, and
-  `// eslint-disable*` compatibility (decision in docs/STRATEGY.md open Qs).
-- [ ] Output: pretty terminal, `--format json`, SARIF later.
-- [ ] Rule test harness: `valid`/`invalid` cases with expected messages and
-  fixer output (ESLint `RuleTester`-shaped for familiarity).
+  fix?)`. `RuleDef`/`RuleContext` in lint/rule.h; messages by id with
+  `{{placeholders}}`; per-file `state<T>()`; `option(i)` for config options.
+  - [ ] Option schema validation (rules read `JsonValue`s and default
+    themselves for now).
+  - [ ] Suggestions are reported but nothing applies them (editor integration).
+- [x] Dispatch: single tree walk, per-kind callback lists — no per-rule
+  traversal. One `ast::Dispatcher` over every enabled rule's listeners.
+- [x] Config: `fastlint.config.json`; severity; per-rule options;
+  overrides by glob; `extends` presets (`fastlint:recommended`, `fastlint:all`);
+  `ignores`; `--rule name:severity` on the command line.
+  - [ ] `fastlint.config.ts` (needs Node to evaluate; with task 7).
+  - [ ] Glob matching is case-sensitive; Windows paths are compared as given.
+- [x] Disable directives: `// fastlint-disable[-next-line] rule`, and
+  `// eslint-disable*` compatibility (decided: accepted as aliases, see
+  docs/STRATEGY.md). Unused directives reported (`reportUnusedDisableDirectives`).
+- [x] Output: pretty terminal (stylish-shaped), `--format json` (ESLint-shaped).
+  - [ ] SARIF.
+  - [ ] JSON `fix` ranges (our fixes are tree edits; the text diff would have
+    to be derived from the reprint).
+  - [ ] Columns count bytes; UTF-16 columns for editor protocols.
+- [x] Rule test harness: `valid`/`invalid` cases with expected messages and
+  fixer output (`testing/rule_tester.h`, `runRuleTests`).
+- [x] `fastlint lint` command: config discovery, `--fix`, `--format`,
+  `--quiet`, `--max-warnings`; exit codes as ESLint.
+  - [ ] Wire `FileCache`, `--no-cache`, `--cache-dir` and `cache verify` into
+    the command (moved here from 5.4).
+  - [ ] Type server start-up for type-aware rules (6.3).
+  - [ ] Rules do not run on files with syntax errors (ESLint behaviour);
+    revisit once recovery quality is measured.
+- [x] First rule end to end: `no-debugger` (fixable).
 
 ### 6.2 Syntactic rules (initial set)
 - [ ] `no-debugger`, `no-console`, `eqeqeq`, `no-var`, `prefer-const`,
