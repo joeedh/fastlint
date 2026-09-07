@@ -9,6 +9,7 @@ add_fastlint_test(fastlint
     ast_query_test.cc
     ast_template_test.cc
     ast_test.cc
+    cache_closure_test.cc
     cache_store_test.cc
     fixture_test.cc
     parser_test.cc

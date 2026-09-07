@@ -74,6 +74,47 @@ types it uses stay inside store.cc.
   incremental migrations: a schema bump is a rebuild.
 - A fresh database writes `meta` and reports no rebuild.
 
+## Invalidation (v1, file closure)
+
+The store answers for a file only while the file, everything it imports and
+the tsconfig are unchanged. `source/fastlint/cache/imports.h` and `closure.h`
+compute that key.
+
+- `collectImports(file, specifiers)` walks the AST once and returns every
+  module specifier the file names: import and export declarations,
+  `import x = require("m")`, dynamic `import("m")` and `require("m")` with a
+  literal argument, and `import("m")` types. Type-only imports count, since
+  they change types.
+- `resolveImport(from, specifier, fs)` handles relative specifiers the way
+  `moduleResolution: bundler` does: the exact path, a `.js`-family extension
+  rewritten to its TS source, the TS extensions appended, then a directory
+  index. Bare package specifiers and `paths` aliases are not resolved; they
+  are kept as unresolved names so adding or dropping one still changes the
+  hash. Package contents are covered only through `lib_hash` and the
+  tsconfig hash, so a driver that wants lockfile changes to invalidate folds
+  the lockfile into the tsconfig hash.
+- `ImportGraph` holds one `FileEntry` per file seen: path, content hash,
+  resolved imports, unresolved specifiers and a `selfHash` over those. The
+  closure hash of a file is the hash of the sorted `selfHash`es of every file
+  reachable from it, itself included, so it does not depend on import order
+  and a cycle contributes each member once. Results are memoized until the
+  next `setFile`.
+- `loadClosure(graph, path, fs, error)` reads, parses and adds a file and,
+  transitively, every resolved import; a file already present with the same
+  content hash is not reparsed. `FileSystem` is the seam the tests replace
+  with an in-memory tree; `DiskFileSystem` is the real one.
+- `FileCache` ties a graph to a store. `lookup` builds the current
+  `FileRecord` (content, closure and tsconfig hashes) and compares it with the
+  stored one: `Missing`, `Stale` or `Fresh`. A stale file has its node types
+  and rule results dropped on the spot so a lint refills them; `commitFile`
+  writes the new record afterwards. `ruleResult` and `saveRuleResult` replay
+  and store a rule's payload under the record's content and closure hashes,
+  which is the rule-result cache from docs/STRATEGY.md.
+
+Touching a widely imported file therefore invalidates every importer, which
+is coarse but correct. Per-type provenance (v2) waits on measuring v1 on a
+real monorepo.
+
 ## Verify
 
 `Store::verify` runs `PRAGMA integrity_check` and then counts dangling
@@ -86,4 +127,8 @@ types against `tsgo`.
 
 `source/tests/cache_store_test.cc` (`[fast]`) opens in-memory stores for the
 round trips and one temp-file store to check that a version bump rebuilds and
-that a matching reopen does not.
+that a matching reopen does not. `cache_closure_test.cc` covers the import
+collector over every syntax form, path joining, resolution against an
+in-memory tree, closure hashes following dependency edits, cycles, loading
+tests/fixtures/projects/basic from disk, and the freshness transitions of
+`FileCache`.

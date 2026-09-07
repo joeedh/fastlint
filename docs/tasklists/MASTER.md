@@ -679,9 +679,25 @@ it. Tests: `types_graph_test` (fast) and `types_facts_test` (`[integration]`).
     task 6.
 
 ### 5.4 Invalidation
-- [ ] Import graph from parser → closure hash per file.
-- [ ] v1 file-closure invalidation.
-- [ ] Rule-result replay for unchanged (file, closure).
+- [x] Import graph from parser → closure hash per file. (docs/type-cache.md
+  "Invalidation")
+  - [x] `collectImports` (cache/imports.h) over the AST: import/export
+    declarations, `import =` require, dynamic `import()`, `require()` and
+    `import()` types.
+  - [x] `resolveImport` for relative specifiers with bundler-style extension
+    probing and `.js` → `.ts` rewrites; bare specifiers stay unresolved and
+    hash by name.
+  - [x] `ImportGraph` with order-independent closure hashes and
+    `loadClosure` to parse a file's whole closure through a `FileSystem`.
+  - [ ] tsconfig `paths`/`baseUrl` aliases and triple-slash references are
+    not resolved yet; they hash by name like packages.
+- [x] v1 file-closure invalidation: `FileCache::lookup` compares content,
+  closure and tsconfig hashes with the stored record and drops a stale
+  file's node types and rule results.
+- [x] Rule-result replay for unchanged (file, closure):
+  `FileCache::ruleResult`/`saveRuleResult` over `rule_results`.
+  - [ ] Wire `FileCache` into the driver (task 6), where the tsconfig hash
+    is computed; fold the lockfile in so package upgrades invalidate.
 - [ ] v2 per-type provenance (decl file hashes per type row) — after v1 is
   measured on a real monorepo.
 

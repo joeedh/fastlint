@@ -1,5 +1,7 @@
 set(SRC
   ast/binder.cc
+  cache/closure.cc
+  cache/imports.cc
   cache/store.cc
   ast/comments.cc
   ast/dispatch.cc
@@ -36,6 +38,8 @@ set(SRC
 
   ast/access.h
   ast/binder.h
+  cache/closure.h
+  cache/imports.h
   cache/store.h
   ast/comments.h
   ast/dispatch.h
