@@ -120,6 +120,13 @@ public:
   {
     return const_cast<Map<const Node *, Layout> &>(m_layouts).lookup_ptr(node);
   }
+  /** Forgets a captured layout, so the printer falls back to the kind template. */
+  void dropLayout(const Node *node)
+  {
+    if (m_layouts.contains(node)) {
+      m_layouts.remove(node);
+    }
+  }
 
   /** Marks a source slice the printer must skip when copying text. */
   void markDead(uint32_t offset, uint32_t length)

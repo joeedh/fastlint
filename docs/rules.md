@@ -53,6 +53,15 @@ What a rule gets for one file.
 Listeners must not register further listeners; registration closes when
 `create` returns.
 
+### Pattern options
+
+Options that hold regular expressions (`no-fallthrough`'s `commentPattern`,
+ignore patterns to come) compile through `lint::Regex` (lint/regex.h), a
+small backtracking matcher over bytes: literals, `.`, classes, `\d \w \s
+\b`, groups, alternation, greedy and lazy quantifiers, `^` and `$`, and the
+`i` flag. Lookaround, backreferences and Unicode property classes do not
+compile; a rule falls back to its default pattern when `compile` fails.
+
 ## Dispatch
 
 `Linter::lintFile` creates every enabled rule's context, then hands each

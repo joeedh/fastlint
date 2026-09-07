@@ -58,6 +58,14 @@ public:
   bool remove(Node *node, CommentPolicy policy = CommentPolicy::MoveLeading);
   /** Sets fixed slot `index`; a null `fresh` clears an optional slot. */
   bool set(Node *parent, int index, Node *fresh);
+  /**
+   * Changes an enum byte of `node` (an operator, a declaration kind). The
+   * node reprints from its kind template, since the token lives in its own
+   * text; the children keep theirs.
+   */
+  void setData(Node *node, int index, uint8_t value);
+  /** Sets or clears a flag of `node`, reprinting it as `setData` does. */
+  void setFlag(Node *node, Flag flag, bool on);
 
   // ------------------------------------------------------------- builders
   // Synthesized nodes with no grammar link; the printer prints them from
@@ -88,7 +96,11 @@ public:
   Node *keywordType(Keyword keyword);
   Node *typeReference(Node *typeName);
 
-  /** Takes `node` out of its current parent, if any, so it can move. */
+  /**
+   * Takes `node` out of its current parent, if any, so it can move. The
+   * parentheses its old slot needed go with it; the slot it lands in adds
+   * its own.
+   */
   void detach(Node *node);
 
 private:
@@ -96,6 +108,13 @@ private:
 
   /** Captures the layout of each ancestor turning dirty, then marks the chain. */
   void dirty(Node *node);
+  /** Marks `node` dirty with no layout of its own, so it prints from its template. */
+  void reprint(Node *node);
+  /** Drops the parentheses `node` carried in its old slot; the new slot decides again. */
+  void unparenthesize(Node *node);
+  /** Links `fresh` under `parent` at `index` and parenthesizes it if the slot needs that.
+   */
+  void place(Node *parent, int index, Node *fresh);
   /** The index of `child` in `parent->children`, or -1. */
   static int indexOf(const Node *parent, const Node *child);
   static bool isListIndex(const Node *parent, int index);

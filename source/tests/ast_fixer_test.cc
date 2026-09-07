@@ -3,6 +3,7 @@
 #include "fastlint/ast/fixer.h"
 #include "fastlint/ast/generated/views.h"
 #include "fastlint/ast/lower.h"
+#include "fastlint/ast/printer.h"
 #include "fastlint/syntax/diagnostics.h"
 #include "fastlint/syntax/parser.h"
 #include "testing/test.h"
@@ -322,4 +323,55 @@ TEST(ast_fixer, apply_fixes_on_siblings_all_land)
   CHECK_EQ(report.deferred, 0);
   CHECK(l.statement(0)->children[0]->as<CallExpression>().callee()->isIdentifier("q"));
   CHECK(l.statement(1)->children[0]->as<CallExpression>().callee()->isIdentifier("q"));
+}
+
+TEST(ast_fixer, set_data_reprints_the_node_from_its_template)
+{
+  Lowered l("var a = 1;\nfor (var i = 0; i < 2; i++) {}\nfor (var k of ks) {}\n");
+  Fixer fixer(l.file);
+  fixer.setData(l.statement(0), 0, uint8_t(VariableKind::Let));
+  fixer.setData(l.statement(1)->children[0], 0, uint8_t(VariableKind::Let));
+  fixer.setData(l.statement(2)->children[0], 0, uint8_t(VariableKind::Const));
+  litestl::util::string out;
+  printAst(l.file, out);
+  CHECK_EQ(std::string(out.c_str()),
+           "let a = 1;\nfor (let i = 0; i < 2; i++) {}\nfor (const k of ks) {}\n");
+}
+
+TEST(ast_fixer, set_flag_makes_a_member_optional)
+{
+  Lowered l("a.b;");
+  Fixer fixer(l.file);
+  Node *member = l.statement(0)->children[0];
+  fixer.setFlag(member, Flag::Optional, true);
+  litestl::util::string out;
+  printAst(l.file, out);
+  CHECK_EQ(std::string(out.c_str()), "a?.b;");
+}
+
+TEST(ast_fixer, moved_nodes_drop_old_parentheses_and_gain_needed_ones)
+{
+  Lowered l("type A = (string | number)[]; type B = Array<string | number>;");
+  Fixer fixer(l.file);
+  // The union leaves its array (parentheses and all) for a generic's argument.
+  Node *arrayType = l.statement(0)->children[2];
+  Node *unionType = arrayType->children[0];
+  CHECK(unionType->hasFlag(Flag::Parenthesized));
+  fixer.detach(unionType);
+  CHECK(!unionType->hasFlag(Flag::Parenthesized));
+  Node *arguments = fixer.build(NodeKind::TSTypeParameterInstantiation, {});
+  CHECK(fixer.append(arguments, unionType));
+  Node *generic = fixer.typeReference(fixer.identifier("Array"));
+  CHECK(fixer.set(generic, 1, arguments));
+  CHECK(fixer.replace(arrayType, generic));
+  // The other union leaves its generic for an array, which needs parentheses.
+  Node *reference = l.statement(1)->children[2];
+  Node *otherUnion = reference->children[1]->children[0];
+  fixer.detach(otherUnion);
+  Node *fresh = fixer.build(NodeKind::TSArrayType, {otherUnion});
+  CHECK(fixer.replace(reference, fresh));
+  litestl::util::string out;
+  printAst(l.file, out);
+  CHECK_EQ(std::string(out.c_str()),
+           "type A = Array<string | number>; type B = (string | number)[];");
 }

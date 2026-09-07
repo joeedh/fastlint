@@ -1179,3 +1179,13 @@ TEST(parser, jsx_unclosed_element_reports_and_stops)
   CHECK_EQ(count(p.text(), "(JsxElement"), size_t(1));
   CHECK_EQ(count(p.text(), "(JsxText"), size_t(1));
 }
+
+TEST(parser, line_starts_survive_speculative_rescans)
+{
+  // `throw err` followed by a newline makes the parser look ahead and rewind;
+  // the line table must still hold one entry per line.
+  Parsed p("function foo() {\n  throw err\n  d()\n}\n");
+  CHECK(p.ok());
+  CHECK_EQ(int(p.tree.lineStarts().size()), 5);
+  CHECK_EQ(int(p.tree.lineOf(30)), 3);
+}

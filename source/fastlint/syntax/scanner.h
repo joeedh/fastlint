@@ -227,6 +227,16 @@ private:
   Vector<Trivia> m_trivia;
   Vector<uint32_t> m_lineStarts;
 
+  /** Records a line start; a rescan crossing the same break replaces the stale entries.
+   */
+  void noteLineStart(uint32_t start)
+  {
+    while (!m_lineStarts.isEmpty() && m_lineStarts.last() >= start) {
+      m_lineStarts.pop_back();
+    }
+    m_lineStarts.append(start);
+  }
+
   size_t m_pos = 0;
   ScanMode m_mode = ScanMode::Normal;
   Token m_current;

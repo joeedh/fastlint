@@ -74,8 +74,68 @@ void Fixer::dirty(Node *node)
   }
 }
 
+void Fixer::reprint(Node *node)
+{
+  if (node->parent) {
+    dirty(node->parent);
+  }
+  m_file.dropLayout(node);
+  node->dirty = true;
+}
+
+void Fixer::setData(Node *node, int index, uint8_t value)
+{
+  reprint(node);
+  node->setDataByte(index, value);
+}
+
+void Fixer::setFlag(Node *node, Flag flag, bool on)
+{
+  reprint(node);
+  node->setFlag(flag, on);
+}
+
+void Fixer::unparenthesize(Node *node)
+{
+  if (!node->hasFlag(Flag::Parenthesized)) {
+    return;
+  }
+  node->setFlag(Flag::Parenthesized, false);
+  const syntax::GrammarTree *tree = node->grammar.tree;
+  if (node->dirty || !tree) {
+    return;
+  }
+  // A clean node's slice includes its parentheses; shrink it to the inside.
+  string_view source = tree->source();
+  if (node->end <= node->start || node->end > source.size() ||
+      source[node->start] != '(' || source[node->end - 1] != ')')
+  {
+    return;
+  }
+  auto blank = [](char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; };
+  uint32_t start = node->start + 1;
+  uint32_t end = node->end - 1;
+  while (start < end && blank(source[start])) {
+    start++;
+  }
+  while (end > start && blank(source[end - 1])) {
+    end--;
+  }
+  node->start = start;
+  node->end = end;
+}
+
+void Fixer::place(Node *parent, int index, Node *fresh)
+{
+  fresh->parent = parent;
+  if (needsParens(parent, index, fresh)) {
+    fresh->setFlag(Flag::Parenthesized);
+  }
+}
+
 void Fixer::detach(Node *node)
 {
+  unparenthesize(node);
   Node *parent = node->parent;
   if (!parent) {
     return;
@@ -123,7 +183,7 @@ bool Fixer::replace(Node *old, Node *fresh)
   detach(fresh);
   dirty(parent);
   parent->children[index] = fresh;
-  fresh->parent = parent;
+  place(parent, index, fresh);
   old->parent = nullptr;
   // Leading and trailing comments sit in the parent's own text and still
   // print; dangling ones were inside `old` and must print from the table.
@@ -156,7 +216,7 @@ bool Fixer::insertBefore(Node *sibling, Node *fresh)
   dirty(parent);
   index = indexOf(parent, sibling);
   insertAt(parent->children, index, fresh);
-  fresh->parent = parent;
+  place(parent, index, fresh);
   return true;
 }
 
@@ -183,6 +243,7 @@ bool Fixer::append(Node *parent, Node *fresh)
   detach(fresh);
   dirty(parent);
   parent->appendChild(fresh);
+  place(parent, int(parent->children.size()) - 1, fresh);
   return true;
 }
 
@@ -282,7 +343,7 @@ bool Fixer::set(Node *parent, int index, Node *fresh)
   detach(fresh);
   dirty(parent);
   parent->children[index] = fresh;
-  fresh->parent = parent;
+  place(parent, index, fresh);
   return true;
 }
 

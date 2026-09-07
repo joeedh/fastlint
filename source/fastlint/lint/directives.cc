@@ -206,7 +206,9 @@ void DirectiveSet::advance(uint32_t offset)
         m_disabled.clear();
         m_enabled.clear();
       } else {
-        m_enabled.remove(d.rule);
+        if (m_enabled.contains(d.rule)) {
+          m_enabled.remove(d.rule);
+        }
         m_disabled.append(m_next);
       }
     } else if (d.kind == DirectiveKind::Enable) {

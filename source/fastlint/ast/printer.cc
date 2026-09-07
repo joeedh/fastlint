@@ -1288,9 +1288,17 @@ private:
     }
 
     // ------------------------------------------------------------ bindings
-    case NodeKind::VariableDeclaration:
-      variableDeclaration(n, true);
+    case NodeKind::VariableDeclaration: {
+      // In a loop head the head's own text carries the punctuation.
+      Node *parent = n->parent;
+      bool inHead = parent &&
+                    (parent->kind == NodeKind::ForStatement ||
+                     parent->kind == NodeKind::ForInStatement ||
+                     parent->kind == NodeKind::ForOfStatement) &&
+                    parent->children[0] == n;
+      variableDeclaration(n, !inHead);
       break;
+    }
     case NodeKind::VariableDeclarator: {
       VariableDeclarator view(n);
       print(view.id());
@@ -1851,13 +1859,15 @@ private:
     }
     case NodeKind::TSArrayType: {
       Node *element = n->children[0];
-      bool wrap = element && (element->kind == NodeKind::TSUnionType ||
-                              element->kind == NodeKind::TSIntersectionType ||
-                              element->kind == NodeKind::TSFunctionType ||
-                              element->kind == NodeKind::TSConstructorType ||
-                              element->kind == NodeKind::TSConditionalType ||
-                              element->kind == NodeKind::TSTypeOperator ||
-                              element->kind == NodeKind::TSInferType);
+      // A Parenthesized flag already prints the parentheses.
+      bool wrap = element && !element->hasFlag(Flag::Parenthesized) &&
+                  (element->kind == NodeKind::TSUnionType ||
+                   element->kind == NodeKind::TSIntersectionType ||
+                   element->kind == NodeKind::TSFunctionType ||
+                   element->kind == NodeKind::TSConstructorType ||
+                   element->kind == NodeKind::TSConditionalType ||
+                   element->kind == NodeKind::TSTypeOperator ||
+                   element->kind == NodeKind::TSInferType);
       if (wrap) {
         put('(');
       }

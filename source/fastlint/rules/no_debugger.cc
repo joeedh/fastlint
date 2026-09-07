@@ -31,7 +31,7 @@ const RuleDef kNoDebugger{
         /*fixable=*/true,
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
-        span<const Message>(kMessages, 1),
+        messagesOf(kMessages),
     },
     create,
 };

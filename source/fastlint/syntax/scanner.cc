@@ -319,7 +319,7 @@ void Scanner::skipTrivia(bool &sawLineBreak)
       }
       sawLineBreak = true;
       m_sawLineBreak = true;
-      m_lineStarts.append(start + 1);
+      noteLineStart(start + 1);
       addTrivia(Trivia::Kind::NewLine, start, uint32_t(m_pos - start), true);
       continue;
     }
@@ -329,7 +329,7 @@ void Scanner::skipTrivia(bool &sawLineBreak)
       advanceChar();
       sawLineBreak = true;
       m_sawLineBreak = true;
-      m_lineStarts.append(start + 1);
+      noteLineStart(start + 1);
       addTrivia(Trivia::Kind::NewLine, start, uint32_t(m_pos - start), true);
       continue;
     }
@@ -368,7 +368,7 @@ void Scanner::skipTrivia(bool &sawLineBreak)
           break;
         }
         if (byte(m_pos) == '\n') {
-          m_lineStarts.append(uint32_t(m_pos) + 1);
+          noteLineStart(uint32_t(m_pos) + 1);
         }
         m_pos += 1;
       }
@@ -650,12 +650,12 @@ void Scanner::scanString(uint32_t start)
         if (!atEnd() && byte(m_pos) == '\n') {
           m_pos += 1;
         }
-        m_lineStarts.append(br + 1);
+        noteLineStart(br + 1);
         m_sawLineBreak = true;
         continue;
       }
       if (e == '\n') {
-        m_lineStarts.append(uint32_t(m_pos) + 1);
+        noteLineStart(uint32_t(m_pos) + 1);
         m_pos += 1;
         m_sawLineBreak = true;
         continue;
@@ -774,10 +774,10 @@ void Scanner::scanTemplate(uint32_t start, ScanMode mode)
       return;
     }
     if (c == '\n') {
-      m_lineStarts.append(uint32_t(m_pos) + 1);
+      noteLineStart(uint32_t(m_pos) + 1);
       m_sawLineBreak = true;
     } else if (c == '\r') {
-      m_lineStarts.append(uint32_t(m_pos) + 1);
+      noteLineStart(uint32_t(m_pos) + 1);
       m_sawLineBreak = true;
       if (m_pos + 1 < m_source.size() && byte(m_pos + 1) == '\n') {
         m_pos += 1;
@@ -826,7 +826,7 @@ void Scanner::scanJsxText(uint32_t start)
   while (!atEnd() && byte(m_pos) != '<' && byte(m_pos) != '{') {
     char c = byte(m_pos);
     if (c == '\n') {
-      m_lineStarts.append(uint32_t(m_pos) + 1);
+      noteLineStart(uint32_t(m_pos) + 1);
       m_sawLineBreak = true;
     } else if (c == '}' || c == '>') {
       // Text as in tsgo, but the character must be written as an entity.
@@ -1154,7 +1154,7 @@ void Scanner::rescanJsxAttributeString()
   while (!atEnd()) {
     char c = byte(m_pos);
     if (c == '\n') {
-      m_lineStarts.append(uint32_t(m_pos) + 1);
+      noteLineStart(uint32_t(m_pos) + 1);
     }
     m_pos += 1;
     if (c == quote) {

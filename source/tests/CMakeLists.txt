@@ -15,8 +15,22 @@ add_fastlint_test(fastlint
     lint_config_test.cc
     lint_directives_test.cc
     lint_linter_test.cc
+    lint_regex_test.cc
     parser_test.cc
+    rules_array_type_test.cc
+    rules_curly_test.cc
+    rules_eqeqeq_test.cc
+    rules_no_console_test.cc
+    rules_no_constant_condition_test.cc
     rules_no_debugger_test.cc
+    rules_no_duplicate_case_test.cc
+    rules_no_empty_test.cc
+    rules_no_fallthrough_test.cc
+    rules_no_non_null_assertion_test.cc
+    rules_no_self_assign_test.cc
+    rules_no_unreachable_test.cc
+    rules_no_var_test.cc
+    rules_prefer_as_const_test.cc
     scanner_test.cc
     framework_test.cc
     snapshot_test.cc

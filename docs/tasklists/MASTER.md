@@ -761,13 +761,27 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
 - [x] First rule end to end: `no-debugger` (fixable).
 
 ### 6.2 Syntactic rules (initial set)
-- [ ] `no-debugger`, `no-console`, `eqeqeq`, `no-var`, `prefer-const`,
-  `no-unused-vars` (needs binder), `no-shadow`, `no-empty`,
-  `no-unreachable`, `no-duplicate-case`, `no-fallthrough`,
+- [x] Batch A (syntax only): `no-debugger`, `no-console`, `eqeqeq`, `no-var`,
+  `no-empty`, `no-unreachable`, `no-duplicate-case`, `no-fallthrough`,
   `no-constant-condition`, `no-self-assign`, `curly`,
-  `@typescript-eslint/consistent-type-imports` (fixable),
-  `no-non-null-assertion`, `prefer-as-const`, `array-type` (fixable).
-- [ ] Each: docs page, tests, fixer where applicable.
+  `no-non-null-assertion`, `prefer-as-const`, `array-type`. Each with a docs
+  page under docs/rules/, ported upstream tests, and a fixer where upstream
+  has one (`eqeqeq`, `no-var`, `curly`, `prefer-as-const`, `array-type`).
+  - [ ] `no-unreachable` / `no-fallthrough` use a statement-list exit
+    approximation (rules/util.h `alwaysExits`); a code-path analysis would
+    also see `switch` exits and labelled breaks.
+  - [ ] `no-empty`: upstream's "insert a comment" suggestion.
+  - [ ] `no-fallthrough`: `reportUnusedFallthroughComment`.
+  - [ ] `lint::Regex` matches bytes; `\u` escapes above 0x7F and Unicode
+    classes fail to compile.
+- [ ] Batch B (binder-heavy): `prefer-const` (fixable), `no-unused-vars`,
+  `no-shadow`.
+- [ ] Batch C: `@typescript-eslint/consistent-type-imports` (fixable).
+- [x] Fixer additions the batch needed: `setData`/`setFlag` (operator and
+  keyword changes in place), slot-owned parentheses on `detach`/placement,
+  loop-head declarations print without `;`.
+- [x] Scanner: line starts no longer duplicate across speculative rescans
+  (`throw err` + newline shifted every later line number by one).
 
 ### 6.3 Type-aware rules (initial set)
 - [ ] `no-floating-promises`, `await-thenable`, `no-misused-promises`,

@@ -348,6 +348,11 @@ Fixers edit the AST. The file owns a `Fixer` that exposes:
   optional slot. Removing from a required slot is an authoring error and
   asserts in debug.
 - `set(Node *parent, int index, Node *fresh)`: sets an optional slot.
+- `setData(Node *node, int index, uint8_t value)` / `setFlag(node, flag,
+  on)`: changes an operator, a declaration kind or a flag in place. The node
+  loses its captured layout and reprints from its kind template, because
+  the token that changed sits in the node's own text; its children still
+  print verbatim.
 - Builders: `ast.identifier("x")`, `ast.call(callee, args)`,
   `ast.literal(...)`, and the template instantiation below. Builders return
   synthesized nodes with a null `GrammarRef`.
@@ -356,6 +361,13 @@ Fixers edit the AST. The file owns a `Fixer` that exposes:
   not they carry a grammar link.
 - A removed node is detached (`parent = nullptr`) but its comments stay in
   the side table until the policy moves or drops them.
+- Parentheses belong to the slot, not the node. `detach` clears a moved
+  node's `Parenthesized` flag and, for a clean node, shrinks its slice to
+  the inside of the parentheses; every placement (`replace`, `set`,
+  `insert*`, `append`, and the builders) sets the flag again where
+  `needsParens(parent, index, child)` says the new slot needs it. A rule
+  that moves `(A | B)` from an array type into `Array<...>` and back never
+  touches parentheses itself.
 
 Fixes are collected as closures during a rule pass (`Fix{target, apply}`)
 and applied after it by `applyFixes`, one at a time in source order of

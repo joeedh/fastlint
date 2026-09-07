@@ -250,7 +250,9 @@ Subcase::Subcase(const char *label, const char * /*file*/, int /*line*/)
 {
   RunState &st = state();
   const int depth = int(st.path.size());
+  const size_t before = litestl::alloc::getMemorySize();
   st.path.append(string(label));
+  st.frameworkBytes += int64_t(litestl::alloc::getMemorySize()) - int64_t(before);
   const string path = joinPath(st.path);
 
   if (st.done.contains(path)) {
@@ -272,6 +274,7 @@ Subcase::Subcase(const char *label, const char * /*file*/, int /*line*/)
 Subcase::~Subcase()
 {
   RunState &st = state();
+  const size_t before = litestl::alloc::getMemorySize();
   if (entered_ && st.deferrals == deferralsAtEntry_) {
     // Nothing nested was deferred, so this path is finished.
     st.done.add(joinPath(st.path));
@@ -279,6 +282,7 @@ Subcase::~Subcase()
   if (st.path.size() > 0) {
     st.path.pop_back();
   }
+  st.frameworkBytes += int64_t(litestl::alloc::getMemorySize()) - int64_t(before);
 }
 
 // ------------------------------------------------------------ run loop

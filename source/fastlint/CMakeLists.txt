@@ -9,8 +9,23 @@ set(SRC
   lint/glob.cc
   lint/linter.cc
   lint/registry.cc
+  lint/regex.cc
+  rules/array_type.cc
   rules/builtin.cc
+  rules/curly.cc
+  rules/eqeqeq.cc
+  rules/no_console.cc
+  rules/no_constant_condition.cc
   rules/no_debugger.cc
+  rules/no_duplicate_case.cc
+  rules/no_empty.cc
+  rules/no_fallthrough.cc
+  rules/no_non_null_assertion.cc
+  rules/no_self_assign.cc
+  rules/no_unreachable.cc
+  rules/no_var.cc
+  rules/prefer_as_const.cc
+  rules/util.cc
   ast/comments.cc
   ast/dispatch.cc
   ast/dump.cc
@@ -55,8 +70,10 @@ set(SRC
   lint/glob.h
   lint/linter.h
   lint/registry.h
+  lint/regex.h
   lint/rule.h
   rules/rules.h
+  rules/util.h
   ast/comments.h
   ast/dispatch.h
   ast/dump.h
