@@ -1,5 +1,6 @@
 set(SRC
   ast/binder.cc
+  cache/store.cc
   ast/comments.cc
   ast/dispatch.cc
   ast/dump.cc
@@ -35,6 +36,7 @@ set(SRC
 
   ast/access.h
   ast/binder.h
+  cache/store.h
   ast/comments.h
   ast/dispatch.h
   ast/dump.h
@@ -74,4 +76,4 @@ set(SRC
 
 add_library(fastlint_lib STATIC ${SRC})
 target_include_directories(fastlint_lib PUBLIC "${CMAKE_SOURCE_DIR}/source")
-target_link_libraries(fastlint_lib PUBLIC litestl PRIVATE fastlint_warnings)
+target_link_libraries(fastlint_lib PUBLIC litestl PRIVATE sqlite3 fastlint_warnings)

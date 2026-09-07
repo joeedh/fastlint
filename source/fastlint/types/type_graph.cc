@@ -134,6 +134,20 @@ span<const StringId> TypeGraph::declarations(SymbolId id) const
   return span<const StringId>(base + row.declStart, row.declCount);
 }
 
+TypeId TypeGraph::byHash(uint64_t hash) const
+{
+  const TypeId *found =
+      const_cast<Map<Key, TypeId> &>(m_typeByHash).lookup_ptr(Key{hash});
+  return found ? *found : 0;
+}
+
+SymbolId TypeGraph::symbolByHash(uint64_t hash) const
+{
+  const SymbolId *found =
+      const_cast<Map<Key, SymbolId> &>(m_symbolByHash).lookup_ptr(Key{hash});
+  return found ? *found : 0;
+}
+
 TypeId TypeGraph::bySessionId(int sessionId) const
 {
   if (!sessionId) {

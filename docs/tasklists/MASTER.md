@@ -602,7 +602,8 @@ the pieces. Tests: `tsgo_json_test`, `tsgo_msgpack_test`,
   compared with `kSupportedVersions` (7.0.2); `skipVersionCheck` exists for
   probing. The parameter-name table is `generated/compat.h`, written by
   `node tools/spikes/tsgo-api/main.ts compat --emit`.
-  - [ ] Record the version in the cache `meta` table once 5.3 exists.
+  - [x] Recorded as `tsgo_version` in the store's `meta` table (5.3); a
+    mismatch rebuilds the cache.
 - [x] Snapshot/program management: `initialize`, `updateSnapshot` with
   `SnapshotUpdate` (open/close projects and files, file changes,
   `invalidateAll`), `openProject`, `getDefaultProjectForFile`, `release`.
@@ -650,16 +651,32 @@ it. Tests: `types_graph_test` (fast) and `types_facts_test` (`[integration]`).
     deepen on demand or accept the collision risk after measuring.
 
 ### 5.3 SQLite store
-- [ ] Vendor sqlite amalgamation via `make.ts deps`; WAL; single writer
-  thread; batched commits.
-- [ ] Schema: `files(path, content_hash, closure_hash, tsconfig_hash)`,
-  `types`, `type_children`, `symbols`, `node_types(file_hash, offset,
-  type_id)`, `rule_results(file_hash, closure_hash, rule, payload)`,
+- [x] Vendor sqlite amalgamation via `make.ts deps`; WAL; single writer
+  thread; batched commits. (docs/type-cache.md)
+  - [x] `deps` downloads `sqlite-amalgamation-3530400.zip` pinned by sha3-256
+    into `vendor/sqlite` (gitignored) through tools/make/lib/zip.ts; the
+    root CMake builds it as the static `sqlite3` C target and fails
+    configure with the fetch command when it is missing.
+  - [x] `Store` (source/fastlint/cache/store.h) is one connection in WAL
+    mode; callers batch a file's writes in `begin`/`commit`. The writer
+    thread itself belongs to the driver (task 6).
+- [x] Schema: `files(path, content_hash, closure_hash, tsconfig_hash)`,
+  `types`, `type_children`, `symbols`, `symbol_declarations`,
+  `node_types(file_hash, start, end, kind, type_hash)`,
+  `rule_results(file_hash, closure_hash, rule, payload)`,
   `meta(schema_version, tsgo_version, lib_hash)`.
-- [ ] Migration/versioning; drop-and-rebuild on schema or tsgo version
-  change.
-- [ ] `--no-cache`, `--cache-dir`, `cache verify` (recompute a sample and
+  - [x] Graph rows are keyed by the `TypeGraph` structural hash and stored
+    with a `seq`; `loadGraph` re-interns in that order and checks every hash
+    reproduces, `saveGraph` writes from a `GraphCursor` onward.
+- [x] Migration/versioning; drop-and-rebuild on schema or tsgo version
+  change (`kSchemaVersion`, `tsgo_version`, `lib_hash`; `rebuilt()` reports
+  it).
+- [~] `--no-cache`, `--cache-dir`, `cache verify` (recompute a sample and
   compare).
+  - [x] `Store::verify`: `integrity_check` plus dangling child, symbol and
+    node-type references.
+  - [ ] The CLI flags and the tsgo recompute sample land with the driver in
+    task 6.
 
 ### 5.4 Invalidation
 - [ ] Import graph from parser → closure hash per file.

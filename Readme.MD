@@ -14,7 +14,7 @@ ninja, clang-format and `vcvarsall.bat` ship with VS and are found with
 
 ```sh
 pnpm install
-node make.ts deps              # submodules, plus DTL into vendor/
+node make.ts deps              # submodules, plus DTL and sqlite into vendor/
 node make.ts configure
 node make.ts build
 node make.ts test
@@ -36,7 +36,7 @@ node make.ts run -- --version
 | `test` | Builds, runs every `*_tests.exe` with `--json`, and aggregates. `--filter`, `--tag`, `--all`, `-u`, `--isolate`, `--ctest`, `--ts`. |
 | `check` | `format --check` + build + C++ tests + TS tests. What CI runs. |
 | `format` | clang-format over `source/`, the `@pathtx/prettier` fork over the TypeScript. `--check` only reports. |
-| `deps` | Updates submodules; `deps fetch dtl` clones a pinned external into `vendor/`. |
+| `deps` | Updates submodules and fetches the externals: `deps fetch dtl` clones a pinned git external, `deps fetch sqlite` downloads the checksummed amalgamation zip into `vendor/`. |
 | `run` | Builds `fastlint` and runs it with the remaining arguments. |
 | `clean` | Removes `build/<preset>`, or everything under `--all`. |
 

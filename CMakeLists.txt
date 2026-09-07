@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(fastlint CXX)
+project(fastlint C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -106,6 +106,28 @@ if(EXISTS "${DTL_DIR}/dtl/dtl.hpp")
 else()
   set(FASTLINT_HAVE_DTL OFF)
   message(STATUS "vendor/dtl missing; run `node make.ts deps fetch dtl` for snapshot diffs")
+endif()
+
+# SQLite backs the type cache. `node make.ts deps` downloads the pinned
+# amalgamation; without it there is no cache, so configuring stops here.
+set(SQLITE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/sqlite")
+if(NOT EXISTS "${SQLITE_DIR}/sqlite3.c")
+  message(FATAL_ERROR "vendor/sqlite missing; run `node make.ts deps fetch sqlite`")
+endif()
+add_library(sqlite3 STATIC "${SQLITE_DIR}/sqlite3.c")
+target_include_directories(sqlite3 SYSTEM PUBLIC "${SQLITE_DIR}")
+# One connection per thread, no extension loading, no double-quoted strings, and the
+# safe WAL sync level; the cache never needs more of the library than this.
+target_compile_definitions(sqlite3 PRIVATE
+  SQLITE_THREADSAFE=2
+  SQLITE_OMIT_LOAD_EXTENSION
+  SQLITE_OMIT_DEPRECATED
+  SQLITE_DQS=0
+  SQLITE_DEFAULT_WAL_SYNCHRONOUS=1
+  SQLITE_LIKE_DOESNT_MATCH_BLOBS
+  SQLITE_USE_ALLOCA)
+if(NOT MSVC)
+  target_compile_options(sqlite3 PRIVATE -w)
 endif()
 
 add_subdirectory(source)

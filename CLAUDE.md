@@ -20,6 +20,8 @@ built both as an N-API addon and as WASM.
   JSON, version gate, snapshots, node handles and the typed queries.
 - docs/type-facts.md — the interned type graph and the `TypeFacts` questions
   rules ask; how nodes become tsgo handles and what one hop means.
+- docs/type-cache.md — the SQLite store: vendoring, schema, graph save and
+  load by hash, versioning and verify.
 - docs/tests.md — the in-house test framework (`fastlint::test`), snapshot
   format, and per-component test strategy.
 - docs/debugging.md — debugging aids per subsystem (dump commands, trace

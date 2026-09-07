@@ -103,6 +103,9 @@ public:
   span<const TypeId> children(TypeId id) const;
   span<const StringId> declarations(SymbolId id) const;
 
+  /** Row with this structural hash, or 0. */
+  TypeId byHash(uint64_t hash) const;
+  SymbolId symbolByHash(uint64_t hash) const;
   /** Row whose live tsgo id is `sessionId`, or 0. */
   TypeId bySessionId(int sessionId) const;
   SymbolId symbolBySessionId(int sessionId) const;

@@ -227,8 +227,10 @@ this document depends on.
 
 ### SQLite is the type graph; memory is a working set
 
-- Tables: `types`, `type_children`, `symbols`, `node_types(file_hash, offset,
-  type_id)`, `strings`, `files(path, content_hash, closure_hash)`.
+- Tables: `types`, `type_children`, `symbols`, `symbol_declarations`,
+  `node_types(file_hash, start, end, kind, type_hash)`, `files(path,
+  content_hash, closure_hash, tsconfig_hash)`, `rule_results`, `meta`. Graph
+  rows are keyed by structural hash, not by in-memory id (docs/type-cache.md).
 - WAL mode, single writer, batched commits per file.
 - Linting file F: load F's `node_types` and reachable type rows; flush on
   completion. Memory ≈ workers × one file's facts + LRU of hot type rows.

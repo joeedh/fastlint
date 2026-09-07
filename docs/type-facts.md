@@ -75,6 +75,7 @@ queries return 0 instead of failing so a rule can keep walking.
 
 ## Not yet
 
-- Rows are not persisted; 5.3 adds the SQLite store and the LRU over rows.
+- Rows persist through the store in docs/type-cache.md, but nothing evicts
+  them yet; the LRU over rows is still open.
 - Children interned as members are shallow, so a union inside a union hashes
   by its flags alone. Measure before deciding whether to deepen on demand.
