@@ -47,14 +47,15 @@ void runRuleTests(const lint::RuleDef &rule,
                   std::initializer_list<InvalidCase> invalid);
 
 /**
- * Like `runRuleTests` with a type server over tests/fixtures/projects/basic; each
- * case is typed as `src/<filename>` of that project, `src/case.ts` by default. Cases
- * run in one plain loop, since replaying subcases would restart the server per case.
- * Skips the test when no native `tsc` is found; call from a test tagged
- * `integration`.
+ * Like `runRuleTests` with a type server over tests/fixtures/projects/<project>
+ * (`basic` by default; `loose` turns `noImplicitThis` off); each case is typed as
+ * `src/<filename>` of that project, `src/case.ts` by default. Cases run in one plain
+ * loop, since replaying subcases would restart the server per case. Skips the test
+ * when no native `tsc` is found; call from a test tagged `integration`.
  */
 void runTypedRuleTests(const lint::RuleDef &rule,
                        std::initializer_list<ValidCase> valid,
-                       std::initializer_list<InvalidCase> invalid);
+                       std::initializer_list<InvalidCase> invalid,
+                       const char *project = "basic");
 
 } // namespace fastlint::test

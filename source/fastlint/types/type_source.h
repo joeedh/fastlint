@@ -77,6 +77,9 @@ private:
 
   tsgo::Client m_client;
   tsgo::SnapshotInfo m_snapshot;
+  /** The `parseConfigFile` answer for the open tsconfig; its `options` member feeds
+   * `TypeFacts::strictOption`. */
+  tsgo::JsonDocument m_config;
   tsgo::Session *m_session = nullptr;
   TypeFacts *m_facts = nullptr;
   TypeGraph m_graph;

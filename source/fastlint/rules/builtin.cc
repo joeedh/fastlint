@@ -18,6 +18,11 @@ void addBuiltinRules(lint::Registry &registry)
   registry.add(kNoNonNullAssertion);
   registry.add(kNoSelfAssign);
   registry.add(kNoShadow);
+  registry.add(kNoUnsafeArgument);
+  registry.add(kNoUnsafeAssignment);
+  registry.add(kNoUnsafeCall);
+  registry.add(kNoUnsafeMemberAccess);
+  registry.add(kNoUnsafeReturn);
   registry.add(kNoUnusedVars);
   registry.add(kConsistentTypeImports);
   registry.add(kNoUnreachable);

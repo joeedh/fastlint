@@ -1686,6 +1686,11 @@ private:
     bool readonly = gflag(id, syntax::FLAG_READONLY);
     bool override = gflag(id, syntax::FLAG_OVERRIDE);
     if (access != Accessibility::None || readonly || override || decorators > 0) {
+      // The grammar node spans the modifier; ESTree scopes the wrapped binding to the
+      // parameter name so a report on it does not underline `private`.
+      if (result && name && result != name && result->start < name->start) {
+        result->start = name->start;
+      }
       Node *p = mk(NodeKind::TSParameterProperty, id);
       opt(p, lowerDecorators(id, ch, decorators));
       req(p, result);

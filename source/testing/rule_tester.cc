@@ -61,22 +61,22 @@ const char *filenameFor(const char *given)
   return given ? given : "test.ts";
 }
 
-/** The project every typed case is checked in. */
-std::string projectDir()
+/** The fixture project typed cases are checked in. */
+std::string projectDir(const char *project)
 {
   return std::filesystem::path(FASTLINT_TESTS_DIR).generic_string() +
-         "/fixtures/projects/basic";
+         "/fixtures/projects/" + project;
 }
 
 /** Where a typed case lives inside the fixture project. */
-std::string typedFilename(const char *given)
+std::string typedFilename(const char *project, const char *given)
 {
   std::string name = given ? given : "case.ts";
   size_t slash = name.find_last_of("/\\");
   if (slash != std::string::npos) {
     name = name.substr(slash + 1);
   }
-  return projectDir() + "/src/" + name;
+  return projectDir(project) + "/src/" + name;
 }
 
 /** Lints the case's code and checks that the type source, when given, could type it. */
@@ -208,15 +208,16 @@ void runRuleTests(const RuleDef &rule,
 
 void runTypedRuleTests(const RuleDef &rule,
                        std::initializer_list<ValidCase> valid,
-                       std::initializer_list<InvalidCase> invalid)
+                       std::initializer_list<InvalidCase> invalid,
+                       const char *project)
 {
   litestl::util::string exe;
-  if (!tsgo::resolveTsgoExe(std::string_view(projectDir()), exe)) {
+  if (!tsgo::resolveTsgoExe(std::string_view(projectDir(project)), exe)) {
     SKIP("no native tsc found");
   }
   types::ProjectTypes types;
   litestl::util::string error;
-  if (!types.open(projectDir() + "/tsconfig.json", error)) {
+  if (!types.open(projectDir(project) + "/tsconfig.json", error)) {
     INFO("type server: {}", error.c_str());
     CHECK(false);
     return;
@@ -227,12 +228,12 @@ void runTypedRuleTests(const RuleDef &rule,
   int index = 0;
   for (const ValidCase &c : valid) {
     INFO("valid[{}]", index++);
-    checkValid(rule, registry, c, typedFilename(c.filename), &types);
+    checkValid(rule, registry, c, typedFilename(project, c.filename), &types);
   }
   index = 0;
   for (const InvalidCase &c : invalid) {
     INFO("invalid[{}]", index++);
-    checkInvalid(rule, registry, c, typedFilename(c.filename), &types);
+    checkInvalid(rule, registry, c, typedFilename(project, c.filename), &types);
   }
 }
 

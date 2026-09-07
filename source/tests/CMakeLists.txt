@@ -30,6 +30,11 @@ add_fastlint_test(fastlint
     rules_no_self_assign_test.cc
     rules_no_floating_promises_test.cc
     rules_await_thenable_test.cc
+    rules_no_unsafe_argument_test.cc
+    rules_no_unsafe_assignment_test.cc
+    rules_no_unsafe_call_test.cc
+    rules_no_unsafe_member_access_test.cc
+    rules_no_unsafe_return_test.cc
     rules_no_unreachable_test.cc
     rules_no_var_test.cc
     rules_prefer_as_const_test.cc

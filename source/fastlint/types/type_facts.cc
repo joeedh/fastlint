@@ -61,7 +61,13 @@ void TypeFacts::endFile()
   m_tableReady = false;
   m_tableFailed = false;
   m_nodeTypes = Map<const ast::Node *, TypeId>();
+  m_contextual = Map<const ast::Node *, TypeId>();
   m_error = string();
+}
+
+bool Signature::hasRest() const
+{
+  return (flags & tsgo::SignatureFlags::HasRestParameter) != 0;
 }
 
 bool TypeFacts::ensureTable()
@@ -107,6 +113,35 @@ TypeId TypeFacts::typeOf(const ast::Node *node)
   }
   TypeId id = internResponse(response, true);
   m_nodeTypes.add_overwrite(node, id);
+  return id;
+}
+
+TypeId TypeFacts::contextualTypeOf(const ast::Node *node)
+{
+  if (!node) {
+    return 0;
+  }
+  if (TypeId *cached = m_contextual.lookup_ptr(node)) {
+    m_stats.nodeHits++;
+    return *cached;
+  }
+  m_stats.nodeMisses++;
+  if (!ensureTable()) {
+    return 0;
+  }
+  string handle = m_table.handle(node, view(m_canonical));
+  if (handle.size() == 0) {
+    m_stats.unmappedNodes++;
+    m_contextual.add_overwrite(node, 0);
+    return 0;
+  }
+  tsgo::TypeResponse response;
+  m_stats.typeFetches++;
+  if (!m_session.contextualType(view(handle), response, m_error)) {
+    return 0;
+  }
+  TypeId id = internResponse(response, true);
+  m_contextual.add_overwrite(node, id);
   return id;
 }
 
@@ -302,13 +337,91 @@ TypeId TypeFacts::typeOfSymbolSession(int symbolSessionId)
 
 // ---------------------------------------------------------------- questions
 
+uint32_t TypeFacts::flags(TypeId type) const
+{
+  return type ? m_graph.type(type).flags : 0;
+}
+
+uint32_t TypeFacts::objectFlags(TypeId type) const
+{
+  return type ? m_graph.type(type).objectFlags : 0;
+}
+
 bool TypeFacts::isAnyLike(TypeId type) const
 {
+  return (flags(type) & (tsgo::TypeFlags::Any | tsgo::TypeFlags::Unknown)) != 0;
+}
+
+bool TypeFacts::isAny(TypeId type) const
+{
+  return (flags(type) & tsgo::TypeFlags::Any) != 0;
+}
+
+bool TypeFacts::isUnknown(TypeId type) const
+{
+  return (flags(type) & tsgo::TypeFlags::Unknown) != 0;
+}
+
+bool TypeFacts::isErrorType(TypeId type) const
+{
+  return isAny(type) && m_graph.text(m_graph.type(type).text) == "error";
+}
+
+string TypeFacts::typeToString(TypeId type)
+{
   if (!type) {
-    return false;
+    return string();
   }
-  return (m_graph.type(type).flags & (tsgo::TypeFlags::Any | tsgo::TypeFlags::Unknown)) !=
-         0;
+  if (string *cached = m_text.lookup_ptr(int(type))) {
+    return *cached;
+  }
+  string text;
+  const TypeRow &row = m_graph.type(type);
+  if (row.sessionId) {
+    m_stats.typeFetches++;
+    m_session.typeToString(row.sessionId, text, m_error);
+  } else if (row.text) {
+    text = copy(m_graph.text(row.text));
+  }
+  m_text.add_overwrite(int(type), text);
+  return text;
+}
+
+bool TypeFacts::strictOption(std::string_view name) const
+{
+  if (!m_compilerOptions) {
+    return true;
+  }
+  // A `Tristate` reaches us as a JSON boolean, or `null`/absent when unset; an unset
+  // strict-family option follows `strict`, which defaults to off.
+  const tsgo::JsonValue *own = m_compilerOptions->get(name);
+  if (own && own->kind == tsgo::JsonKind::Bool) {
+    return own->asBool();
+  }
+  const tsgo::JsonValue *strict = m_compilerOptions->get("strict");
+  return strict && strict->kind == tsgo::JsonKind::Bool && strict->asBool();
+}
+
+TypeId TypeFacts::targetOf(TypeId type)
+{
+  if (!type) {
+    return 0;
+  }
+  const TypeRow &row = m_graph.type(type);
+  if (!(row.objectFlags & tsgo::ObjectFlags::Reference) || !row.sessionId) {
+    return 0;
+  }
+  if (TypeId *cached = m_target.lookup_ptr(int(type))) {
+    return *cached;
+  }
+  tsgo::TypeResponse target;
+  m_stats.typeFetches++;
+  TypeId result = 0;
+  if (m_session.targetOfType(row.sessionId, target, m_error) && target.present) {
+    result = internResponse(target, false);
+  }
+  m_target.add_overwrite(int(type), result);
+  return result;
 }
 
 bool TypeFacts::isTypeParameter(TypeId type) const
@@ -784,39 +897,188 @@ span<const TypeId> TypeFacts::unionMembers(TypeId type)
   return m_graph.children(type);
 }
 
-bool TypeFacts::callSignatures(TypeId type, Vector<Signature> &signatures)
+void TypeFacts::fillSignature(const tsgo::SignatureResponse &response, Signature &out)
 {
-  signatures.clear();
+  out.sessionId = response.id;
+  out.flags = response.flags;
+  tsgo::TypeResponse returned;
+  m_stats.typeFetches++;
+  if (m_session.returnTypeOfSignature(response.id, returned, m_error)) {
+    out.returnType = internResponse(returned, true);
+  }
+  Vector<tsgo::SymbolResponse> parameters;
+  m_stats.symbolFetches++;
+  if (m_session.parametersOfSignature(response.id, parameters, m_error)) {
+    for (const tsgo::SymbolResponse &parameter : parameters) {
+      out.parameters.append(internSymbol(parameter));
+    }
+  }
+}
+
+bool TypeFacts::signatures(TypeId type, tsgo::SignatureKind kind, Vector<Signature> &out)
+{
+  out.clear();
   if (!type) {
     return false;
   }
-  const TypeRow &row = m_graph.type(type);
-  if (!row.sessionId) {
-    m_error = string("type has no live session id");
+  // A union or intersection carries a call signature only through its members, so gather
+  // signatures from each apparent member the way `getCallSignaturesOfType` does.
+  TypeId apparent = apparentType(type);
+  span<const TypeId> members = unionMembers(apparent);
+  Vector<TypeId, 4> parts;
+  if (members.size() > 0) {
+    for (TypeId member : members) {
+      parts.append(member);
+    }
+  } else {
+    parts.append(apparent);
+  }
+  bool found = false;
+  for (TypeId part : parts) {
+    const TypeRow &row = m_graph.type(part);
+    if (!row.sessionId) {
+      continue;
+    }
+    Vector<tsgo::SignatureResponse> responses;
+    if (!m_session.signaturesOfType(row.sessionId, kind, responses, m_error)) {
+      continue;
+    }
+    for (const tsgo::SignatureResponse &response : responses) {
+      Signature signature;
+      fillSignature(response, signature);
+      out.append(std::move(signature));
+      found = true;
+    }
+  }
+  return found;
+}
+
+bool TypeFacts::callSignatures(TypeId type, Vector<Signature> &signatures)
+{
+  return this->signatures(type, tsgo::SignatureKind::Call, signatures);
+}
+
+bool TypeFacts::constructSignatures(TypeId type, Vector<Signature> &signatures)
+{
+  return this->signatures(type, tsgo::SignatureKind::Construct, signatures);
+}
+
+bool TypeFacts::resolvedSignature(const ast::Node *call, Signature &signature)
+{
+  signature = Signature();
+  if (!call || !ensureTable()) {
     return false;
   }
-  Vector<tsgo::SignatureResponse> responses;
-  if (!m_session.signaturesOfType(
-          row.sessionId, tsgo::SignatureKind::Call, responses, m_error))
+  string handle = m_table.handle(call, view(m_canonical));
+  if (handle.size() == 0) {
+    m_stats.unmappedNodes++;
+    return false;
+  }
+  tsgo::SignatureResponse response;
+  if (!m_session.resolvedSignature(view(handle), response, m_error) || !response.present)
   {
     return false;
   }
-  for (const tsgo::SignatureResponse &response : responses) {
-    Signature signature;
-    signature.sessionId = response.id;
-    tsgo::TypeResponse returned;
-    if (m_session.returnTypeOfSignature(response.id, returned, m_error)) {
-      signature.returnType = internResponse(returned, true);
+  fillSignature(response, signature);
+  return true;
+}
+
+TypeId TypeFacts::thenValueType(TypeId type)
+{
+  TypeId then = propertyType(type, "then");
+  Vector<Signature> thenSignatures;
+  if (!then || !callSignatures(then, thenSignatures)) {
+    return 0;
+  }
+  for (const Signature &signature : thenSignatures) {
+    if (signature.parameters.isEmpty()) {
+      continue;
     }
-    Vector<tsgo::SymbolResponse> parameters;
-    if (m_session.parametersOfSignature(response.id, parameters, m_error)) {
-      for (const tsgo::SymbolResponse &parameter : parameters) {
-        signature.parameters.append(internSymbol(parameter));
+    // `onfulfilled?: ((value: T) => ...) | null | undefined`
+    TypeId callback = typeOfSymbol(signature.parameters[0]);
+    Vector<TypeId, 4> parts;
+    span<const TypeId> members = unionMembers(callback);
+    if (members.size() > 0) {
+      for (TypeId member : members) {
+        parts.append(member);
+      }
+    } else {
+      parts.append(callback);
+    }
+    for (TypeId part : parts) {
+      Vector<Signature> callbackSignatures;
+      if (!callSignatures(part, callbackSignatures)) {
+        continue;
+      }
+      for (const Signature &cb : callbackSignatures) {
+        if (!cb.parameters.isEmpty()) {
+          return typeOfSymbol(cb.parameters[0]);
+        }
       }
     }
-    signatures.append(std::move(signature));
   }
-  return true;
+  return 0;
+}
+
+TypeId TypeFacts::awaitedDeep(TypeId type, int depth)
+{
+  // `Promise<Promise<...>>` nests a bounded number of times in practice.
+  if (!type || depth > 8) {
+    return 0;
+  }
+  const TypeRow &row = m_graph.type(type);
+  if (row.flags & (tsgo::TypeFlags::Any | tsgo::TypeFlags::Unknown)) {
+    return type;
+  }
+  if (row.flags & tsgo::TypeFlags::Union) {
+    TypeId same = 0;
+    for (TypeId member : unionMembers(type)) {
+      TypeId awaited = awaitedDeep(member, depth + 1);
+      if (!awaited || (same && awaited != same)) {
+        return 0;
+      }
+      same = awaited;
+    }
+    return same ? same : type;
+  }
+  if (!isThenable(type, 1)) {
+    return type;
+  }
+  // The default library's `Promise<T>` resolves to `T`; other thenables are read through
+  // the callback `then` hands their value to.
+  TypeId value = 0;
+  if (nameIs(row.symbol, "Promise", "PromiseLike") && isDefaultLibrary(row.symbol)) {
+    span<const TypeId> args = typeArguments(type);
+    value = args.size() > 0 ? args[0] : 0;
+  }
+  if (!value) {
+    TypeId apparent = apparentType(type);
+    span<const TypeId> members = unionMembers(apparent);
+    if (members.size() > 0) {
+      for (TypeId member : members) {
+        value = thenValueType(member);
+        if (value) {
+          break;
+        }
+      }
+    } else {
+      value = thenValueType(apparent);
+    }
+  }
+  return value ? awaitedDeep(value, depth + 1) : 0;
+}
+
+TypeId TypeFacts::awaitedType(TypeId type)
+{
+  if (!type) {
+    return 0;
+  }
+  if (TypeId *cached = m_awaited.lookup_ptr(int(type))) {
+    return *cached;
+  }
+  TypeId result = awaitedDeep(type, 0);
+  m_awaited.add_overwrite(int(type), result);
+  return result;
 }
 
 TypeId TypeFacts::typeOfSymbol(SymbolId symbol)

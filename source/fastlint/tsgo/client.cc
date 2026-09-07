@@ -522,6 +522,25 @@ bool Client::openProject(std::string_view tsconfig, SnapshotInfo &info, string &
   return true;
 }
 
+bool Client::parseConfigFile(std::string_view tsconfig,
+                             JsonDocument &result,
+                             string &error)
+{
+  JsonWriter w;
+  w.beginObject();
+  // `file` is a DocumentIdentifier, whose decoder takes a plain string as the file name.
+  w.member("file", tsconfig);
+  w.endObject();
+  if (!call("parseConfigFile", w.text(), result, error)) {
+    return false;
+  }
+  if (!result.root() || !result.root()->get("options")) {
+    error = string("parseConfigFile answered without options");
+    return false;
+  }
+  return true;
+}
+
 bool Client::release(int snapshot, string &error)
 {
   JsonWriter w;

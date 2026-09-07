@@ -163,6 +163,12 @@ public:
   bool isArrayLikeType(int typeId, bool &result, string &error);
   bool isTypeAssignableTo(int sourceId, int targetId, bool &result, string &error);
   bool typeToString(int typeId, string &text, string &error);
+  /** The type the position expects of an expression; a null response when the position
+   * gives none. */
+  bool contextualType(std::string_view handle, TypeResponse &type, string &error);
+  /** The signature a call, `new` or tagged template resolves to. */
+  bool
+  resolvedSignature(std::string_view handle, SignatureResponse &signature, string &error);
   /** Fetches and decodes the server's parse tree of `file`. */
   bool sourceFile(std::string_view file, EncodedSourceFile &encoded, string &error);
   /** Every source file in the project's program, lib and package files included, by the

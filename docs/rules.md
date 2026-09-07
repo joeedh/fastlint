@@ -244,12 +244,17 @@ test::runRuleTests(
 - Suggestions are not checked; nothing applies them yet.
 
 A type-aware rule uses `runTypedRuleTests` with the same case shapes, from
-a test tagged `integration`. It starts one server over
-tests/fixtures/projects/basic and serves each case as `src/case.ts` of that
-project (or `src/<filename>` when the case names a file), so cases see
-`strict` and the default library. The cases run in one loop rather than
-subcases, since a subcase replay would restart the server per case. The
-test is skipped when no native `tsc` is found.
+a test tagged `integration`. It starts one server over a fixture project
+named by the trailing `project` argument, `basic` by default, and serves
+each case as `src/case.ts` of that project (or `src/<filename>` when the
+case names a file), so cases see `strict` and the default library. The
+`loose` project adds `noImplicitThis: false` for rules whose `this`
+handling depends on it. A JSX case names a `.tsx` file whose stem differs
+from `case`, because tsc keeps only the highest-priority extension when a
+`.ts` and a `.tsx` share a stem, so `case.tsx` beside `case.ts` is dropped
+from the program; the fixtures use `casex.tsx`. The cases run in one loop
+rather than subcases, since a subcase replay would restart the server per
+case. The test is skipped when no native `tsc` is found.
 
 ## Adding a rule
 

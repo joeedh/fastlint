@@ -828,6 +828,23 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   - [x] `await-thenable`. The `await using` cases need the `esnext`
     disposable lib, which the fixture project does not enable, so they are
     untested.
+  - [x] `no-unsafe-*` family: `no-unsafe-call`, `no-unsafe-member-access`,
+    `no-unsafe-argument`, `no-unsafe-assignment`, `no-unsafe-return`. Shared
+    helpers live in rules/unsafe.{h,cc} (the `this` walk, union parts, the
+    any-array tests, `isUnsafeAssignment` over generic arguments,
+    `discriminateAny`, and a `Texts` intern pool for report placeholders).
+    `TypeFacts` grew `contextualTypeOf`, `resolvedSignature`,
+    `constructSignatures`, `targetOf`, `typeToString`, `awaitedType`,
+    `isAny`/`isUnknown`/`isErrorType`, and `strictOption` reading the
+    compiler options that `TypeSource` fills from `parseConfigFile`.
+    `callSignatures` now gathers over a union's callable members. A binding
+    identifier has no type of its own from the server, so the receiver's
+    annotated type is read as the initializer's contextual type. A parameter
+    property's assignment-pattern span was narrowed past the modifier to
+    match ESTree.
+  - [x] Typed rule tester gained a `project` argument; a `loose` fixture
+    adds `noImplicitThis: false`. A JSX case names `casex.tsx`, since tsc
+    drops a `.tsx` that shares a stem with a `.ts` sibling.
   - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
     output is untested (6.1 open item).
 - [ ] Each rule's type queries logged so the cache working set is measured.

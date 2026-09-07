@@ -112,6 +112,9 @@ public:
   /** Opens `tsconfig` in a new snapshot. */
   bool openProject(std::string_view tsconfig, SnapshotInfo &info, string &error);
   bool release(int snapshot, string &error);
+  /** Reads `tsconfig` as the server does (`extends` resolved). The result's `options`
+   * member holds the compiler options, `Tristate` flags as 1 (false) or 2 (true). */
+  bool parseConfigFile(std::string_view tsconfig, JsonDocument &result, string &error);
   /** The project owning `file` in `snapshot`; empty `projectId` when none does. */
   bool defaultProjectForFile(int snapshot,
                              std::string_view file,

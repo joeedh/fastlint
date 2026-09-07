@@ -16,8 +16,12 @@ namespace fastlint::types {
 /** One call or construct signature with its return type interned. */
 struct Signature {
   int sessionId = 0;
+  uint32_t flags = 0;
   TypeId returnType = 0;
   Vector<SymbolId, 4> parameters;
+
+  /** The last parameter is a `...rest` parameter. */
+  bool hasRest() const;
 };
 
 struct FactsStats {
@@ -51,8 +55,21 @@ public:
    */
   bool prefetch(span<const ast::Node *const> nodes);
 
+  /** The type the position of `node` expects of it (a parameter type for an argument,
+   * the annotated type for an initializer), or 0 when the position gives none. */
+  TypeId contextualTypeOf(const ast::Node *node);
+
+  uint32_t flags(TypeId type) const;
+  uint32_t objectFlags(TypeId type) const;
+  /** `any` or `unknown`. */
   bool isAnyLike(TypeId type) const;
+  bool isAny(TypeId type) const;
+  bool isUnknown(TypeId type) const;
+  /** The `any` the checker gives an unresolved name. */
+  bool isErrorType(TypeId type) const;
   bool isTypeParameter(TypeId type) const;
+  /** The checker's spelling of the type (`Set<string>`, `any[]`); cached per row. */
+  string typeToString(TypeId type);
   /** `undefined`, `null`, `void`, or a union with such a member. */
   bool isNullable(TypeId type) const;
   /** `Promise`, `PromiseLike`, an object with a callable `then`, or a union with such a
@@ -92,6 +109,17 @@ public:
   /** Some declaration of the symbol is in a `lib.*.d.ts` file. */
   bool isDefaultLibrary(SymbolId symbol) const;
   bool callSignatures(TypeId type, Vector<Signature> &signatures);
+  bool constructSignatures(TypeId type, Vector<Signature> &signatures);
+  /** The signature a call, `new` or tagged template resolves to; false when the checker
+   * has none for the node. */
+  bool resolvedSignature(const ast::Node *call, Signature &signature);
+  /** The generic a type reference instantiates (`Set<T>` for `Set<string>`), or 0;
+   * cached per row. Two instantiations of one generic share the target. */
+  TypeId targetOf(TypeId type);
+  /** What `await` yields: a promise's resolved value, unwrapped through nested promises;
+   * a non-thenable type is its own awaited type. 0 for a union mixing promises and
+   * other members, whose awaited type the graph cannot spell. */
+  TypeId awaitedType(TypeId type);
   /** Declared type of a symbol (a parameter, a property), interned with one hop. */
   TypeId typeOfSymbol(SymbolId symbol);
   bool assignableTo(TypeId from, TypeId to, bool &result);
@@ -120,6 +148,16 @@ public:
     return m_stats;
   }
 
+  /** The project's compiler options as `parseConfigFile` reports them; null when
+   * unknown. */
+  void setCompilerOptions(const tsgo::JsonValue *options)
+  {
+    m_compilerOptions = options;
+  }
+  /** Whether a strict-family option (`noImplicitThis`, `strictNullChecks`) is on: its
+   * own setting when given, else `strict`. Unknown options count as on. */
+  bool strictOption(std::string_view name) const;
+
 private:
   bool ensureTable();
   /** Interns a response; `withChildren` fetches union members and type arguments, and
@@ -140,6 +178,11 @@ private:
   TypeId typeOfSymbolSession(int symbolSessionId);
   bool baseTypesOf(TypeId type, Vector<TypeId> &bases);
   bool isBuiltinDeep(TypeId type, std::string_view name, int depth);
+  bool signatures(TypeId type, tsgo::SignatureKind kind, Vector<Signature> &out);
+  void fillSignature(const tsgo::SignatureResponse &response, Signature &out);
+  /** The type the `then` method's first callback receives, or 0. */
+  TypeId thenValueType(TypeId type);
+  TypeId awaitedDeep(TypeId type, int depth);
 
   tsgo::Session &m_session;
   TypeGraph &m_graph;
@@ -151,6 +194,11 @@ private:
   bool m_tableReady = false;
   bool m_tableFailed = false;
   Map<const ast::Node *, TypeId> m_nodeTypes;
+  Map<const ast::Node *, TypeId> m_contextual;
+  const tsgo::JsonValue *m_compilerOptions = nullptr;
+  Map<int, string> m_text;
+  Map<int, TypeId> m_target;
+  Map<int, TypeId> m_awaited;
   Map<int, bool> m_arrayLike;
   Map<int, bool> m_array;
   Map<int, bool> m_tuple;

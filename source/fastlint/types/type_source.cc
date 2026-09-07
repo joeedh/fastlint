@@ -87,6 +87,11 @@ bool ProjectTypes::open(std::string_view tsconfig, string &error)
     m_client.stop();
     return false;
   }
+  // Rules only consult the options for strictness; an unreadable config reads as strict.
+  string ignored;
+  if (!m_client.parseConfigFile(view(config), m_config, ignored)) {
+    m_config.clear();
+  }
   return bindSession(std::string_view(), error);
 }
 
@@ -141,6 +146,8 @@ bool ProjectTypes::bindSession(std::string_view file, string &error)
       tsgo::Session(m_client, m_snapshot.id, view(project));
   m_facts = new (litestl::alloc::alloc("type facts", sizeof(TypeFacts)))
       TypeFacts(*m_session, m_graph);
+  m_facts->setCompilerOptions(m_config.root() ? m_config.root()->get("options")
+                                              : nullptr);
   return true;
 }
 
@@ -248,17 +255,29 @@ bool ProjectTypes::readFile(std::string_view path, string &content)
 {
   string canonical = tsgo::canonicalPath(path, m_client.caseSensitiveFileNames());
   Served *served = m_served.lookup_ptr(hashOf(view(canonical)));
-  if (!served) {
+  if (served) {
+    content = served->text;
+    return true;
+  }
+  // A file we hold no override for (the tsconfig, lib and package files) is read from
+  // disk, so a query like `parseConfigFile` that routes through the provider still sees
+  // it.
+  std::string disk;
+  if (!readDisk(path, disk)) {
     return false;
   }
-  content = served->text;
+  content = copy(disk);
   return true;
 }
 
 int ProjectTypes::fileExists(std::string_view path)
 {
   string canonical = tsgo::canonicalPath(path, m_client.caseSensitiveFileNames());
-  return m_served.contains(hashOf(view(canonical))) ? 1 : -1;
+  if (m_served.contains(hashOf(view(canonical)))) {
+    return 1;
+  }
+  std::error_code ec;
+  return fs::is_regular_file(fs::path(std::string(path)), ec) ? 1 : -1;
 }
 
 } // namespace fastlint::types

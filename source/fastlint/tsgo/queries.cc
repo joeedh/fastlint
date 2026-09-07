@@ -525,6 +525,30 @@ bool Session::typeToString(int typeId, string &text, string &error)
   return true;
 }
 
+bool Session::contextualType(std::string_view handle, TypeResponse &type, string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member("location", handle);
+  return callType("getContextualType", w, type, error);
+}
+
+bool Session::resolvedSignature(std::string_view handle,
+                                SignatureResponse &signature,
+                                string &error)
+{
+  JsonWriter w;
+  begin(w);
+  w.member("location", handle);
+  w.endObject();
+  JsonDocument result;
+  if (!m_client.call("getResolvedSignature", w.text(), result, error)) {
+    return false;
+  }
+  signature = SignatureResponse::from(result.root());
+  return true;
+}
+
 bool Session::sourceFile(std::string_view file, EncodedSourceFile &encoded, string &error)
 {
   JsonWriter w;

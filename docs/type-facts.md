@@ -68,6 +68,16 @@ Code lives under `source/fastlint/types/`.
 | Question | Answered from |
 | --- | --- |
 | `isAnyLike` | row flags (`Any`, `Unknown`) |
+| `isAny`, `isUnknown` | the single row flag |
+| `isErrorType` | `isAny` and the row's intrinsic name is `error`, so an unresolved name reads apart from a written `any` |
+| `flags`, `objectFlags` | the row |
+| `contextualTypeOf` | `getContextualType` at the node's location, so a value's expected type is read where the receiver has no type of its own |
+| `resolvedSignature` | `getResolvedSignature` at a call, `new` or tagged template |
+| `constructSignatures` | `getSignaturesOfType` with the construct kind, gathered like `callSignatures` |
+| `targetOf` | `getTargetOfType` of a reference, cached; two references share a target when they instantiate one generic |
+| `typeToString` | `getTypeToString` on the live id, cached per row |
+| `awaitedType`, `awaitedDeep` | `getAwaitedType`, unwrapping a promise to `kChildDepth`; a mixed union awaits to 0 |
+| `thenValueType` | the value a `then` callback receives, for a hand-written thenable |
 | `isNullable` | row flags (`Undefined`, `Null`, `Void`) or any union member's |
 | `isPromiseLike` | symbol or alias named `Promise`/`PromiseLike`, any union member, else a `then` property with a call signature (server) |
 | `isArrayLike`, `isArray` | `isArrayLikeType` / `isArrayType` on the live id, cached per row |
@@ -84,7 +94,7 @@ Code lives under `source/fastlint/types/`.
 | `isThenable(type, n)` | a `then` property on some member of the apparent type with a call signature whose first `n` parameters are callable |
 | `isBuiltin(type, name)` | the default library's symbol `name` on the type, an intersection member, every union member, a type parameter's constraint, or a class or interface base (`getDeclaredTypeOfSymbol` + `getBaseTypes`) |
 | `isDefaultLibrary` | a declaration handle whose file is `lib.*.d.ts` |
-| `callSignatures` | `getSignaturesOfType`, each return type interned with children, parameters as symbols |
+| `callSignatures` | `getSignaturesOfType` over each member of the apparent type, so a union gathers the signatures of its callable members; each return type interned with children, parameters as symbols |
 | `typeOfSymbol` | `getTypeOfSymbol` on the symbol's live id |
 | `assignableTo` | `isTypeAssignableTo` on the two live ids |
 | `symbolOf`, `symbolFlags`, `declarationsOf` | the rows |
@@ -93,6 +103,12 @@ Code lives under `source/fastlint/types/`.
 means the library's `Promise`, not any type with that name. The default
 library test is by file name, since the server does not say which files are
 its libs.
+
+`strictOption(name)` reads a strictness flag from the project's compiler
+options, so a rule whose behavior turns on `noImplicitThis` can ask. The
+options come from `setCompilerOptions`, which `TypeSource` fills from
+`parseConfigFile`. A flag serializes as a JSON boolean, and an unset one
+falls back to `strict`, which defaults to true when no config is read.
 
 `lastError()` carries the most recent server or transport failure; node
 queries return 0 instead of failing so a rule can keep walking.
@@ -106,8 +122,14 @@ implementation over one tsgo project.
 
 - `open(tsconfig)` starts the server with the tsconfig's directory as its
   working directory (`tsc` resolved from there, then from the working
-  directory) and opens the project. `close` releases the snapshot, stops the
-  server and clears the graph's live ids.
+  directory) and opens the project. It also calls `parseConfigFile` to read
+  the compiler options into `TypeFacts`, so `strictOption` can answer.
+  `close` releases the snapshot, stops the server and clears the graph's
+  live ids.
+- The `FileProvider` serves a held file from memory and falls back to disk
+  for anything it holds no override for. `parseConfigFile` routes the
+  tsconfig read through the provider, so the fallback lets the server read a
+  config and its `extends` chain that were never handed over.
 - The text handed to `beginFile` is what the server checks. `ProjectTypes`
   is the server's `FileProvider`, serving every file it has been handed from
   memory, so a fixpoint pass sees its own edits and a test case need not be

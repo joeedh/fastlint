@@ -25,6 +25,12 @@ set(SRC
   rules/no_non_null_assertion.cc
   rules/no_self_assign.cc
   rules/no_shadow.cc
+  rules/no_unsafe_argument.cc
+  rules/no_unsafe_assignment.cc
+  rules/no_unsafe_call.cc
+  rules/no_unsafe_member_access.cc
+  rules/no_unsafe_return.cc
+  rules/unsafe.cc
   rules/consistent_type_imports.cc
   rules/no_unused_vars.cc
   rules/no_unreachable.cc
@@ -81,6 +87,7 @@ set(SRC
   lint/rule.h
   rules/rules.h
   rules/util.h
+  rules/unsafe.h
   ast/comments.h
   ast/dispatch.h
   ast/dump.h
