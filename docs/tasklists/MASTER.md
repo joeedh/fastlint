@@ -845,6 +845,10 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   - [x] Typed rule tester gained a `project` argument; a `loose` fixture
     adds `noImplicitThis: false`. A JSX case names `casex.tsx`, since tsc
     drops a `.tsx` that shares a stem with a `.ts` sibling.
+  - [x] `restrict-template-expressions`. Every `allow<Kind>` flag and the
+    union/intersection walk are ported; the `allow` list supports library
+    specifiers via `isBuiltin`. Not done: `file`/`package` type-or-value
+    specifiers, the same gap no-floating-promises leaves.
   - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
     output is untested (6.1 open item).
 - [ ] Each rule's type queries logged so the cache working set is measured.

@@ -29,6 +29,7 @@ void addBuiltinRules(lint::Registry &registry)
   registry.add(kNoVar);
   registry.add(kPreferAsConst);
   registry.add(kPreferConst);
+  registry.add(kRestrictTemplateExpressions);
 }
 
 } // namespace fastlint::rules
