@@ -45,6 +45,7 @@ extern const lint::RuleDef kPreferConst;
 extern const lint::RuleDef kPreferNullishCoalescing;
 extern const lint::RuleDef kRestrictTemplateExpressions;
 extern const lint::RuleDef kNoUnnecessaryTypeAssertion;
+extern const lint::RuleDef kStrictBooleanExpressions;
 
 /** Registers every built-in rule with `registry`. */
 void addBuiltinRules(lint::Registry &registry);

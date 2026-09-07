@@ -76,6 +76,7 @@ Code lives under `source/fastlint/types/`.
 | `constructSignatures` | `getSignaturesOfType` with the construct kind, gathered like `callSignatures` |
 | `targetOf` | `getTargetOfType` of a reference, cached; two references share a target when they instantiate one generic |
 | `typeToString` | `getTypeToString` on the live id, cached per row |
+| `literalText` | the row's stored text: a literal's value (`5`, `foo`) or an intrinsic name (`true`, `undefined`), empty when it has neither |
 | `awaitedType`, `awaitedDeep` | `getAwaitedType`, unwrapping a promise to `kChildDepth`; a mixed union awaits to 0 |
 | `thenValueType` | the value a `then` callback receives, for a hand-written thenable |
 | `isNullable` | row flags (`Undefined`, `Null`, `Void`) or any union member's |

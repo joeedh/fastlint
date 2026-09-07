@@ -70,6 +70,9 @@ public:
   bool isTypeParameter(TypeId type) const;
   /** The checker's spelling of the type (`Set<string>`, `any[]`); cached per row. */
   string typeToString(TypeId type);
+  /** A literal type's value text or an intrinsic type's name (`5`, `foo`, `true`,
+   * `undefined`), empty when the type carries neither. */
+  std::string_view literalText(TypeId type) const;
   /** `undefined`, `null`, `void`, or a union with such a member. */
   bool isNullable(TypeId type) const;
   /** `Promise`, `PromiseLike`, an object with a callable `then`, or a union with such a

@@ -864,6 +864,15 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     uninitialized, non-definite variable is left alone) are ported. Not done:
     the `as`/`<T>` cast forms, which need whole-type structural comparison, and
     their `checkLiteralConstAssertions` and `typesToIgnore` options.
+  - [x] `strict-boolean-expressions`, condition detection and reporting. The
+    `if`/`while`/`for`/`do`/ternary tests, the `!` argument and the `&&`/`||`
+    operands are classified into variant kinds (`inspectVariants`) and matched
+    against the `determineReport` table; all `conditionError*` messages, the
+    `allow*` options and the `strictNullChecks` gate are ported. Added the
+    `TypeFacts::literalText` question for truthy-literal detection. Not done:
+    the suggestion fixes, the array-method-predicate path
+    (`predicateCannotBeAsync`, `explicitBooleanReturnType`) and the
+    truthiness-assertion argument path.
   - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
     output is untested (6.1 open item).
 - [ ] Each rule's type queries logged so the cache working set is measured.

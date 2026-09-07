@@ -32,6 +32,7 @@ void addBuiltinRules(lint::Registry &registry)
   registry.add(kPreferNullishCoalescing);
   registry.add(kRestrictTemplateExpressions);
   registry.add(kNoUnnecessaryTypeAssertion);
+  registry.add(kStrictBooleanExpressions);
 }
 
 } // namespace fastlint::rules

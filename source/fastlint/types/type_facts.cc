@@ -342,6 +342,14 @@ uint32_t TypeFacts::flags(TypeId type) const
   return type ? m_graph.type(type).flags : 0;
 }
 
+std::string_view TypeFacts::literalText(TypeId type) const
+{
+  if (!type) {
+    return {};
+  }
+  return m_graph.text(m_graph.type(type).text);
+}
+
 uint32_t TypeFacts::objectFlags(TypeId type) const
 {
   return type ? m_graph.type(type).objectFlags : 0;
