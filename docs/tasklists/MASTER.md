@@ -873,6 +873,16 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     the suggestion fixes, the array-method-predicate path
     (`predicateCannotBeAsync`, `explicitBooleanReturnType`) and the
     truthiness-assertion argument path.
+  - [x] `no-misused-promises`, conditional/spread/void-return checks. A promise
+    in a boolean context (`conditional`), a thenable spread (`spread`), an async
+    argument where a void-returning function is expected (`voidReturnArgument`)
+    and one assigned to a void-returning variable (`voidReturnVariable`) are
+    reported; the `checksConditionals` (`none`/`all` flag-unions),
+    `checksSpreads` and `checksVoidReturn` (`arguments`, `variables`) options are
+    ported. Not done: the property/return-value/JSX-attribute/inherited-method
+    void-return checks (they need contextual property typing and a heritage
+    walk), the array-predicate `predicate` check, the `strict` flag-unions mode,
+    the `using`/dispose cases and rest-parameter void spreading.
   - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
     output is untested (6.1 open item).
 - [ ] Each rule's type queries logged so the cache working set is measured.
