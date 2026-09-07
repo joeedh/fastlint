@@ -37,6 +37,7 @@ set(SRC
   rules/no_var.cc
   rules/prefer_as_const.cc
   rules/prefer_const.cc
+  rules/prefer_nullish_coalescing.cc
   rules/restrict_template_expressions.cc
   rules/util.cc
   ast/comments.cc

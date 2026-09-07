@@ -849,6 +849,13 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     union/intersection walk are ported; the `allow` list supports library
     specifiers via `isBuiltin`. Not done: `file`/`package` type-or-value
     specifiers, the same gap no-floating-promises leaves.
+  - [x] `prefer-nullish-coalescing`, logical-or forms only. `||` and `||=`
+    with a nullable left side report `preferNullishOverOr` at the operator
+    with a `suggestNullish` suggestion; the `ignoreConditionalTests`,
+    `ignoreMixedLogicalExpressions`, `ignoreBooleanCoercion` and
+    `ignorePrimitives` options and the `strictNullChecks` gate are ported.
+    Not done: the ternary (`preferNullishOverTernary`) and if-statement
+    (`preferNullishOverAssignment`) rewrites and their options.
   - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
     output is untested (6.1 open item).
 - [ ] Each rule's type queries logged so the cache working set is measured.

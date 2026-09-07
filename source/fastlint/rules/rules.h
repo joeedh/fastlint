@@ -42,6 +42,7 @@ extern const lint::RuleDef kNoUnreachable;
 extern const lint::RuleDef kNoVar;
 extern const lint::RuleDef kPreferAsConst;
 extern const lint::RuleDef kPreferConst;
+extern const lint::RuleDef kPreferNullishCoalescing;
 extern const lint::RuleDef kRestrictTemplateExpressions;
 
 /** Registers every built-in rule with `registry`. */
