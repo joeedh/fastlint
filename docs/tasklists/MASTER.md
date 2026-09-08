@@ -780,7 +780,10 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     starts one `tsgo` server through `types::ProjectTypes`, which serves
     the linter's text to the server so fixpoint passes are typed too
     (docs/type-facts.md "Type sources"). `--type-stats` prints the query
-    counts.
+    counts. Without `--project`, the command defaults to a `tsconfig.json`
+    beside the config file (best-effort: a failure there disables the
+    type-aware rules with a stderr note; an explicit `--project` that fails is
+    an error).
   - [x] A file with syntax errors reports only the earliest one as a single
     fatal diagnostic and runs no rules, matching ESLint (whose parser throws on
     the first error). We recover past it to keep parsing but report just the

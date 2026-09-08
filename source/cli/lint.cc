@@ -47,7 +47,8 @@ void usage()
       stderr,
       "usage: fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]... "
       "[--fix] [--format pretty|json|sarif] [--color|--no-color] [--quiet] "
-      "[--no-cache] [--cache-dir <dir>] [--max-warnings N] <file|dir>...\n");
+      "[--project <tsconfig>] [--type-stats] [--no-cache] [--cache-dir <dir>] "
+      "[--max-warnings N] <file|dir>...\n");
 }
 
 /** `name:severity` or `name=severity`. */
@@ -336,19 +337,38 @@ int lintCommand(int argc, char **argv)
   options.fix = fix;
   // The JSON output carries an ESLint-shaped fix range per fixable problem.
   options.fixEdits = json && !fix;
-  // Type-aware rules run only with a project; without one they are skipped.
+  // Type-aware rules need a project. Without `--project`, default to a
+  // tsconfig.json beside the config file; that default is best-effort, so a
+  // failure to start only disables the type-aware rules, unlike an explicit
+  // `--project`, which is an error.
+  bool projectExplicit = project != nullptr;
+  std::string projectDefault;
+  if (!project && found.size() > 0) {
+    std::filesystem::path sibling =
+        std::filesystem::path(std::string(found.c_str(), found.size())).parent_path() /
+        "tsconfig.json";
+    std::error_code ec;
+    if (std::filesystem::exists(sibling, ec)) {
+      projectDefault = sibling.generic_string();
+      project = projectDefault.c_str();
+    }
+  }
   types::ProjectTypes types;
   Map<const lint::RuleDef *, types::FactsStats> ruleStats;
   if (project) {
     string typeError;
-    if (!types.open(project, typeError)) {
+    if (types.open(project, typeError)) {
+      options.types = &types;
+      if (typeStats) {
+        options.ruleStats = &ruleStats;
+      }
+    } else if (projectExplicit) {
       std::fprintf(
           stderr, "%s: cannot start the type server: %s\n", project, typeError.c_str());
       return 2;
-    }
-    options.types = &types;
-    if (typeStats) {
-      options.ruleStats = &ruleStats;
+    } else {
+      std::fprintf(
+          stderr, "%s: type-aware rules disabled (%s)\n", project, typeError.c_str());
     }
   }
   // The rule-result cache replays unchanged files; `--fix` and JSON fix ranges

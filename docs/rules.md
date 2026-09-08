@@ -249,9 +249,14 @@ fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
 
 - With no config file and no `--rule`, the recommended preset applies.
 - `--project` starts one `tsc --api` server over the tsconfig and runs the
-  type-aware rules; without it they are skipped. A linted file the project
-  does not include is typed in the server's inferred project. A file that
-  cannot be typed is reported on stderr and gets the syntactic rules only.
+  type-aware rules. Without it, the command defaults to a `tsconfig.json`
+  beside the config file (the one `--config` names or discovery found); the
+  type-aware rules are skipped only when neither is present. The default is
+  best-effort: a server that fails to start there disables the type-aware
+  rules with a note on stderr, whereas an explicit `--project` that fails is
+  an error. A linted file the project does not include is typed in the
+  server's inferred project. A file that cannot be typed is reported on
+  stderr and gets the syntactic rules only.
 - `--type-stats` prints the type queries of the run on stderr: node cache
   hits and misses, nodes without a server counterpart, type, child and
   symbol fetches, and the RPC call and byte counts. It then lists per-rule
