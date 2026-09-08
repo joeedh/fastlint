@@ -3,6 +3,7 @@ set(SRC
   cache/closure.cc
   cache/imports.cc
   cache/store.cc
+  embed/lint_text.cc
   lint/config.cc
   lint/directives.cc
   lint/format.cc
@@ -87,6 +88,7 @@ set(SRC
   cache/closure.h
   cache/imports.h
   cache/store.h
+  embed/lint_text.h
   lint/config.h
   lint/directives.h
   lint/format.h

@@ -60,11 +60,14 @@ one command.
 - [x] `vcvars` — run `vcvarsall.bat x64`, diff the environment, persist to
   `.cache/vcvars-x64.json`; every compile-adjacent command imports it into
   `process.env` before spawning. Re-run when VS version changes.
-- [x] `configure [--preset debug|release|relwithdebinfo] [--wasm]` — cmake
-  configure with Ninja generator into `build/<preset>/`, exports
-  `compile_commands.json`. `--wasm` reports that it lands with task 7.3.
+- [x] `configure [--preset debug|release|relwithdebinfo] [--wasm] [--napi]` —
+  cmake configure with Ninja generator into `build/<preset>/`, exports
+  `compile_commands.json`. `--wasm` configures `build/wasm` under the
+  Emscripten toolchain and `--napi` configures `build/napi` through cmake-js
+  (docs/embedding.md).
 - [x] `build [--preset] [--target]` — ninja via cmake `--build`; passes
-  `-j`; surfaces first error clearly.
+  `-j`; surfaces first error clearly. `--wasm` and `--napi` build the
+  embeddings, and `--smoke` loads the result and lints one line through it.
 - [x] `test [--preset] [--filter]` — ctest, or direct test binary.
 - [x] `clean [--preset|--all]`.
 - [x] `format [--check]` — clang-format over `source/**/*.{cc,h}`, prettier
@@ -1055,8 +1058,15 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   loads it from disk and asserts the report and the applied fix.
 
 ### 7.2 N-API build
-- [ ] `node make.ts build --napi`: cmake target producing `fastlint.node`;
-  node-addon-api headers via `make.ts deps`.
+- [x] `node make.ts build --napi [--smoke]` produces `build/napi/fastlint.node`
+  (docs/embedding.md). cmake-js runs the configure step only (downloading the
+  runtime headers and the Windows import library, and injecting `CMAKE_JS_*`),
+  and the build is an ordinary `cmake --build` of the one target. `--runtime
+  electron` targets the Electron ABI. `source/napi/addon.cc` calls the C N-API
+  directly, so node-addon-api is not a dependency; `cmake-js` is the one added
+  devDependency.
+- [x] `fastlint/embed/lint_text.h` is the shared entry point both embeddings
+  wrap: the recommended preset, no config lookup, no type-aware rules.
 - [ ] Rule loading: `fastlint.config.ts` imports TS rule modules; the CLI
   hosts node (or the node CLI hosts the native core — decide; the latter is
   simpler: `fastlint` npm package wraps the `.node` addon).
@@ -1064,8 +1074,15 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   parallel and queues callback batches.
 
 ### 7.3 WASM build
-- [ ] `node make.ts build --wasm` via litestl's `build_files/WASM.cmake` and
-  emsdk discovery in `make.ts env`.
+- [x] `node make.ts deps fetch emsdk` installs the pinned SDK into
+  `vendor/emsdk`, and `tools/make/lib/emsdk.ts` captures its environment as a
+  delta in `.cache/emsdk.json` the way `captureVcvars` captures MSVC's.
+  `make.ts env` reports the SDK and the resolved emcc.
+- [x] `node make.ts build --wasm [--release] [--smoke]` produces
+  `build/wasm/bin/fastlint.js` and its `.wasm` through the stock
+  `Emscripten.cmake` toolchain and the `wasm`/`wasm-release` presets. litestl's
+  `build_files/WASM.cmake` is not used: it re-derives the emsdk environment on
+  every compile, which the captured delta makes unnecessary.
 - [ ] Same TS runtime over the WASM heap (litestl `typescriptRuntime`).
 - [ ] Use case: browser/playground, and editors without native addons.
 

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { cacheDir, readJson, writeJson } from "./paths.ts";
 import { capture } from "./spawn.ts";
+import { emsdkEnv } from "./emsdk.ts";
 import { fail, warn } from "./log.ts";
 
 /**
@@ -253,13 +254,33 @@ export function captureVcvars(arch = "x64", refresh = false): VcvarsCache {
   return result;
 }
 
-/** The process environment with the MSVC variables layered on top. */
-export function buildEnv(arch = "x64"): NodeJS.ProcessEnv {
+export type BuildTarget = "native" | "wasm";
+
+/**
+ * The process environment prepared for one target: MSVC's variables for a
+ * native Windows build, the captured emsdk delta for a WASM one. The two are
+ * never layered together, because emcc drives its own clang and wants none of
+ * the MSVC variables.
+ */
+export function buildEnv(
+  target: BuildTarget = "native",
+  arch = "x64"
+): NodeJS.ProcessEnv {
+  const tools = toolchain();
+  const cmakeTools = [path.dirname(tools.cmake), path.dirname(tools.ninja)];
+
+  if (target === "wasm") {
+    const sdk = emsdkEnv();
+    const env: NodeJS.ProcessEnv = { ...process.env, ...sdk.vars };
+    env["PATH"] = [...cmakeTools, ...sdk.pathAdditions, env["PATH"] ?? ""].join(
+      path.delimiter
+    );
+    return env;
+  }
+
   if (!isWindows) return process.env;
   const vcvars = captureVcvars(arch);
-  const tools = toolchain();
   const env: NodeJS.ProcessEnv = { ...process.env, ...vcvars.changed };
-  const extraPath = [path.dirname(tools.cmake), path.dirname(tools.ninja)];
-  env["PATH"] = [...extraPath, env["PATH"] ?? ""].join(path.delimiter);
+  env["PATH"] = [...cmakeTools, env["PATH"] ?? ""].join(path.delimiter);
   return env;
 }

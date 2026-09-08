@@ -28,6 +28,9 @@ built both as an N-API addon and as WASM.
   rule tester and the `lint` command. One page per rule under docs/rules/.
 - docs/tests.md — the in-house test framework (`fastlint::test`), snapshot
   format, and per-component test strategy.
+- docs/embedding.md — the N-API addon and the WASM module: the shared
+  `embed::lintText` entry point, the cmake-js configure step, the pinned
+  emsdk and how its environment is captured.
 - docs/debugging.md — debugging aids per subsystem (dump commands, trace
   flags, ASAN, leak tracker).
 - vendor/litestl/CLAUDE.md — conventions for the vendored litestl library.
@@ -53,6 +56,11 @@ file in `tools/make/`). The build is CMake + Ninja with presets `debug`,
 `clean`. Parser gates: `parse-diff` (tsgo differential), `fuzz` (ASAN
 mutation fuzz), `bench` (parse MB/s). MASTER.md task 1 lists the options of
 each.
+- The embedding builds sit outside the presets (docs/embedding.md).
+  `build --napi` produces `build/napi/fastlint.node` through cmake-js;
+  `build --wasm` produces `build/wasm/bin/fastlint.js` and needs the pinned
+  emsdk, installed on demand by `deps fetch emsdk`. `--smoke` on either loads
+  the result and lints one line through it.
 
 ## Prose linting
 

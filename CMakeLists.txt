@@ -29,13 +29,32 @@ if(MSVC)
     target_compile_options(fastlint_warnings INTERFACE /Zc:preprocessor)
   endif()
   target_compile_definitions(fastlint_warnings INTERFACE _CRT_SECURE_NO_WARNINGS NOMINMAX)
+elseif(EMSCRIPTEN)
+  # emcc tracks a different clang than the native builds, so its warning set
+  # differs from the one the sources are kept clean against. The warnings are
+  # still printed; only promoting them to errors is dropped, so a toolchain
+  # bump cannot break the WASM build over a warning the gate never saw.
+  target_compile_options(fastlint_warnings INTERFACE -Wall -Wextra)
 else()
   target_compile_options(fastlint_warnings INTERFACE -Wall -Wextra -Werror)
 endif()
 
+# The addon and the WASM module are both loadable modules, so everything they
+# link has to be position independent.
+if(DEFINED CMAKE_JS_VERSION OR EMSCRIPTEN)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
+# litestl gates its 32-bit fixups on WASM rather than on __EMSCRIPTEN__, so the
+# allocator's block header is only padded back to an 8-byte multiple when this
+# is defined. It goes on every target, litestl's own included.
+if(EMSCRIPTEN)
+  add_compile_definitions(WASM)
+endif()
+
 # backtrace() only names a function whose symbol is in the dynamic table, so
 # executables are linked with -rdynamic for readable crash traces.
-if(NOT MSVC)
+if(NOT MSVC AND NOT EMSCRIPTEN)
   set(CMAKE_ENABLE_EXPORTS ON)
 endif()
 

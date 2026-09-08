@@ -8,3 +8,5 @@ compile_commands.json
 # Snapshot files under tests/__snapshots__/ are committed on purpose.
 vendor/dtl/
 vendor/sqlite/
+# The emscripten SDK, installed on demand by `node make.ts deps fetch emsdk`.
+vendor/emsdk/

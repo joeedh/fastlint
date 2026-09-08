@@ -48,6 +48,26 @@
         "FASTLINT_SANITIZER"        : "address;undefined",
         "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDLL"
       }
+    },
+    {
+      "name"          : "wasm-base",
+      "hidden"        : true,
+      "inherits"      : "base",
+      "cacheVariables": {
+        "CMAKE_NINJA_FORCE_RESPONSE_FILE": "ON"
+      }
+    },
+    {
+      "name"          : "wasm",
+      "inherits"      : "wasm-base",
+      "displayName"   : "Emscripten (debug)",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name"          : "wasm-release",
+      "inherits"      : "wasm-base",
+      "displayName"   : "Emscripten (release)",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     }
   ],
   "buildPresets": [
@@ -55,7 +75,9 @@
     { "name": "release", "configurePreset": "release" },
     { "name": "relwithdebinfo", "configurePreset": "relwithdebinfo" },
     { "name": "asan", "configurePreset": "asan" },
-    { "name": "clang-asan", "configurePreset": "clang-asan" }
+    { "name": "clang-asan", "configurePreset": "clang-asan" },
+    { "name": "wasm", "configurePreset": "wasm" },
+    { "name": "wasm-release", "configurePreset": "wasm-release" }
   ],
   "testPresets": [
     {

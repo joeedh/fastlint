@@ -5,6 +5,7 @@ import { fail, info, step } from "./lib/log.ts";
 import { repoRoot, vendorDir } from "./lib/paths.ts";
 import { run } from "./lib/spawn.ts";
 import { extractZip } from "./lib/zip.ts";
+import { emsdk, installEmsdk } from "./lib/emsdk.ts";
 import crypto from "node:crypto";
 
 interface External {
@@ -42,6 +43,20 @@ const archives: Record<string, Archive> = {
     sha3    : "628a44cfe82c66aed1ccbbe85a562d2e33ebe64b3288981ed76285612227934e",
     describe: "sqlite 3.53.4 amalgamation, the type cache store",
     marker  : "sqlite3.c",
+  },
+};
+
+/**
+ * Toolchains fetched on demand rather than as part of `deps`. They are large
+ * enough that a fresh clone should not pay for one it may never build.
+ */
+const toolkits: Record<
+  string,
+  { describe: string; install: (force: boolean) => Promise<void> }
+> = {
+  emsdk: {
+    describe: `emscripten ${emsdk.version}, the WASM toolchain`,
+    install : installEmsdk,
   },
 };
 
@@ -116,9 +131,15 @@ export const command: CommandModule<
       }),
   handler: async (argv) => {
     if (argv.target === "fetch") {
-      const known = [...Object.keys(externals), ...Object.keys(archives)].join(", ");
+      const known = [
+        ...Object.keys(externals),
+        ...Object.keys(archives),
+        ...Object.keys(toolkits),
+      ].join(", ");
       if (!argv.name) fail(`deps fetch needs a name: ${known}`);
-      if (archives[argv.name]) await fetchArchive(argv.name, argv.force);
+      const toolkit = toolkits[argv.name];
+      if (toolkit) await toolkit.install(argv.force);
+      else if (archives[argv.name]) await fetchArchive(argv.name, argv.force);
       else await fetchExternal(argv.name);
       return;
     }
@@ -130,5 +151,10 @@ export const command: CommandModule<
       await fetchExternal(name);
     }
     info("dependencies up to date");
+    for (const [name, toolkit] of Object.entries(toolkits)) {
+      info(
+        `  ${name} (${toolkit.describe}) is on demand: node make.ts deps fetch ${name}`
+      );
+    }
   },
 };

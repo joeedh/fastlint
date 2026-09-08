@@ -24,6 +24,18 @@ export const presets = [
 ] as const;
 export type Preset = (typeof presets)[number];
 
+/**
+ * Presets for the cross-compiled targets. They are kept out of `presets` so
+ * `--preset` on the ordinary commands still offers only the native builds; the
+ * WASM and N-API builds are reached through `--wasm` and `--napi` instead.
+ */
+export const wasmPresets = ["wasm", "wasm-release"] as const;
+
+/** The N-API addon's build directory. cmake-js configures it, so it has no
+ * preset: cmake-js injects CMAKE_JS_INC/LIB/SRC at configure time and does not
+ * compose with `cmake --preset`. */
+export const napiDir = path.join(buildRoot, "napi");
+
 /** Executable extension for the host, appended to every built binary name. */
 export const exeSuffix = process.platform === "win32" ? ".exe" : "";
 
