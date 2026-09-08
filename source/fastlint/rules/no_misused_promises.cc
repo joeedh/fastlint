@@ -351,6 +351,9 @@ void create(RuleContext &ctx)
          [checker](Node *node) { checker->checkAssignment(node); });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"checksConditionals":{"oneOf":[{"type":"boolean"},{"type":"object","properties":{"flagUnions":{"enum":["all","eager"]}},"additionalProperties":false}]},"checksSpreads":{"type":"boolean"},"checksVoidReturn":{"oneOf":[{"type":"boolean"},{"type":"object","properties":{"arguments":{"type":"boolean"},"attributes":{"type":"boolean"},"properties":{"type":"boolean"},"returns":{"type":"boolean"},"variables":{"type":"boolean"}},"additionalProperties":false}]}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoMisusedPromises{
@@ -364,6 +367,7 @@ const RuleDef kNoMisusedPromises{
         /*hasSuggestions=*/false,
         /*typeAware=*/true,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

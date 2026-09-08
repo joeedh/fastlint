@@ -54,6 +54,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"allowEmptyCatch":{"type":"boolean"}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoEmpty{
@@ -66,6 +69,7 @@ const RuleDef kNoEmpty{
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

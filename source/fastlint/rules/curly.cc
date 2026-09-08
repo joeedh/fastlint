@@ -267,6 +267,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"enum":["all","multi","multi-line","multi-or-nest"]},{"enum":["consistent"]}])";
+
 } // namespace
 
 const RuleDef kCurly{
@@ -279,6 +282,7 @@ const RuleDef kCurly{
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

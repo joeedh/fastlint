@@ -462,6 +462,9 @@ void create(RuleContext &ctx)
          [checker](Node *node) { checker->checkAssignment(node); });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"allowConstantLoopConditions":{"oneOf":[{"type":"boolean"},{"enum":["always","never","only-allowed-literals"]}]},"allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing":{"type":"boolean"}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoUnnecessaryCondition{
@@ -475,6 +478,7 @@ const RuleDef kNoUnnecessaryCondition{
         /*hasSuggestions=*/false,
         /*typeAware=*/true,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

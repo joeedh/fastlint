@@ -508,6 +508,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"prefer":{"enum":["type-imports","no-type-imports"]},"fixStyle":{"enum":["separate-type-imports","inline-type-imports"]},"disallowTypeAnnotations":{"type":"boolean"}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kConsistentTypeImports{
@@ -521,6 +524,7 @@ const RuleDef kConsistentTypeImports{
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

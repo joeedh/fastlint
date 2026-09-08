@@ -8,6 +8,7 @@ set(SRC
   lint/format.cc
   lint/glob.cc
   lint/linter.cc
+  lint/option_schema.cc
   lint/registry.cc
   lint/regex.cc
   rules/array_type.cc

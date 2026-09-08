@@ -358,6 +358,9 @@ void create(RuleContext &ctx)
          [checker](Node *node) { checker->checkAssignment(node); });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"ignoreConditionalTests":{"type":"boolean"},"ignoreBooleanCoercion":{"type":"boolean"},"ignoreMixedLogicalExpressions":{"type":"boolean"},"allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing":{"type":"boolean"},"ignorePrimitives":{"oneOf":[{"type":"boolean"},{"type":"object","properties":{"bigint":{"type":"boolean"},"boolean":{"type":"boolean"},"number":{"type":"boolean"},"string":{"type":"boolean"}},"additionalProperties":false}]}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kPreferNullishCoalescing{
@@ -371,6 +374,7 @@ const RuleDef kPreferNullishCoalescing{
         /*hasSuggestions=*/true,
         /*typeAware=*/true,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

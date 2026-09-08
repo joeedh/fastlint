@@ -206,6 +206,9 @@ void create(RuleContext &ctx)
          [checker](Node *node) { checker->checkTemplate(node); });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"allowAny":{"type":"boolean"},"allowBoolean":{"type":"boolean"},"allowNullish":{"type":"boolean"},"allowNumber":{"type":"boolean"},"allowRegExp":{"type":"boolean"},"allowArray":{"type":"boolean"},"allowNever":{"type":"boolean"},"allow":{"type":"array","items":{"oneOf":[{"type":"string"},{"type":"object","properties":{"from":{"enum":["file","lib","package"]},"name":{"oneOf":[{"type":"string"},{"type":"array","items":{"type":"string"}}]},"package":{"type":"string"}},"additionalProperties":false}]}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kRestrictTemplateExpressions{
@@ -219,6 +222,7 @@ const RuleDef kRestrictTemplateExpressions{
         /*hasSuggestions=*/false,
         /*typeAware=*/true,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

@@ -12,7 +12,8 @@ function.
 
 - `RuleMeta` carries the configured `name` (no plugin prefix), a
   `description`, the `docsUrl`, the `recommended`, `fixable`,
-  `hasSuggestions` and `typeAware` flags, and the `messages` table.
+  `hasSuggestions` and `typeAware` flags, the `messages` table, and an
+  optional `schema` (see "Option schema").
 - `messages` is a `Message[]` of `{id, text}`; `text` may contain
   `{{name}}` placeholders that a report's data fills in. Rules report by
   message id, never by free text, so the tester and the docs can name them.
@@ -34,8 +35,9 @@ What a rule gets for one file.
 - `file()`, `bindings()`, `source()`, `filename()`, `textOf(node)`.
 - `option(i)` is the rule's i-th configured option (the array element after
   the severity) as a `JsonValue`, or null. Rules read options with
-  `asString()`, `getBool(...)` and so on and supply their own defaults;
-  there is no schema validation yet.
+  `asString()`, `getBool(...)` and so on and supply their own defaults; a
+  bad option is caught at config load by the rule's schema (see "Option
+  schema"), so a rule sees only options its schema admits.
 - `types()` is the `TypeFacts` for the file, or null when the linter runs
   without a type server. A rule with `typeAware` set is not created at all
   in that case. `LintOptions::types` names a `types::TypeSource`
@@ -68,6 +70,25 @@ UTF-8 bytes of its code point, so a literal non-ASCII character works outside
 a character class. Lookaround, backreferences, Unicode property classes and a
 multi-byte escape inside a character class do not compile; a rule falls back
 to its default pattern when `compile` fails.
+
+### Option schema
+
+`RuleMeta::schema` is an ESLint-shaped JSON Schema for the options after the
+severity, validated at config load (`validateOptions` in lint/option_schema.h).
+A bad option is a config error with the same exit code as a bad severity, so a
+typo like `{"defualt": "generic"}` is reported rather than silently ignored.
+
+- The schema is a JSON array: `schema[k]` governs option `k`. A configured
+  option beyond the array's length is rejected.
+- The validated keywords are `type` (`string`, `boolean`, `integer`, `number`,
+  `array`, `object`, `null`), `enum`, `properties`, `additionalProperties`
+  (`false` closes an object to unknown keys), `required`, `items`, `minItems`,
+  `maxItems`, and `oneOf`/`anyOf` (the value matches at least one branch).
+- A rule goes unchecked when it has no schema or when it is configured with a
+  bare severity. A malformed built-in schema is treated as absent, so a rule
+  bug never rejects a valid config.
+- The schema is data, not C++, so the plugin API (task 7) can carry a
+  third-party rule's schema the same way.
 
 ## Dispatch
 

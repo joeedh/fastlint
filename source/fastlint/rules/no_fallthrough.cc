@@ -132,6 +132,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"allowEmptyCase":{"type":"boolean"},"reportUnusedFallthroughComment":{"type":"boolean"},"commentPattern":{"type":"string"}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoFallthrough{
@@ -144,6 +147,7 @@ const RuleDef kNoFallthrough{
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

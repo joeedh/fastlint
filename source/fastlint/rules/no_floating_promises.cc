@@ -341,6 +341,9 @@ void create(RuleContext &ctx)
          [checker](Node *node) { checker->checkArrowBody(node); });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"ignoreVoid":{"type":"boolean"},"ignoreIIFE":{"type":"boolean"},"checkThenables":{"type":"boolean"}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoFloatingPromises{
@@ -354,6 +357,7 @@ const RuleDef kNoFloatingPromises{
         /*hasSuggestions=*/true,
         /*typeAware=*/true,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

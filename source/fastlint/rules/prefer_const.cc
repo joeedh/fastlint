@@ -343,6 +343,9 @@ void create(RuleContext &ctx)
   ctx.onExit(NodeKind::Program, [&ctx, state](Node *) { checkProgram(ctx, *state); });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"destructuring":{"enum":["any","all"]},"ignoreReadBeforeAssign":{"type":"boolean"}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kPreferConst{
@@ -356,6 +359,7 @@ const RuleDef kPreferConst{
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

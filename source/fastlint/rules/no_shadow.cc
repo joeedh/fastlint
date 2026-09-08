@@ -570,6 +570,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"hoist":{"enum":["all","functions","types","functions-and-types","never"]},"builtinGlobals":{"type":"boolean"},"ignoreOnInitialization":{"type":"boolean"},"ignoreTypeValueShadow":{"type":"boolean"},"ignoreFunctionTypeParameterNameValueShadow":{"type":"boolean"},"allow":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoShadow{
@@ -583,6 +586,7 @@ const RuleDef kNoShadow{
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

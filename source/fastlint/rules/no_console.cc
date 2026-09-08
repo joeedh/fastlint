@@ -86,6 +86,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"allow":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoConsole{
@@ -98,6 +101,7 @@ const RuleDef kNoConsole{
         /*hasSuggestions=*/true,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

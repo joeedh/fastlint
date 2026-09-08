@@ -40,6 +40,19 @@ const RuleDef kRecommended{
     [](RuleContext &) {},
 };
 
+const RuleDef kSchemaRule{
+    {"schema-rule",
+     "",
+     "",
+     /*recommended=*/false,
+     false,
+     false,
+     false,
+     span<const Message>(kMessage, 1),
+     R"([{"enum":["always","never"]},{"type":"object","properties":{"depth":{"type":"integer"},"names":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}])"},
+    [](RuleContext &) {},
+};
+
 struct Fixture {
   Registry registry;
   Config config;
@@ -51,6 +64,7 @@ struct Fixture {
     registry.add(rules::kNoDebugger);
     registry.add(kOptional);
     registry.add(kRecommended);
+    registry.add(kSchemaRule);
     ok = config.parse(json, baseDir, registry, error);
   }
 
@@ -175,4 +189,35 @@ TEST(lint_config, rejects_malformed_documents)
   CHECK(!Fixture("{\"rules\": 5}").ok);
   CHECK(!Fixture("{\"overrides\": [{\"rules\": {}}]}").ok);
   CHECK(!Fixture("{not json").ok);
+}
+
+TEST(lint_config, accepts_options_matching_the_schema)
+{
+  CHECK(Fixture("{\"rules\": {\"schema-rule\": [\"error\", \"always\"]}}").ok);
+  CHECK(Fixture("{\"rules\": {\"schema-rule\": [\"error\", \"never\", {\"depth\": 3, "
+                "\"names\": [\"a\", \"b\"]}]}}")
+            .ok);
+  // A bare severity leaves the options unchecked.
+  CHECK(Fixture("{\"rules\": {\"schema-rule\": \"error\"}}").ok);
+}
+
+TEST(lint_config, rejects_options_the_schema_forbids)
+{
+  // Wrong enum value.
+  CHECK(!Fixture("{\"rules\": {\"schema-rule\": [\"error\", \"sometimes\"]}}").ok);
+  // Unknown object key.
+  CHECK(!Fixture("{\"rules\": {\"schema-rule\": [\"error\", \"always\", {\"deth\": 3}]}}")
+             .ok);
+  // Wrong type for a known key.
+  CHECK(
+      !Fixture(
+           "{\"rules\": {\"schema-rule\": [\"error\", \"always\", {\"depth\": \"x\"}]}}")
+           .ok);
+  // A wrong array element type.
+  CHECK(!Fixture(
+             "{\"rules\": {\"schema-rule\": [\"error\", \"always\", {\"names\": [1]}]}}")
+             .ok);
+  // More options than the schema allows.
+  CHECK(!Fixture("{\"rules\": {\"schema-rule\": [\"error\", \"always\", {}, \"extra\"]}}")
+             .ok);
 }

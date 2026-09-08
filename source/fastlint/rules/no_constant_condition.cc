@@ -270,6 +270,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"checkLoops":{"oneOf":[{"type":"boolean"},{"enum":["all","none"]}]}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoConstantCondition{
@@ -283,6 +286,7 @@ const RuleDef kNoConstantCondition{
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

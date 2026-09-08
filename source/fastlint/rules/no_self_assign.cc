@@ -129,6 +129,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"props":{"type":"boolean"}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoSelfAssign{
@@ -141,6 +144,7 @@ const RuleDef kNoSelfAssign{
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

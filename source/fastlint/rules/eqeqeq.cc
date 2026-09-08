@@ -162,6 +162,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"enum":["always","smart","allow-null"]},{"type":"object","properties":{"null":{"enum":["always","never","ignore"]}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kEqeqeq{
@@ -174,6 +177,7 @@ const RuleDef kEqeqeq{
         /*hasSuggestions=*/true,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

@@ -56,6 +56,10 @@ struct RuleMeta {
   /** Needs `TypeFacts`; skipped when the linter runs without a type server. */
   bool typeAware = false;
   span<const Message> messages;
+  /** ESLint-shaped JSON Schema for the options after the severity, validated at
+   * config load. An array is one schema per positional option; an object
+   * validates the whole options array. Null means options go unchecked. */
+  const char *schema = nullptr;
 };
 
 class RuleContext;

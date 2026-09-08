@@ -1006,6 +1006,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"oneOf":[{"enum":["all","local"]},{"type":"object","properties":{"vars":{"enum":["all","local"]},"args":{"enum":["all","after-used","none"]},"caughtErrors":{"enum":["all","none"]},"ignoreRestSiblings":{"type":"boolean"},"ignoreUsingDeclarations":{"type":"boolean"},"ignoreClassWithStaticInitBlock":{"type":"boolean"},"reportUsedIgnorePattern":{"type":"boolean"},"enableAutofixRemoval":{"type":"object","properties":{"imports":{"type":"boolean"}},"additionalProperties":false},"varsIgnorePattern":{"type":"string"},"argsIgnorePattern":{"type":"string"},"caughtErrorsIgnorePattern":{"type":"string"},"destructuredArrayIgnorePattern":{"type":"string"}},"additionalProperties":false}]}])";
+
 } // namespace
 
 const RuleDef kNoUnusedVars{
@@ -1018,6 +1021,7 @@ const RuleDef kNoUnusedVars{
         /*hasSuggestions=*/true,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

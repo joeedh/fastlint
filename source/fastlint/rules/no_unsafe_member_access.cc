@@ -187,6 +187,9 @@ void create(RuleContext &ctx)
          [checker](Node *node) { checker->checkMember(node); });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"allowOptionalChaining":{"type":"boolean"}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kNoUnsafeMemberAccess{
@@ -200,6 +203,7 @@ const RuleDef kNoUnsafeMemberAccess{
         /*hasSuggestions=*/false,
         /*typeAware=*/true,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

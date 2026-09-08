@@ -731,8 +731,12 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   `create(ctx)` registering kind-indexed callbacks; `ctx.report(node, msg,
   fix?)`. `RuleDef`/`RuleContext` in lint/rule.h; messages by id with
   `{{placeholders}}`; per-file `state<T>()`; `option(i)` for config options.
-  - [ ] Option schema validation (rules read `JsonValue`s and default
-    themselves for now).
+  - [x] Option schema validation: `RuleMeta::schema` is an ESLint-shaped JSON
+    Schema (array per positional option) validated at config load
+    (`validateOptions`, lint/option_schema.cc); a bad option is a config error.
+    Keywords: `type`, `enum`, `properties`, `additionalProperties`, `required`,
+    `items`, `minItems`/`maxItems`, `oneOf`/`anyOf`. Every optioned built-in
+    declares one. Data, not C++, so task-7 plugins reuse it.
   - [ ] Suggestions are reported but nothing applies them (editor integration).
 - [x] Dispatch: single tree walk, per-kind callback lists — no per-rule
   traversal. One `ast::Dispatcher` over every enabled rule's listeners.

@@ -205,6 +205,9 @@ void create(RuleContext &ctx)
   });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"default":{"enum":["array","generic","array-simple"]},"readonly":{"enum":["array","generic","array-simple"]}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kArrayType{
@@ -217,6 +220,7 @@ const RuleDef kArrayType{
         /*hasSuggestions=*/false,
         /*typeAware=*/false,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };

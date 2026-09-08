@@ -1,6 +1,7 @@
 #include "fastlint/lint/config.h"
 
 #include "fastlint/lint/glob.h"
+#include "fastlint/lint/option_schema.h"
 
 #include <cstdio>
 #include <filesystem>
@@ -263,6 +264,9 @@ bool Config::addRules(const JsonValue *rules,
     if (!rule) {
       m_unknownRules.append(copy(name));
       continue;
+    }
+    if (!validateOptions(*rule, setting, error)) {
+      return false;
     }
     layer.entries.append({rule, severity, setting});
   }

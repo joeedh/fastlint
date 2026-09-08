@@ -402,6 +402,9 @@ void create(RuleContext &ctx)
          [checker](Node *node) { checker->checkLogical(node); });
 }
 
+const char kSchema[] =
+    R"([{"type":"object","properties":{"allowAny":{"type":"boolean"},"allowNullableBoolean":{"type":"boolean"},"allowNullableEnum":{"type":"boolean"},"allowNullableNumber":{"type":"boolean"},"allowNullableObject":{"type":"boolean"},"allowNullableString":{"type":"boolean"},"allowNumber":{"type":"boolean"},"allowString":{"type":"boolean"},"allowRuleToRunWithoutStrictNullChecksIKnowWhatIAmDoing":{"type":"boolean"}},"additionalProperties":false}])";
+
 } // namespace
 
 const RuleDef kStrictBooleanExpressions{
@@ -415,6 +418,7 @@ const RuleDef kStrictBooleanExpressions{
         /*hasSuggestions=*/false,
         /*typeAware=*/true,
         messagesOf(kMessages),
+        kSchema,
     },
     create,
 };
