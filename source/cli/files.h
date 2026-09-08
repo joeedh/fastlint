@@ -25,6 +25,7 @@ void collectFiles(const char *arg, litestl::util::Vector<std::filesystem::path> 
 int fuzzCommand(int argc, char **argv);
 int benchCommand(int argc, char **argv);
 int cacheBenchCommand(int argc, char **argv);
+int cacheCommand(int argc, char **argv);
 int lintCommand(int argc, char **argv);
 
 } // namespace fastlint::cli

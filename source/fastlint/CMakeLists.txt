@@ -11,6 +11,7 @@ set(SRC
   lint/option_schema.cc
   lint/registry.cc
   lint/regex.cc
+  lint/result_cache.cc
   rules/array_type.cc
   rules/await_thenable.cc
   rules/builtin.cc

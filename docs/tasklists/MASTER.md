@@ -700,8 +700,9 @@ it. Tests: `types_graph_test` (fast) and `types_facts_test` (`[integration]`).
   file's node types and rule results.
 - [x] Rule-result replay for unchanged (file, closure):
   `FileCache::ruleResult`/`saveRuleResult` over `rule_results`.
-  - [ ] Wire `FileCache` into the driver (task 6), where the tsconfig hash
-    is computed; fold the lockfile in so package upgrades invalidate.
+  - [x] Wired `FileCache` into the `lint` command (6.1); the environment hash
+    folds in the fastlint version, config, tsconfig and lockfile so package
+    upgrades invalidate.
 - [ ] v2 per-type provenance (decl file hashes per type row) — after v1 is
   measured on a real monorepo.
 
@@ -763,8 +764,12 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   fixer output (`testing/rule_tester.h`, `runRuleTests`).
 - [x] `fastlint lint` command: config discovery, `--fix`, `--format`,
   `--quiet`, `--max-warnings`; exit codes as ESLint.
-  - [ ] Wire `FileCache`, `--no-cache`, `--cache-dir` and `cache verify` into
-    the command (moved here from 5.4).
+  - [x] Wired `FileCache`, `--no-cache`, `--cache-dir` and `cache verify` into
+    the command. A file replays its diagnostics from a SQLite store when its
+    content, closure and environment hashes match; one JSON payload per file
+    (lint/result_cache.cc), keyed so JSON fix ranges cache separately. On by
+    default at `node_modules/.cache/fastlint/lint.db`; `--fix` and untyped
+    files are not cached.
   - [x] Type server start-up for type-aware rules: `--project <tsconfig>`
     starts one `tsgo` server through `types::ProjectTypes`, which serves
     the linter's text to the server so fixpoint passes are typed too

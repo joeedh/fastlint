@@ -1,4 +1,4 @@
-add_executable(fastlint main.cc bench.cc cache_bench.cc files.cc fuzz.cc lint.cc)
+add_executable(fastlint main.cc bench.cc cache.cc cache_bench.cc files.cc fuzz.cc lint.cc)
 target_link_libraries(fastlint PRIVATE fastlint_lib fastlint_warnings)
 if(WIN32)
   # Peak working set for cache-bench.

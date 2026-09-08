@@ -275,6 +275,9 @@ int main(int argc, char **argv)
   if (argc > 1 && std::strcmp(argv[1], "cache-bench") == 0) {
     return cacheBenchCommand(argc, argv);
   }
+  if (argc > 1 && std::strcmp(argv[1], "cache") == 0) {
+    return cacheCommand(argc, argv);
+  }
   std::printf("%s\n", fastlint::buildBanner().c_str());
   std::printf("commands: lint [--config <file>] [--rule name:severity] [--fix] "
               "[--format pretty|json] <file|dir>..., "
@@ -283,6 +286,7 @@ int main(int argc, char **argv)
               "dump-ast [--errors] [--bindings] <file>, "
               "fuzz [--iterations N] [--seed S] <file|dir>..., "
               "bench [--repeat N] [--json] <file|dir>..., "
-              "cache-bench [--cache <db>] [--limit N] [--keep] [--json] <tsconfig>\n");
+              "cache-bench [--cache <db>] [--limit N] [--keep] [--json] <tsconfig>, "
+              "cache verify [--cache-dir <dir>]\n");
   return 0;
 }

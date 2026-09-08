@@ -235,7 +235,7 @@ lint/format.h has three formatters over `FileResult`s.
 fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
               [--project <tsconfig>] [--type-stats] [--fix]
               [--format pretty|json|sarif] [--color|--no-color] [--quiet]
-              [--max-warnings N] <file|dir>...
+              [--no-cache] [--cache-dir <dir>] [--max-warnings N] <file|dir>...
 ```
 
 - With no config file and no `--rule`, the recommended preset applies.
@@ -254,8 +254,32 @@ fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
   `json` (the ESLint-shaped array) or `sarif` (a SARIF 2.1.0 log).
 - `--fix` writes the fixed text back and prints `fixed N problems`.
 - `--quiet` drops warnings from the output and the counts.
+- `--no-cache` turns off the result cache; `--cache-dir <dir>` moves it (see
+  "Result cache").
 - Exit code 1 when any error remains (or warnings exceed `--max-warnings`),
   2 on a usage or I/O failure, 0 otherwise.
+
+## Result cache
+
+The `lint` command replays a file's diagnostics from a SQLite store instead of
+running the rules when nothing that affects the result has changed
+(cache/closure.h `FileCache` over cache/store.h `Store`).
+
+- A file is fresh when its content hash, its import-closure hash (the resolved
+  relative imports, via `loadClosure`) and an environment hash all match the
+  stored record. The environment hash folds in the fastlint version, the
+  config, the tsconfig and `pnpm-lock.yaml`, so any of them changing re-lints
+  every file.
+- One JSON payload per file holds every diagnostic (lint/result_cache.h),
+  keyed by a sentinel rule name. A JSON run stores its fix ranges under a
+  separate key, so `--format json` and the other formats each cache.
+- The cache is on by default, stored at `node_modules/.cache/fastlint/lint.db`
+  when a `node_modules` directory exists; `--cache-dir <dir>` sets the location
+  and `--no-cache` disables it. `--fix` and a file the type server could not
+  type are never cached.
+- The `Store` also keys on the fastlint version, so an upgrade rebuilds it.
+  `fastlint cache verify [--cache-dir <dir>]` runs the store's integrity and
+  dangling-reference checks.
 
 ## Testing a rule
 

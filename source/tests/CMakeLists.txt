@@ -16,6 +16,7 @@ add_fastlint_test(fastlint
     lint_directives_test.cc
     lint_linter_test.cc
     lint_regex_test.cc
+    lint_result_cache_test.cc
     parser_test.cc
     rules_array_type_test.cc
     rules_curly_test.cc
