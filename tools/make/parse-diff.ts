@@ -300,10 +300,10 @@ function writeReport(summary: Summary, total: number, argv: Args): void {
     .map((b) => [String(b.count), `\`${b.signature}\``]);
   const header = ["Count", "First disagreement"];
   const widths = header.map((h, i) =>
-    Math.max(h.length, ...rows.map((r) => r[i].length))
+    Math.max(h.length, ...rows.map((r) => r[i]!.length))
   );
   const line = (cells: string[]) =>
-    `| ${cells.map((c, i) => c.padEnd(widths[i])).join(" | ")} |`;
+    `| ${cells.map((c, i) => c.padEnd(widths[i]!)).join(" | ")} |`;
   out.push(line(header), line(widths.map((w) => "-".repeat(w))));
   for (const row of rows) out.push(line(row));
   out.push("");

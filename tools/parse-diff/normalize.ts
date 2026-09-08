@@ -102,7 +102,7 @@ function isOurWrapper(parent: TreeNode, child: TreeNode): boolean {
       );
     case "ExportDeclaration":
       return (
-        child.children.length === 1 && exportedDeclarations.has(child.children[0].kind)
+        child.children.length === 1 && exportedDeclarations.has(child.children[0]!.kind)
       );
     default:
       return false;
@@ -151,7 +151,7 @@ function entityName(node: TreeNode | undefined): TreeNode | undefined {
   if (node.kind !== "PropertyAccessExpression" || node.children.length !== 2)
     return undefined;
   const left = entityName(node.children[0]);
-  const right = node.children[1];
+  const right = node.children[1]!; // `children.length === 2` guarded above
   if (!left || right.kind !== "Identifier") return undefined;
   return { ...node, kind: "QualifiedName", children: [left, right] };
 }
@@ -161,18 +161,18 @@ function nestModuleNames(node: TreeNode): TreeNode {
   const names = node.children.filter((c) => c.kind === "Identifier");
   const rest = node.children.filter((c) => c.kind !== "Identifier");
   if (names.length < 2) return node;
-  let inner: TreeNode = { ...node, children: [names[names.length - 1], ...rest] };
+  let inner: TreeNode = { ...node, children: [names[names.length - 1]!, ...rest] };
   for (let i = names.length - 2; i >= 0; i--) {
-    inner = { ...node, children: [names[i], inner] };
+    inner = { ...node, children: [names[i]!, inner] };
   }
   return inner;
 }
 
 /** `A.B.C` is flat for us and left-nested for tsgo. */
 function nestQualifiedName(node: TreeNode, parts: TreeNode[]): TreeNode {
-  let result = parts[0];
+  let result = parts[0]!; // caller guards `children.length > 2`
   for (let i = 1; i < parts.length; i++) {
-    const right = parts[i];
+    const right = parts[i]!; // `i < parts.length`
     result = {
       ...node,
       kind    : "QualifiedName",
@@ -193,7 +193,7 @@ function renameOurs(parent: TreeNode | undefined, node: TreeNode): string {
 export function normalizeOurs(node: TreeNode, parent?: TreeNode): TreeNode {
   // A one-part QualifiedName is tsgo's bare Identifier.
   if (node.kind === "QualifiedName" && node.children.length === 1) {
-    return normalizeOurs(node.children[0], parent);
+    return normalizeOurs(node.children[0]!, parent);
   }
   const children: TreeNode[] = [];
   let source = node.children;
@@ -213,7 +213,7 @@ export function normalizeOurs(node: TreeNode, parent?: TreeNode): TreeNode {
   if (node.kind === "HeritageClause") {
     const isInterface = parent?.kind === "InterfaceDeclaration";
     for (let i = 0; i < children.length; i++) {
-      children[i] = heritageEntry(children[i], isInterface);
+      children[i] = heritageEntry(children[i]!, isInterface);
     }
   }
   if (node.kind === "QualifiedName" && children.length > 2) {

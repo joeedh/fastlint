@@ -49,8 +49,9 @@ function walk(
   const here = [...path, expected.kind];
   const n = Math.min(expected.children.length, actual.children.length);
   for (let i = 0; i < n; i++) {
-    const e = expected.children[i];
-    const a = actual.children[i];
+    // `i < n` bounds both, so neither child is undefined.
+    const e = expected.children[i]!;
+    const a = actual.children[i]!;
     if (e.kind !== a.kind) {
       return {
         path     : here,
@@ -62,7 +63,8 @@ function walk(
   }
   if (expected.children.length !== actual.children.length) {
     const longer = expected.children.length > actual.children.length ? expected : actual;
-    const extra = longer.children[n];
+    // `longer` has more than `n` children, so slot `n` exists.
+    const extra = longer.children[n]!;
     const which = longer === expected ? "missing" : "extra";
     return {
       path     : here,
@@ -72,14 +74,14 @@ function walk(
     };
   }
   for (let i = 0; i < n; i++) {
-    const found = walk(expected.children[i], actual.children[i], here, options);
+    const found = walk(expected.children[i]!, actual.children[i]!, here, options);
     if (found) return found;
   }
   return undefined;
 }
 
 function parent(path: string[]): string {
-  return path.length > 0 ? path[path.length - 1] : "(root)";
+  return path.length > 0 ? path[path.length - 1]! : "(root)";
 }
 
 function kinds(node: TreeNode): string {

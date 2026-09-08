@@ -72,14 +72,14 @@ export async function readDumps(
     const m = openLine.exec(line);
     if (!m) continue; // token text or diagnostics line
     const node: TreeNode = {
-      kind    : m[1],
+      kind    : m[1]!, // capture group 1 is required by the regex
       start   : Number(m[2] ?? m[4] ?? 0),
       end     : Number(m[3] ?? m[5] ?? 0),
       children: [],
     };
     if (missingFlag.test(line)) node.missing = true;
     if (defaultFlag.test(line)) node.isDefault = true;
-    if (stack.length > 0) stack[stack.length - 1].children.push(node);
+    if (stack.length > 0) stack[stack.length - 1]!.children.push(node);
     stack.push(node);
   }
   flush();
