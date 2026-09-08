@@ -1,7 +1,7 @@
-// no-unreachable: code after return, throw, break or continue
-// (docs/rules/no-unreachable.md). Works on statement lists; see the docs
-// for what it does not see.
+// no-unreachable: code after a statement that cannot complete normally
+// (docs/rules/no-unreachable.md). Completion analysis is in rules/flow.h.
 
+#include "fastlint/rules/flow.h"
 #include "fastlint/rules/rules.h"
 #include "fastlint/rules/util.h"
 
@@ -52,7 +52,7 @@ void checkList(RuleContext &ctx, span<Node *> list)
 {
   size_t exit = list.size();
   for (size_t i = 0; i < list.size(); i++) {
-    if (list[i] && alwaysExits(list[i])) {
+    if (list[i] && !completesNormally(list[i])) {
       exit = i;
       break;
     }

@@ -786,13 +786,17 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   `no-non-null-assertion`, `prefer-as-const`, `array-type`. Each with a docs
   page under docs/rules/, ported upstream tests, and a fixer where upstream
   has one (`eqeqeq`, `no-var`, `curly`, `prefer-as-const`, `array-type`).
-  - [ ] `no-unreachable` / `no-fallthrough` use a statement-list exit
-    approximation (rules/util.h `alwaysExits`); a code-path analysis would
-    also see `switch` exits and labelled breaks.
+  - [x] `no-unreachable` / `no-fallthrough` decide reachability with a
+    structural completion analysis (rules/flow.h `completesNormally` /
+    `sequenceCompletesNormally`), replacing the old statement-list `alwaysExits`
+    approximation. It sees `switch` exhaustiveness (a `default` with every path
+    exiting), matches `break`/`continue` to the loop or switch they target, and
+    follows labelled jumps, so a `break` aimed at an inner loop no longer keeps
+    a `while (true)` from exiting.
   - [ ] `no-empty`: upstream's "insert a comment" suggestion.
   - [x] `no-fallthrough`: `reportUnusedFallthroughComment` reports a
     fallthrough comment on a non-empty case that exits (the report lands on the
-    comment); reachability is the statement-list approximation, not code paths.
+    comment); reachability is the `completesNormally` analysis in rules/flow.h.
   - [x] `lint::Regex` `\uXXXX`/`\u{...}`/`\xXX` escapes above ASCII match the
     UTF-8 bytes of their code point (held in a group so a quantifier spans the
     whole character); the same escape inside a character class still fails, as

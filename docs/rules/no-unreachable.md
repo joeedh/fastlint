@@ -1,9 +1,10 @@
 # no-unreachable
 
 Reports statements after one that never lets control through: `return`,
-`throw`, `break`, `continue`, an `if` whose branches both exit, a `try`
-that exits, a `do` whose body exits, or a `while (true)` / `for (;;)`
-without a `break`. In the recommended preset.
+`throw`, `break`, `continue`, an `if` whose branches both exit, a `switch`
+whose every path exits, a `try` that exits, a `do` whose body exits, or a
+`while (true)` / `for (;;)` with no `break` that leaves it. In the
+recommended preset.
 
 ```ts
 function f() {
@@ -27,8 +28,12 @@ None.
 
 ## Compared with ESLint
 
-ESLint decides reachability from its code-path analysis; this rule looks at
-statement lists with the exits above. The difference shows in loops: a
-`break` anywhere inside a `while (true)` body, even one aimed at an inner
-loop, keeps the code after the loop reachable here, and a `switch` whose
-every case exits is not treated as exiting. Both err toward silence.
+ESLint decides reachability from its code-path analysis; this rule walks a
+statement's structure to ask whether control can complete it normally
+(rules/flow.h). The two agree on the cases this rule reports. A `break` or
+`continue` is matched to the loop or switch it targets, so a `break` aimed at
+an inner loop no longer keeps a `while (true)` from exiting, a labelled
+`break` that leaves an outer loop counts against that loop, and a `switch`
+counts as exiting only when it has a `default` and every path through it
+exits. Analysis stays within one function; a `throw` that a caller catches
+still reads as an exit here, as it does in ESLint.

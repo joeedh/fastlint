@@ -12,8 +12,10 @@ switch (x) {
 }
 ```
 
-A case falls through when its last statement does not exit (see
-docs/rules/no-unreachable.md for what counts). The comment that permits it
+A case falls through when its body can complete normally, meaning control
+reaches the end of the case rather than leaving through a `return`, `throw`,
+`break`, or `continue` (the same completion analysis no-unreachable uses).
+The comment that permits it
 is the last comment before the next clause, or the last comment before the
 closing brace when the case body is a single block, and it must match the
 pattern `falls?\s?through` (case-insensitive): `// falls through`,
@@ -48,7 +50,8 @@ None.
 ## Compared with ESLint
 
 Same messages and options as ESLint's `no-fallthrough`, with the same
-comment placement rules, including `reportUnusedFallthroughComment`.
-Reachability is the statement-list approximation described in no-unreachable
-rather than code-path analysis, so a case counts as exiting only when its
-last statement (or a fully-exiting `if`/`try`) exits.
+comment placement rules, including `reportUnusedFallthroughComment`. A case
+counts as exiting when its body cannot complete normally, using the same
+completion analysis as no-unreachable (rules/flow.h), so an exhaustive inner
+`switch` or an `if` whose branches both exit ends a case just as a bare
+`break` does.

@@ -34,6 +34,14 @@ TEST(rules_no_unreachable, cases)
           {"function foo() { var x = 1; try { return; } finally { x = 2; } }"},
           {"function foo() { var x = 1; for (;;) { if (x) break; } x = 2; }"},
           {"A: { break A; } foo()"},
+          // A switch reaches past itself when its last clause falls off the end.
+          {"function foo() { switch (x) { case 1: return 1; default: y(); } z(); }"},
+          // No default, so an unmatched value falls through.
+          {"function foo() { switch (x) { case 1: return 1; } after(); }"},
+          // A break to the switch lets control past it.
+          {"function foo() { switch (x) { case 1: return 1; default: break; } z(); }"},
+          // A labelled break leaves the infinite loop, so the rest is reachable.
+          {"function foo() { A: while (true) { break A; } bar(); }"},
           {"function foo() { try { return; } catch (e) {} bar(); }"},
           {"function foo() { return; function bar() {} }"},
           {"function foo() { return; declare function bar(): void; }"},
@@ -105,5 +113,12 @@ TEST(rules_no_unreachable, cases)
           {"function foo() { return; let x = 1; }", {{"unreachableCode"}}},
           {"function foo() { return; const x = 1; }", {{"unreachableCode"}}},
           {"class C { static { return; foo(); } }", {{"unreachableCode"}}},
+          // An exhaustive switch (a default whose last clause exits) leaves.
+          {"function foo() { switch (x) { case 1: return 1; default: return 2; } y(); }",
+           {{"unreachableCode"}}},
+          // A labelled break to an outer loop does not exit this one.
+          {"function foo() { outer: while (true) { while (true) { break outer; } z(); } "
+           "}",
+           {{"unreachableCode"}}},
       });
 }

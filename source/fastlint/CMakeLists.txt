@@ -17,6 +17,7 @@ set(SRC
   rules/builtin.cc
   rules/curly.cc
   rules/eqeqeq.cc
+  rules/flow.cc
   rules/no_console.cc
   rules/no_constant_condition.cc
   rules/no_debugger.cc

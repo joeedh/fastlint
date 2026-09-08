@@ -2,6 +2,7 @@
 // `falls through` comment (docs/rules/no-fallthrough.md).
 
 #include "fastlint/lint/regex.h"
+#include "fastlint/rules/flow.h"
 #include "fastlint/rules/rules.h"
 #include "fastlint/rules/util.h"
 
@@ -106,8 +107,8 @@ void create(RuleContext &ctx)
       Node *next = cases[i + 1];
       span<Node *> body = ast::SwitchCase(current).consequent();
       // An empty case is a grouping that always falls through, so only a
-      // non-empty case whose statements exit cannot fall through.
-      bool exits = body.size() > 0 && listExits(body);
+      // non-empty case whose statements cannot complete does not fall through.
+      bool exits = body.size() > 0 && !sequenceCompletesNormally(body);
       bool fallsThrough;
       if (body.size() == 0) {
         // An empty case is a deliberate grouping unless a blank line separates them.

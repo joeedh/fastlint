@@ -50,6 +50,10 @@ TEST(rules_no_fallthrough, cases)
           {"switch(foo) { default: a(); break; case 1: b(); }"},
           {"switch(foo) { case 0: { a(); } break; case 1: b(); }"},
           {"switch(foo) { case 0: if (a) { break; } else { throw 0; } case 1: b(); }"},
+          // A case whose body is an exhaustive switch cannot fall through.
+          {"switch(foo) { case 0: switch (x) { case 1: return; default: return; } case "
+           "1: "
+           "b(); }"},
           {"switch(foo) { case 0: try { break; } finally {} case 1: b(); }"},
           {"switch(foo) { case 0: try {} finally { break; } case 1: b(); }"},
           {"switch(foo) { case 0: try { throw 0; } catch (err) { break; } case 1: b(); "

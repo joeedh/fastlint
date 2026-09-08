@@ -1,7 +1,8 @@
 #pragma once
 
-// Helpers the built-in rules share: control-flow exits, static property
-// names, same-reference tests, literal truthiness, comment scans.
+// Helpers the built-in rules share: static property names, same-reference
+// tests, literal truthiness, comment scans. Control-flow completion lives in
+// rules/flow.h.
 
 #include "fastlint/ast/generated/views.h"
 #include "fastlint/ast/node.h"
@@ -15,25 +16,6 @@ namespace fastlint::rules {
 
 using lint::RuleContext;
 using std::string_view;
-
-/**
- * Whether control never reaches the statement after `stmt` in the same
- * list: `return`, `throw`, `break`, `continue`, a block or `if` whose every
- * path exits, a `try` that exits, a `do` whose body exits without a jump,
- * or a `while (true)` / `for (;;)` with no `break`. Other loops, switches
- * and labels answer false, since a `break` inside them stays inside.
- */
-bool alwaysExits(const ast::Node *stmt);
-
-/** Whether some statement of `list` always exits. */
-bool listExits(litestl::util::span<ast::Node *> list);
-
-/**
- * Whether a `break` (or, with `orContinue`, a `continue`) sits anywhere
- * under `node` outside nested functions. Labels and nesting are not
- * tracked, so the answer errs toward "yes".
- */
-bool containsJump(const ast::Node *node, bool orContinue);
 
 /**
  * The name a non-computed key, a string or number literal key, or a
