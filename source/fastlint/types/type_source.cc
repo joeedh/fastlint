@@ -69,11 +69,19 @@ ProjectTypes::~ProjectTypes()
   close();
 }
 
-bool ProjectTypes::open(std::string_view tsconfig, string &error)
+bool ProjectTypes::open(const Vector<string> &tsconfigs, string &error)
 {
   close();
-  string config = absolutePath(tsconfig);
-  std::string dir = fs::path(std::string(view(config))).parent_path().generic_string();
+  if (tsconfigs.isEmpty()) {
+    error = string("no tsconfig to open");
+    return false;
+  }
+  Vector<string> configs;
+  for (const string &t : tsconfigs) {
+    configs.append(absolutePath(view(t)));
+  }
+  std::string dir =
+      fs::path(std::string(view(configs[0]))).parent_path().generic_string();
   tsgo::ClientOptions options;
   options.cwd = copy(dir);
   options.files = this;
@@ -81,18 +89,45 @@ bool ProjectTypes::open(std::string_view tsconfig, string &error)
   if (tsgo::resolveTsgoExe(dir, exe) || tsgo::resolveTsgoExe(std::string_view(), exe)) {
     options.exe = exe;
   }
+  tsgo::SnapshotUpdate update;
+  for (const string &config : configs) {
+    update.openProjects.append(copy(view(config)));
+  }
   if (!m_client.start(options, error) ||
-      !m_client.openProject(view(config), m_snapshot, error))
+      !m_client.updateSnapshot(update, m_snapshot, error))
   {
     m_client.stop();
     return false;
   }
-  // Rules only consult the options for strictness; an unreadable config reads as strict.
-  string ignored;
-  if (!m_client.parseConfigFile(view(config), m_config, ignored)) {
-    m_config.clear();
+  if (m_snapshot.projects.isEmpty()) {
+    error = string("the server opened no project");
+    m_client.stop();
+    return false;
   }
-  return bindSession(std::string_view(), error);
+  bool caseSensitive = m_client.caseSensitiveFileNames();
+  for (const tsgo::ProjectInfo &info : m_snapshot.projects) {
+    Project project;
+    project.id = info.id;
+    // Rules only consult the options for strictness; an unreadable config reads strict.
+    auto *doc = litestl::alloc::New<tsgo::JsonDocument>("tsgo config");
+    string ignored;
+    if (!m_client.parseConfigFile(view(info.configFileName), *doc, ignored)) {
+      doc->clear();
+    }
+    project.config = doc;
+    string canonical = tsgo::canonicalPath(view(info.id), caseSensitive);
+    m_projects.add_overwrite(hashOf(view(canonical)), std::move(project));
+  }
+  m_open = true;
+  return true;
+}
+
+void ProjectTypes::setFileProject(std::string_view file, std::string_view tsconfig)
+{
+  bool caseSensitive = m_client.caseSensitiveFileNames();
+  string fileKey = tsgo::canonicalPath(view(absolutePath(file)), caseSensitive);
+  string configKey = tsgo::canonicalPath(view(absolutePath(tsconfig)), caseSensitive);
+  m_fileProject.add_overwrite(hashOf(view(fileKey)), hashOf(view(configKey)));
 }
 
 void ProjectTypes::close()
@@ -110,28 +145,23 @@ void ProjectTypes::close()
   }
   m_graph.clearSessionIds();
   m_client.stop();
+  for (auto &entry : m_projects) {
+    if (entry.value.config) {
+      litestl::alloc::Delete(entry.value.config);
+    }
+  }
+  m_projects = Map<uint64_t, Project>();
+  m_fileProject = Map<uint64_t, uint64_t>();
   m_served = Map<uint64_t, Served>();
+  m_open = false;
 }
 
-bool ProjectTypes::bindSession(std::string_view file, string &error)
+void ProjectTypes::bindSession(const Project &project)
 {
-  string project;
-  if (!file.empty()) {
-    if (!m_client.defaultProjectForFile(m_snapshot.id, file, project, error)) {
-      return false;
-    }
-  }
-  if (project.size() == 0) {
-    if (m_snapshot.projects.isEmpty()) {
-      error = string("the server opened no project");
-      return false;
-    }
-    project = m_snapshot.projects[0].id;
-  }
   if (m_session && m_session->snapshot() == m_snapshot.id &&
-      view(m_session->project()) == view(project))
+      view(m_session->project()) == view(project.id))
   {
-    return true;
+    return;
   }
   if (m_facts) {
     m_stats = stats();
@@ -143,12 +173,11 @@ bool ProjectTypes::bindSession(std::string_view file, string &error)
   }
   // `alloc::New` takes its arguments by value, which would copy the client.
   m_session = new (litestl::alloc::alloc("tsgo session", sizeof(tsgo::Session)))
-      tsgo::Session(m_client, m_snapshot.id, view(project));
+      tsgo::Session(m_client, m_snapshot.id, view(project.id));
   m_facts = new (litestl::alloc::alloc("type facts", sizeof(TypeFacts)))
       TypeFacts(*m_session, m_graph);
-  m_facts->setCompilerOptions(m_config.root() ? m_config.root()->get("options")
-                                              : nullptr);
-  return true;
+  const tsgo::JsonValue *root = project.config ? project.config->root() : nullptr;
+  m_facts->setCompilerOptions(root ? root->get("options") : nullptr);
 }
 
 bool ProjectTypes::newSnapshot(const tsgo::SnapshotUpdate &update, string &error)
@@ -181,6 +210,15 @@ TypeFacts *ProjectTypes::beginFile(const ast::AstFile &file,
       tsgo::canonicalPath(view(absolute), m_client.caseSensitiveFileNames());
   uint64_t key = hashOf(view(canonical));
   uint64_t hash = hashOf(text);
+
+  // A file no tsconfig claims is typed syntactically only, not a degraded run, so the
+  // empty error tells the linter to cache it rather than warn.
+  uint64_t *projectKey = m_fileProject.lookup_ptr(key);
+  Project *project = projectKey ? m_projects.lookup_ptr(*projectKey) : nullptr;
+  if (!project) {
+    error = string();
+    return nullptr;
+  }
 
   tsgo::SnapshotUpdate update;
   Served *served = m_served.lookup_ptr(key);
@@ -218,9 +256,7 @@ TypeFacts *ProjectTypes::beginFile(const ast::AstFile &file,
   {
     return nullptr;
   }
-  if (!bindSession(view(absolute), error)) {
-    return nullptr;
-  }
+  bindSession(*project);
   if (!m_facts->beginFile(file, view(absolute), error)) {
     return nullptr;
   }

@@ -701,8 +701,8 @@ it. Tests: `types_graph_test` (fast) and `types_facts_test` (`[integration]`).
 - [x] Rule-result replay for unchanged (file, closure):
   `FileCache::ruleResult`/`saveRuleResult` over `rule_results`.
   - [x] Wired `FileCache` into the `lint` command (6.1); the environment hash
-    folds in the fastlint version, config, tsconfig and lockfile so package
-    upgrades invalidate.
+    folds in the fastlint version, config, every resolved tsconfig and the
+    lockfile so package upgrades invalidate.
 - [ ] v2 per-type provenance (decl file hashes per type row) — after v1 is
   measured on a real monorepo.
 
@@ -776,14 +776,19 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     (lint/result_cache.cc), keyed so JSON fix ranges cache separately. On by
     default at `node_modules/.cache/fastlint/lint.db`; `--fix` and untyped
     files are not cached.
-  - [x] Type server start-up for type-aware rules: `--project <tsconfig>`
-    starts one `tsgo` server through `types::ProjectTypes`, which serves
-    the linter's text to the server so fixpoint passes are typed too
-    (docs/type-facts.md "Type sources"). `--type-stats` prints the query
-    counts. Without `--project`, the command defaults to a `tsconfig.json`
-    beside the config file (best-effort: a failure there disables the
-    type-aware rules with a stderr note; an explicit `--project` that fails is
-    an error).
+  - [x] Type server start-up for type-aware rules: one `tsgo` server through
+    `types::ProjectTypes`, which serves the linter's text to the server so
+    fixpoint passes are typed too (docs/type-facts.md "Type sources").
+    `--type-stats` prints the query counts.
+  - [x] Per-file tsconfig discovery. `ProjectTypes::open` takes the list of
+    tsconfigs the run resolved and opens them in one snapshot; `setFileProject`
+    routes each file to its own, and `beginFile` binds that project (a file
+    with no route is syntactic-only, not degraded). The CLI resolves a file's
+    tsconfig in order: `--project` for every file, else the config's
+    `projects`/`project` glob mapping, else the nearest `tsconfig.json` walking
+    up from the file, else a `tsconfig.json` beside the config. The environment
+    hash folds in every resolved tsconfig. `--project` failure is still an
+    error; discovery failure disables the type-aware rules with a stderr note.
   - [x] A file with syntax errors reports only the earliest one as a single
     fatal diagnostic and runs no rules, matching ESLint (whose parser throws on
     the first error). We recover past it to keep parsing but report just the

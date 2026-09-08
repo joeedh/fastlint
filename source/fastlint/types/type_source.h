@@ -35,13 +35,17 @@ public:
   ProjectTypes(const ProjectTypes &) = delete;
   ProjectTypes &operator=(const ProjectTypes &) = delete;
 
-  /** Starts the server and opens `tsconfig`; `tsc` is resolved from the tsconfig's
-   * directory, then from the working directory. */
-  bool open(std::string_view tsconfig, string &error);
+  /** Starts the server and opens every tsconfig in `tsconfigs` in one snapshot; `tsc`
+   * is resolved from the first tsconfig's directory, then from the working directory.
+   * Files are typed only after `setFileProject` routes them to one of these. */
+  bool open(const Vector<string> &tsconfigs, string &error);
+  /** Routes `file` to `tsconfig` (which `open` must have loaded) for the queries run on
+   * it. Both are made canonical. A file with no route is typed syntactically only. */
+  void setFileProject(std::string_view file, std::string_view tsconfig);
   void close();
   bool isOpen() const
   {
-    return m_facts != nullptr;
+    return m_open;
   }
 
   TypeFacts *beginFile(const ast::AstFile &file,
@@ -70,16 +74,27 @@ private:
     bool opened = false;
   };
 
+  /** One loaded tsconfig: the id every query passes, and its parsed options (whose
+   * strictness `TypeFacts::strictOption` reads). */
+  struct Project {
+    string id;
+    /** The `parseConfigFile` answer; owned here, so its `options` node outlives a bind.
+     */
+    tsgo::JsonDocument *config = nullptr;
+  };
+
   bool readFile(std::string_view path, string &content) override;
   int fileExists(std::string_view path) override;
   bool newSnapshot(const tsgo::SnapshotUpdate &update, string &error);
-  bool bindSession(std::string_view file, string &error);
+  void bindSession(const Project &project);
 
   tsgo::Client m_client;
   tsgo::SnapshotInfo m_snapshot;
-  /** The `parseConfigFile` answer for the open tsconfig; its `options` member feeds
-   * `TypeFacts::strictOption`. */
-  tsgo::JsonDocument m_config;
+  bool m_open = false;
+  /** Every loaded tsconfig, keyed by the hash of its canonical path. */
+  Map<uint64_t, Project> m_projects;
+  /** A file's canonical-path hash to the canonical-path hash of its tsconfig. */
+  Map<uint64_t, uint64_t> m_fileProject;
   tsgo::Session *m_session = nullptr;
   TypeFacts *m_facts = nullptr;
   TypeGraph m_graph;

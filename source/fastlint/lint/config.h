@@ -62,6 +62,17 @@ public:
   /** The rules `filename` is linted with, after every matching override. */
   void resolve(string_view filename, ResolvedConfig &out) const;
 
+  /** The base directory globs and relative paths are anchored at (the config
+   * file's directory). Empty when the config had none. */
+  string_view baseDir() const
+  {
+    return string_view(m_baseDir.c_str(), m_baseDir.size());
+  }
+  /** The tsconfig `filename` should be typed with, joined to the base
+   * directory, or empty when the config names none. A `projects` glob wins
+   * over the bare `project`. */
+  string projectFor(string_view filename) const;
+
   /** `dir` joined with the file name, or empty when no config exists there or above. */
   static string find(string_view dir);
   /** `"off"`, `"warn"`, `"error"` or 0, 1, 2; false on anything else. */
@@ -79,10 +90,18 @@ private:
     Vector<string> files;
     Vector<Entry> entries;
   };
+  struct ProjectMap {
+    Vector<string> files;
+    /** A tsconfig path relative to the base directory. */
+    string project;
+  };
 
   tsgo::JsonDocument m_doc;
   string m_baseDir;
   Vector<Layer> m_layers;
+  /** A bare `project` tsconfig for every file a `projects` glob does not claim. */
+  string m_project;
+  Vector<ProjectMap> m_projects;
   Vector<string> m_ignores;
   Vector<string> m_unknownRules;
   Vector<Entry> m_cliEntries;

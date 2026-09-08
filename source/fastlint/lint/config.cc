@@ -145,6 +145,8 @@ bool Config::parse(string_view text,
   m_layers.clear();
   m_ignores.clear();
   m_unknownRules.clear();
+  m_project = string();
+  m_projects.clear();
   m_baseDir = copy(baseDir);
   if (!m_doc.parse(text)) {
     error = copy("config: ");
@@ -210,6 +212,43 @@ bool Config::parse(string_view text,
     }
   }
 
+  if (const JsonValue *project = root->get("project")) {
+    if (!project->isString()) {
+      error = copy("config: \"project\" must be a tsconfig path string");
+      return false;
+    }
+    m_project = copy(project->asString());
+  }
+  if (const JsonValue *projects = root->get("projects")) {
+    if (!projects->isArray()) {
+      error = copy("config: \"projects\" must be an array");
+      return false;
+    }
+    for (int i = 0; i < projects->size(); i++) {
+      const JsonValue *item = projects->at(i);
+      ProjectMap entry;
+      const JsonValue *files = item ? item->get("files") : nullptr;
+      if (files && files->isString()) {
+        entry.files.append(copy(files->asString()));
+      } else if (files && files->isArray()) {
+        for (int j = 0; j < files->size(); j++) {
+          entry.files.append(copy(files->at(j)->asString()));
+        }
+      }
+      if (entry.files.isEmpty()) {
+        error = copy("config: every \"projects\" entry needs a \"files\" glob");
+        return false;
+      }
+      const JsonValue *proj = item->get("project");
+      if (!proj || !proj->isString()) {
+        error =
+            copy("config: every \"projects\" entry needs a \"project\" tsconfig path");
+        return false;
+      }
+      entry.project = copy(proj->asString());
+      m_projects.append(std::move(entry));
+    }
+  }
   if (const JsonValue *ignores = root->get("ignores")) {
     for (int i = 0; i < ignores->size(); i++) {
       m_ignores.append(copy(ignores->at(i)->asString()));
@@ -362,6 +401,38 @@ void Config::resolve(string_view filename, ResolvedConfig &out) const
   for (const Entry &entry : m_cliEntries) {
     apply(entry);
   }
+}
+
+string Config::projectFor(string_view filename) const
+{
+  // A tsconfig path is anchored at the config directory unless it is absolute.
+  auto anchored = [&](const string &project) -> string {
+    string_view p = view(project);
+    bool absolute = p.size() >= 1 && (p[0] == '/' || (p.size() >= 2 && p[1] == ':'));
+    if (absolute || m_baseDir.size() == 0) {
+      return copy(p);
+    }
+    string out = m_baseDir;
+    if (out.size() != 0 && out[int(out.size()) - 1] != '/') {
+      out += '/';
+    }
+    append(out, p);
+    return out;
+  };
+  string relative;
+  relativePath(filename, relative);
+  string_view path = view(relative);
+  for (const ProjectMap &entry : m_projects) {
+    for (const string &pattern : entry.files) {
+      if (globMatch(view(pattern), path, kPathCaseInsensitive)) {
+        return anchored(entry.project);
+      }
+    }
+  }
+  if (m_project.size() != 0) {
+    return anchored(m_project);
+  }
+  return string();
 }
 
 } // namespace fastlint::lint

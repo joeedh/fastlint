@@ -177,6 +177,10 @@ lint/directives.h reads every comment in the grammar tree's trivia.
     { "files": ["**/*.test.ts"], "rules": { "no-debugger": "off" } }
   ],
   "ignores": ["dist/**"],
+  "project": "tsconfig.json",
+  "projects": [
+    { "files": "packages/web/**", "project": "packages/web/tsconfig.json" }
+  ],
   "reportUnusedDisableDirectives": "warn",
   "eslintDirectives": true
 }
@@ -196,6 +200,13 @@ lint/directives.h reads every comment in the grammar tree's trivia.
   matched, and on Windows the match ignores case, as the filesystem does; it
   stays case-sensitive elsewhere.
 - `ignores` globs skip files entirely.
+- `project` names the tsconfig the type-aware rules use for files no
+  `projects` glob claims. `projects` is a list of `{files, project}`, each
+  routing the files its glob matches to a tsconfig; the first entry that
+  matches wins. Both tsconfig paths are relative to the config file's
+  directory, or absolute. The `--project` flag overrides both. When the
+  config names neither, the tsconfig is discovered per file (see Command
+  line).
 - Unknown rule names are not a config error. They are reported once per
   linted file, as ESLint reports them.
 - `--rule name:severity` on the command line layers on top of everything.
@@ -248,15 +259,19 @@ fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
 ```
 
 - With no config file and no `--rule`, the recommended preset applies.
-- `--project` starts one `tsc --api` server over the tsconfig and runs the
-  type-aware rules. Without it, the command defaults to a `tsconfig.json`
-  beside the config file (the one `--config` names or discovery found); the
-  type-aware rules are skipped only when neither is present. The default is
-  best-effort: a server that fails to start there disables the type-aware
-  rules with a note on stderr, whereas an explicit `--project` that fails is
-  an error. A linted file the project does not include is typed in the
-  server's inferred project. A file that cannot be typed is reported on
-  stderr and gets the syntactic rules only.
+- Type-aware rules need the tsconfig that owns each file. One `tsc --api`
+  server runs, opening every tsconfig the run resolves in a single snapshot,
+  and each file binds to its own. The tsconfig for a file is resolved in
+  order: `--project` forces one tsconfig for every file; otherwise the
+  config's `projects`/`project` decides; otherwise the nearest `tsconfig.json`
+  walking up from the file's directory; otherwise a `tsconfig.json` beside the
+  config file. A file that resolves to none gets the syntactic rules only,
+  which is not a degraded run.
+- Discovery is best-effort: a server that fails to start disables the
+  type-aware rules with a note on stderr, whereas an explicit `--project` that
+  fails is an error. A file whose resolved tsconfig does not include it cannot
+  be typed; that is reported on stderr and the file gets the syntactic rules
+  only.
 - `--type-stats` prints the type queries of the run on stderr: node cache
   hits and misses, nodes without a server counterpart, type, child and
   symbol fetches, and the RPC call and byte counts. It then lists per-rule
@@ -282,8 +297,8 @@ running the rules when nothing that affects the result has changed
 - A file is fresh when its content hash, its import-closure hash (the resolved
   relative imports, via `loadClosure`) and an environment hash all match the
   stored record. The environment hash folds in the fastlint version, the
-  config, the tsconfig and `pnpm-lock.yaml`, so any of them changing re-lints
-  every file.
+  config, every tsconfig the run resolved and `pnpm-lock.yaml`, so any of them
+  changing re-lints every file.
 - One JSON payload per file holds every diagnostic (lint/result_cache.h),
   keyed by a sentinel rule name. A JSON run stores its fix ranges under a
   separate key, so `--format json` and the other formats each cache.

@@ -189,11 +189,29 @@ std::string cacheDirFor(const char *given, bool noCache, bool fix)
 
 /** Hashes everything beyond a file's own content and closure that changes its
  * diagnostics: the fastlint version, the config, the tsconfig and the lockfile. */
+/** The nearest `tsconfig.json` at `dir` or an ancestor, or empty when none exists. */
+std::string tsconfigUpwards(const std::filesystem::path &dir)
+{
+  std::filesystem::path at = dir;
+  for (;;) {
+    std::filesystem::path candidate = at / "tsconfig.json";
+    std::error_code ec;
+    if (std::filesystem::is_regular_file(candidate, ec)) {
+      return candidate.generic_string();
+    }
+    std::filesystem::path parent = at.parent_path();
+    if (parent == at || parent.empty()) {
+      return std::string();
+    }
+    at = parent;
+  }
+}
+
 uint64_t environmentHash(const string &configPath,
                          bool noConfig,
                          bool recommendedFallback,
                          const Vector<std::string> &ruleFlags,
-                         const char *project)
+                         const Vector<std::string> &projects)
 {
   std::string bytes = fastlint::version();
   bytes += noConfig ? "\nno-config" : "";
@@ -209,7 +227,7 @@ uint64_t environmentHash(const string &configPath,
     bytes += '\n';
     bytes += flag;
   }
-  if (project) {
+  for (const std::string &project : projects) {
     std::string text;
     if (readFile(std::filesystem::path(project), text)) {
       bytes += '\n';
@@ -337,38 +355,80 @@ int lintCommand(int argc, char **argv)
   options.fix = fix;
   // The JSON output carries an ESLint-shaped fix range per fixable problem.
   options.fixEdits = json && !fix;
-  // Type-aware rules need a project. Without `--project`, default to a
-  // tsconfig.json beside the config file; that default is best-effort, so a
-  // failure to start only disables the type-aware rules, unlike an explicit
+  // Type-aware rules need the tsconfig that owns each file. `--project` forces
+  // one for every file; otherwise the config's `projects`/`project` decides,
+  // then the nearest tsconfig.json walking up from the file, then a
+  // tsconfig.json beside the config file. Discovery is best-effort, so a server
+  // that will not start only disables the type-aware rules, unlike an explicit
   // `--project`, which is an error.
   bool projectExplicit = project != nullptr;
   std::string projectDefault;
-  if (!project && found.size() > 0) {
+  if (found.size() > 0) {
     std::filesystem::path sibling =
         std::filesystem::path(std::string(found.c_str(), found.size())).parent_path() /
         "tsconfig.json";
     std::error_code ec;
-    if (std::filesystem::exists(sibling, ec)) {
+    if (std::filesystem::is_regular_file(sibling, ec)) {
       projectDefault = sibling.generic_string();
-      project = projectDefault.c_str();
+    }
+  }
+  Vector<std::string> perFileProject;
+  Vector<std::string> uniqueProjects;
+  for (const std::filesystem::path &path : files) {
+    std::string name = path.generic_string();
+    std::string proj;
+    if (projectExplicit) {
+      proj = project;
+    } else {
+      string configProj = config.projectFor(std::string_view(name));
+      if (configProj.size() > 0) {
+        proj.assign(configProj.c_str(), configProj.size());
+      } else {
+        std::error_code ec;
+        proj = tsconfigUpwards(std::filesystem::absolute(path, ec).parent_path());
+        if (proj.empty()) {
+          proj = projectDefault;
+        }
+      }
+    }
+    perFileProject.append(proj);
+    if (!proj.empty()) {
+      bool seen = false;
+      for (const std::string &u : uniqueProjects) {
+        if (u == proj) {
+          seen = true;
+          break;
+        }
+      }
+      if (!seen) {
+        uniqueProjects.append(proj);
+      }
     }
   }
   types::ProjectTypes types;
   Map<const lint::RuleDef *, types::FactsStats> ruleStats;
-  if (project) {
+  if (!uniqueProjects.isEmpty()) {
+    Vector<string> list;
+    for (const std::string &p : uniqueProjects) {
+      list.append(string(p.c_str()));
+    }
     string typeError;
-    if (types.open(project, typeError)) {
+    if (types.open(list, typeError)) {
       options.types = &types;
       if (typeStats) {
         options.ruleStats = &ruleStats;
+      }
+      for (int i = 0; i < int(files.size()); i++) {
+        if (!perFileProject[i].empty()) {
+          types.setFileProject(files[i].generic_string(), perFileProject[i]);
+        }
       }
     } else if (projectExplicit) {
       std::fprintf(
           stderr, "%s: cannot start the type server: %s\n", project, typeError.c_str());
       return 2;
     } else {
-      std::fprintf(
-          stderr, "%s: type-aware rules disabled (%s)\n", project, typeError.c_str());
+      std::fprintf(stderr, "type-aware rules disabled (%s)\n", typeError.c_str());
     }
   }
   // The rule-result cache replays unchanged files; `--fix` and JSON fix ranges
@@ -379,7 +439,7 @@ int lintCommand(int argc, char **argv)
     std::error_code ec;
     std::filesystem::create_directories(cacheDirPath, ec);
     uint64_t env =
-        environmentHash(found, noConfig, recommendedFallback, ruleFlags, project);
+        environmentHash(found, noConfig, recommendedFallback, ruleFlags, uniqueProjects);
     cache.open(cacheDirPath + "/lint.db", env, files);
   }
   const char *cacheKey = options.fixEdits ? "@lint+fix" : "@lint";

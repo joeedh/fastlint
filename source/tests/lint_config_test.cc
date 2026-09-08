@@ -75,6 +75,11 @@ struct Fixture {
     const RuleSetting *setting = resolved.find(&rule);
     return setting ? Config::severityName(setting->severity) : "unset";
   }
+
+  std::string projectOf(const char *file)
+  {
+    return sv(config.projectFor(file));
+  }
 };
 
 } // namespace
@@ -192,6 +197,47 @@ TEST(lint_config, command_line_rules_win)
   f.config.setRule(&kOptional, Severity::Error);
   CHECK_EQ(std::string(f.severityOf("a.ts", rules::kNoDebugger)), "warn");
   CHECK_EQ(std::string(f.severityOf("a.ts", kOptional)), "error");
+}
+
+TEST(lint_config, projects_map_globs_to_tsconfigs)
+{
+  Fixture f(
+      "{\"project\": \"tsconfig.json\","
+      " \"projects\": ["
+      "  {\"files\": \"packages/web/**\", \"project\": \"packages/web/tsconfig.json\"},"
+      "  {\"files\": [\"packages/node/**\"], \"project\": "
+      "\"packages/node/tsconfig.json\"}"
+      " ]}");
+  REQUIRE(f.ok);
+  // A `projects` glob wins and its tsconfig is anchored at the base directory.
+  CHECK_EQ(f.projectOf("C:/project/packages/web/src/a.ts"),
+           "C:/project/packages/web/tsconfig.json");
+  CHECK_EQ(f.projectOf("C:/project/packages/node/b.ts"),
+           "C:/project/packages/node/tsconfig.json");
+  // A file no glob claims falls back to the bare `project`.
+  CHECK_EQ(f.projectOf("C:/project/tools/c.ts"), "C:/project/tsconfig.json");
+}
+
+TEST(lint_config, project_absolute_path_is_left_alone)
+{
+  Fixture f("{\"project\": \"C:/elsewhere/tsconfig.json\"}");
+  REQUIRE(f.ok);
+  CHECK_EQ(f.projectOf("C:/project/a.ts"), "C:/elsewhere/tsconfig.json");
+}
+
+TEST(lint_config, no_project_configured_returns_empty)
+{
+  Fixture f("{\"rules\": {}}");
+  REQUIRE(f.ok);
+  CHECK(f.projectOf("C:/project/a.ts").empty());
+}
+
+TEST(lint_config, rejects_malformed_project_settings)
+{
+  CHECK(!Fixture("{\"project\": 5}").ok);
+  CHECK(!Fixture("{\"projects\": {}}").ok);
+  CHECK(!Fixture("{\"projects\": [{\"project\": \"tsconfig.json\"}]}").ok);
+  CHECK(!Fixture("{\"projects\": [{\"files\": \"src/**\"}]}").ok);
 }
 
 TEST(lint_config, rejects_malformed_documents)

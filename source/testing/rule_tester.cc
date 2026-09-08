@@ -217,7 +217,10 @@ void runTypedRuleTests(const RuleDef &rule,
   }
   types::ProjectTypes types;
   litestl::util::string error;
-  if (!types.open(projectDir(project) + "/tsconfig.json", error)) {
+  std::string tsconfig = projectDir(project) + "/tsconfig.json";
+  litestl::util::Vector<litestl::util::string> tsconfigs;
+  tsconfigs.append(litestl::util::string(tsconfig.c_str()));
+  if (!types.open(tsconfigs, error)) {
     INFO("type server: {}", error.c_str());
     CHECK(false);
     return;
@@ -228,12 +231,16 @@ void runTypedRuleTests(const RuleDef &rule,
   int index = 0;
   for (const ValidCase &c : valid) {
     INFO("valid[{}]", index++);
-    checkValid(rule, registry, c, typedFilename(project, c.filename), &types);
+    std::string filename = typedFilename(project, c.filename);
+    types.setFileProject(filename, tsconfig);
+    checkValid(rule, registry, c, filename, &types);
   }
   index = 0;
   for (const InvalidCase &c : invalid) {
     INFO("invalid[{}]", index++);
-    checkInvalid(rule, registry, c, typedFilename(project, c.filename), &types);
+    std::string filename = typedFilename(project, c.filename);
+    types.setFileProject(filename, tsconfig);
+    checkInvalid(rule, registry, c, filename, &types);
   }
 }
 
