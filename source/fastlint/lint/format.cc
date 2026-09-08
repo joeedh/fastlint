@@ -201,6 +201,17 @@ void formatJson(span<const FileResult> results, string &out)
           w.beginObject();
           w.member("messageId", s.messageId);
           w.member("desc", view(s.message));
+          if (s.hasFix) {
+            w.key("fix");
+            w.beginObject();
+            w.key("range");
+            w.beginArray();
+            w.value(s.fixStart);
+            w.value(s.fixEnd);
+            w.endArray();
+            w.member("text", view(s.fixText));
+            w.endObject();
+          }
           w.endObject();
         }
         w.endArray();

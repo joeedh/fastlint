@@ -48,6 +48,18 @@ TEST(lint_result_cache, round_trips_a_result)
   for (char c : std::string("")) {
     a.fixText += c;
   }
+  SuggestionResult suggestion;
+  suggestion.messageId = "unexpected";
+  for (char c : std::string("Remove the statement.")) {
+    suggestion.message += c;
+  }
+  suggestion.hasFix = true;
+  suggestion.fixStart = 3;
+  suggestion.fixEnd = 7;
+  for (char c : std::string("x")) {
+    suggestion.fixText += c;
+  }
+  a.suggestions.append(std::move(suggestion));
   original.diagnostics.append(std::move(a));
 
   Diagnostic b;
@@ -86,6 +98,14 @@ TEST(lint_result_cache, round_trips_a_result)
   CHECK(ra.hasFix);
   CHECK_EQ(int(ra.fixStart), 0);
   CHECK_EQ(int(ra.fixEnd), 10);
+  REQUIRE_EQ(int(ra.suggestions.size()), 1);
+  const SuggestionResult &rs = ra.suggestions[0];
+  CHECK_EQ(std::string(rs.messageId ? rs.messageId : ""), "unexpected");
+  CHECK_EQ(sv(rs.message), "Remove the statement.");
+  CHECK(rs.hasFix);
+  CHECK_EQ(int(rs.fixStart), 3);
+  CHECK_EQ(int(rs.fixEnd), 7);
+  CHECK_EQ(sv(rs.fixText), "x");
 
   const Diagnostic &rb = restored.diagnostics[1];
   CHECK(rb.rule == nullptr);

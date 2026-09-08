@@ -26,6 +26,14 @@ namespace fastlint::lint {
 struct SuggestionResult {
   const char *messageId;
   string message;
+  /** The suggestion's edit, computed on demand like a diagnostic's `fix`
+   * (`LintOptions::fixEdits`). An editor applies it; `--fix` never does.
+   * `fixStart`/`fixEnd` are UTF-16 code-unit offsets and `fixText` replaces
+   * that span. */
+  bool hasFix = false;
+  uint32_t fixStart = 0;
+  uint32_t fixEnd = 0;
+  string fixText;
 };
 
 struct Diagnostic {
@@ -114,7 +122,9 @@ public:
   /**
    * Lints an already lowered file. `diagnostics` are the parser's; when any
    * exist they are reported and rules do not run. Rule fixes for problems
-   * that survive the directives are appended to `fixes` when given.
+   * that survive the directives are appended to `fixes` when given; the
+   * suggestion fixes of those problems go to `suggestionFixes`, in diagnostic
+   * order then per-diagnostic suggestion order.
    */
   void lintFile(const syntax::GrammarTree &tree,
                 const syntax::Diagnostics &diagnostics,
@@ -125,7 +135,8 @@ public:
                 types::TypeFacts *types,
                 Vector<ast::Fix> *fixes,
                 FileResult &out,
-                Map<const RuleDef *, types::FactsStats> *ruleStats = nullptr);
+                Map<const RuleDef *, types::FactsStats> *ruleStats = nullptr,
+                Vector<ast::Fix> *suggestionFixes = nullptr);
 
 private:
   const Registry &m_registry;

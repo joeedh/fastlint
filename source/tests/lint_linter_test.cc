@@ -263,6 +263,41 @@ TEST(lint_linter, json_fix_ranges)
   CHECK(applied.find("y;") != std::string::npos);
 }
 
+TEST(lint_linter, json_suggestion_fix_ranges)
+{
+  Registry registry;
+  registry.add(rules::kEqeqeq);
+  Config config;
+  string error;
+  REQUIRE(config.parse("{\"rules\": {\"eqeqeq\": \"error\"}}", "", registry, error));
+  Linter linter(registry, config);
+  LintOptions options;
+  options.fixEdits = true;
+  FileResult result;
+  // Unrelated operands make eqeqeq offer the swap as a suggestion, not a fix.
+  const char *src = "if (a == b) {}\n";
+  linter.lintSource(src, "a.ts", options, result);
+
+  const SuggestionResult *suggestion = nullptr;
+  for (const Diagnostic &d : result.diagnostics) {
+    CHECK(!d.hasFix);
+    for (const SuggestionResult &s : d.suggestions) {
+      if (s.hasFix) {
+        suggestion = &s;
+      }
+    }
+  }
+  REQUIRE(suggestion != nullptr);
+  std::string source(src);
+  std::string applied =
+      source.substr(0, suggestion->fixStart) +
+      std::string(suggestion->fixText.c_str(), suggestion->fixText.size()) +
+      source.substr(suggestion->fixEnd);
+  // Applying the reported range and text upgrades `==` to `===`.
+  CHECK(applied.find("===") != std::string::npos);
+  CHECK(applied.find("==") == applied.find("==="));
+}
+
 TEST(lint_linter, sarif_output)
 {
   Harness h;

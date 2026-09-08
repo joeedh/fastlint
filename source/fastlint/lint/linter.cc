@@ -244,7 +244,8 @@ void Linter::lintFile(const syntax::GrammarTree &tree,
                       types::TypeFacts *types,
                       Vector<ast::Fix> *fixes,
                       FileResult &out,
-                      Map<const RuleDef *, types::FactsStats> *ruleStats)
+                      Map<const RuleDef *, types::FactsStats> *ruleStats,
+                      Vector<ast::Fix> *suggestionFixes)
 {
   out.clear();
   out.filename = copy(filename);
@@ -332,6 +333,7 @@ void Linter::lintFile(const syntax::GrammarTree &tree,
     Diagnostic diagnostic;
     ast::Node *target;
     FixFn fix;
+    Vector<FixFn, 1> suggestionFixes;
   };
   Vector<Pending> pending;
   for (Active &a : active) {
@@ -355,7 +357,8 @@ void Linter::lintFile(const syntax::GrammarTree &tree,
         append(p.diagnostic.message, "'.");
       }
       for (Suggestion &s : r.suggestions) {
-        SuggestionResult result{s.messageId, {}};
+        SuggestionResult result;
+        result.messageId = s.messageId;
         const Message *text = findMessage(rule, s.messageId);
         if (text) {
           interpolate(text->text,
@@ -363,6 +366,7 @@ void Linter::lintFile(const syntax::GrammarTree &tree,
                       result.message);
         }
         p.diagnostic.suggestions.append(std::move(result));
+        p.suggestionFixes.append(std::move(s.fix));
       }
       locate(tree, p.diagnostic);
       p.target = r.node;
@@ -388,6 +392,13 @@ void Linter::lintFile(const syntax::GrammarTree &tree,
     }
     if (fixes && p.fix && p.target) {
       fixes->append(ast::Fix{p.target, std::move(p.fix)});
+    }
+    // Every suggestion contributes an entry, empty fix included, so the k-th
+    // collected fix matches the k-th suggestion the diagnostics carry.
+    if (suggestionFixes && p.target) {
+      for (FixFn &sfix : p.suggestionFixes) {
+        suggestionFixes->append(ast::Fix{p.target, std::move(sfix)});
+      }
     }
     out.diagnostics.append(std::move(p.diagnostic));
   }
@@ -488,10 +499,16 @@ void Linter::lintSource(string_view source,
     lintPass(tree, diagnostics, file, bindings, fixes);
   };
 
-  // Applies one fixable diagnostic's fix to a fresh parse of the original and
-  // diffs, so the JSON output can carry an ESLint-shaped `{range, text}`. The
-  // k-th surviving fixable diagnostic matches the k-th collected fix.
-  auto singleFixEdit = [&](Diagnostic &d, int fixIndex) {
+  // Applies one collected fix to a fresh parse of the original and diffs, so
+  // the JSON output can carry an ESLint-shaped `{range, text}`. `fromSuggestions`
+  // picks the suggestion-fix list over the diagnostic-fix list; the k-th entry
+  // of either matches the k-th surviving fix of that kind, in diagnostic order.
+  auto singleEdit = [&](bool fromSuggestions,
+                        int index,
+                        bool &hasFix,
+                        uint32_t &fixStart,
+                        uint32_t &fixEnd,
+                        string &fixText) {
     syntax::Diagnostics diagnostics;
     syntax::GrammarTree tree;
     syntax::Parser parser(source, parserOptions, diagnostics);
@@ -501,20 +518,32 @@ void Linter::lintSource(string_view source,
     ast::Bindings bindings;
     ast::bind(file, bindings);
     Vector<ast::Fix> fixes;
+    Vector<ast::Fix> suggestionFixes;
     FileResult scratch;
     types::TypeFacts *facts = nullptr;
     if (options.types) {
       string error;
       facts = options.types->beginFile(file, filename, tree.source(), error);
     }
-    lintFile(tree, diagnostics, file, bindings, filename, config, facts, &fixes, scratch);
+    lintFile(tree,
+             diagnostics,
+             file,
+             bindings,
+             filename,
+             config,
+             facts,
+             &fixes,
+             scratch,
+             nullptr,
+             &suggestionFixes);
     if (options.types) {
       options.types->endFile();
     }
-    if (fixIndex >= int(fixes.size())) {
+    Vector<ast::Fix> &chosen = fromSuggestions ? suggestionFixes : fixes;
+    if (index >= int(chosen.size()) || !chosen[index].apply) {
       return;
     }
-    ast::applyFixes(file, span<ast::Fix>(&fixes[fixIndex], 1));
+    ast::applyFixes(file, span<ast::Fix>(&chosen[index], 1));
     string printed;
     ast::printAst(file, printed);
     string_view a = source;
@@ -530,19 +559,23 @@ void Linter::lintSource(string_view source,
     {
       suffix++;
     }
-    d.hasFix = true;
-    d.fixStart = utf16Offset(source, uint32_t(prefix));
-    d.fixEnd = utf16Offset(source, uint32_t(a.size() - suffix));
-    d.fixText = copy(b.substr(prefix, b.size() - suffix - prefix));
+    hasFix = true;
+    fixStart = utf16Offset(source, uint32_t(prefix));
+    fixEnd = utf16Offset(source, uint32_t(a.size() - suffix));
+    fixText = copy(b.substr(prefix, b.size() - suffix - prefix));
   };
 
   if (!options.fix) {
     lintText(source, nullptr);
     if (options.fixEdits) {
       int fixIndex = 0;
+      int suggestionIndex = 0;
       for (Diagnostic &d : out.diagnostics) {
         if (d.fixable) {
-          singleFixEdit(d, fixIndex++);
+          singleEdit(false, fixIndex++, d.hasFix, d.fixStart, d.fixEnd, d.fixText);
+        }
+        for (SuggestionResult &s : d.suggestions) {
+          singleEdit(true, suggestionIndex++, s.hasFix, s.fixStart, s.fixEnd, s.fixText);
         }
       }
     }

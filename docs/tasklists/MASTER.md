@@ -738,7 +738,11 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     Keywords: `type`, `enum`, `properties`, `additionalProperties`, `required`,
     `items`, `minItems`/`maxItems`, `oneOf`/`anyOf`. Every optioned built-in
     declares one. Data, not C++, so task-7 plugins reuse it.
-  - [ ] Suggestions are reported but nothing applies them (editor integration).
+  - [x] Suggestions carry an applicable edit: the JSON output gives each
+    suggestion a `fix: {range, text}` in ESLint's shape (`SuggestionResult`
+    fix fields), computed like a diagnostic's `fix` by applying the suggestion
+    alone and diffing, and cached with the result. `--fix` still never applies
+    a suggestion; an editor applies the range and text.
 - [x] Dispatch: single tree walk, per-kind callback lists — no per-rule
   traversal. One `ast::Dispatcher` over every enabled rule's listeners.
 - [x] Config: `fastlint.config.json`; severity; per-rule options;
@@ -921,8 +925,10 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     `noOverlapBooleanExpression`), the optional-chain check
     (`neverOptionalChain`), the array-predicate callback checks and the
     type-predicate check.
-  - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
-    output is untested (6.1 open item).
+  - [x] A typed rule's suggestions carry a `fix: {range, text}` in the JSON
+    output the same as a syntactic rule's, since the edit is computed from the
+    already-typed reprint (the 6.1 suggestion-application item). The rule tester
+    still does not assert on suggestions.
 - [x] Each rule's type queries logged so the cache working set is measured.
   - [x] `--type-stats` prints the totals of a run.
   - [x] Per-rule attribution: the dispatcher carries an owner token per

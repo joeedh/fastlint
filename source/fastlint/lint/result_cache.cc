@@ -80,6 +80,14 @@ void serializeResult(const FileResult &result, string &out)
         w.beginObject();
         w.member("mid", s.messageId ? s.messageId : "");
         w.member("desc", view(s.message));
+        if (s.hasFix) {
+          w.key("fix");
+          w.beginObject();
+          w.member("a", s.fixStart);
+          w.member("b", s.fixEnd);
+          w.member("t", view(s.fixText));
+          w.endObject();
+        }
         w.endObject();
       }
       w.endArray();
@@ -143,6 +151,12 @@ bool deserializeResult(string_view payload, const Registry &registry, FileResult
         const JsonValue *s = suggestions->at(j);
         SuggestionResult result{staticMessageId(d.rule, s->getString("mid")), {}};
         append(result.message, s->getString("desc"));
+        if (const JsonValue *fix = s->get("fix")) {
+          result.hasFix = true;
+          result.fixStart = fix->getUint("a");
+          result.fixEnd = fix->getUint("b");
+          append(result.fixText, fix->getString("t"));
+        }
         d.suggestions.append(std::move(result));
       }
     }

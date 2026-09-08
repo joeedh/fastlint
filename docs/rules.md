@@ -115,7 +115,9 @@ fix target. The linter turns each surviving report's fix into an `ast::Fix`
 and appends it to the pass's fix list, so the fixpoint driver applies them in
 source order with its usual deferral (docs/ast-design.md "Fixpoint
 driver"). Fixes of suppressed reports are never applied. Suggestions carry
-fixes too but nothing applies them yet; they are meant for an editor.
+fixes too; `--fix` never applies them, but the JSON output carries each one's
+`{range, text}` edit so an editor can, computed the same way as a
+diagnostic's `fix` (see below).
 
 `Linter::lintSource` with `LintOptions::fix` wraps `lintFile` in
 `runToFixpoint`: each pass parses, lowers, binds and lints the current text,
@@ -219,7 +221,10 @@ lint/format.h has three formatters over `FileResult`s.
   tree edits, so each one is applied alone to the original and the printed
   result is diffed to the range and text (`LintOptions::fixEdits`); a fix that
   touches several places collapses to the one span that covers them, which is
-  still a valid single edit.
+  still a valid single edit. Each entry of `suggestions` is
+  `{messageId, desc}` and, computed the same way, a `fix` of the same shape
+  when the suggestion carries one, so an editor applies a chosen suggestion by
+  the range and text without re-running the linter.
 - `formatSarif` writes a SARIF 2.1.0 log for CI and code-scanning tools: one
   `run` whose `tool.driver` names fastlint, its version and every reported
   rule once (`id`, `helpUri`, `shortDescription`), and whose `results` carry
@@ -307,7 +312,8 @@ test::runRuleTests(
 - `options` is a JSON array text whose elements follow the severity.
 - The rule's message ids are checked against its `messages` table, so a
   typo in either fails the test.
-- Suggestions are not checked; nothing applies them yet.
+- The rule tester does not check a report's suggestions, only its message and
+  fix output.
 
 A type-aware rule uses `runTypedRuleTests` with the same case shapes, from
 a test tagged `integration`. It starts one server over a fixture project
