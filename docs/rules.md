@@ -213,8 +213,13 @@ lint/format.h has three formatters over `FileResult`s.
   fixableWarningCount}` with `output` when `--fix` changed the text. Each
   message has `ruleId`, `severity` (2 error, 1 warning), `message`, `line`,
   `column`, `endLine`, `endColumn`, `messageId`, and `fatal`, `fixable` and
-  `suggestions` when set. The `fix` object ESLint emits (a text range and
-  replacement) is absent: our fixes are tree edits, not text edits.
+  `suggestions` when set. A fixable message also carries a `fix` object,
+  `{range: [start, end], text}`, in ESLint's shape: `start` and `end` are
+  UTF-16 offsets into the source and `text` replaces that span. Our fixes are
+  tree edits, so each one is applied alone to the original and the printed
+  result is diffed to the range and text (`LintOptions::fixEdits`); a fix that
+  touches several places collapses to the one span that covers them, which is
+  still a valid single edit.
 - `formatSarif` writes a SARIF 2.1.0 log for CI and code-scanning tools: one
   `run` whose `tool.driver` names fastlint, its version and every reported
   rule once (`id`, `helpUri`, `shortDescription`), and whose `results` carry

@@ -236,6 +236,33 @@ TEST(lint_linter, pretty_and_json_output)
   SNAPSHOT(json);
 }
 
+TEST(lint_linter, json_fix_ranges)
+{
+  Harness h("{\"rules\": {\"no-debugger\": \"error\"}}");
+  Linter linter(h.registry, h.config);
+  LintOptions options;
+  options.fixEdits = true;
+  FileResult result;
+  const char *src = "x;\ndebugger;\ny;\n";
+  linter.lintSource(src, "a.ts", options, result);
+
+  const Diagnostic *fixed = nullptr;
+  for (const Diagnostic &d : result.diagnostics) {
+    if (d.hasFix) {
+      fixed = &d;
+    }
+  }
+  REQUIRE(fixed != nullptr);
+  std::string source(src);
+  std::string applied = source.substr(0, fixed->fixStart) +
+                        std::string(fixed->fixText.c_str(), fixed->fixText.size()) +
+                        source.substr(fixed->fixEnd);
+  // Applying the reported range and text removes the debugger statement.
+  CHECK(applied.find("debugger") == std::string::npos);
+  CHECK(applied.find("x;") != std::string::npos);
+  CHECK(applied.find("y;") != std::string::npos);
+}
+
 TEST(lint_linter, sarif_output)
 {
   Harness h;

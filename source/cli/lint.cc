@@ -176,6 +176,8 @@ int lintCommand(int argc, char **argv)
   lint::Linter linter(registry, config);
   lint::LintOptions options;
   options.fix = fix;
+  // The JSON output carries an ESLint-shaped fix range per fixable problem.
+  options.fixEdits = json && !fix;
   // Type-aware rules run only with a project; without one they are skipped.
   types::ProjectTypes types;
   Map<const lint::RuleDef *, types::FactsStats> ruleStats;

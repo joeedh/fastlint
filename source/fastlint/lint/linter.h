@@ -47,6 +47,13 @@ struct Diagnostic {
   const char *messageId = nullptr;
   string message;
   Vector<SuggestionResult, 1> suggestions;
+  /** The single fix the rule offers for this problem, computed on demand
+   * (`LintOptions::fixEdits`). `fixStart`/`fixEnd` are UTF-16 code-unit
+   * offsets into the source and `fixText` replaces that span. */
+  bool hasFix = false;
+  uint32_t fixStart = 0;
+  uint32_t fixEnd = 0;
+  string fixText;
 
   /** The rule's name, or empty. */
   string_view ruleId() const
@@ -77,6 +84,9 @@ struct FileResult {
 
 struct LintOptions {
   bool fix = false;
+  /** Without `fix`, compute each fixable diagnostic's `fixStart`/`fixEnd`/
+   * `fixText` by applying that fix alone to the original and diffing. */
+  bool fixEdits = false;
   /** Passes the fixpoint driver may take. */
   int maxPasses = 10;
   /** Null runs the syntactic rules only. */

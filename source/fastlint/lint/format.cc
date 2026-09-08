@@ -183,6 +183,17 @@ void formatJson(span<const FileResult> results, string &out)
       if (d.fixable) {
         w.member("fixable", true);
       }
+      if (d.hasFix) {
+        w.key("fix");
+        w.beginObject();
+        w.key("range");
+        w.beginArray();
+        w.value(d.fixStart);
+        w.value(d.fixEnd);
+        w.endArray();
+        w.member("text", view(d.fixText));
+        w.endObject();
+      }
       if (!d.suggestions.isEmpty()) {
         w.key("suggestions");
         w.beginArray();

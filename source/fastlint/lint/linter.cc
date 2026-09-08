@@ -3,6 +3,7 @@
 #include "fastlint/ast/dispatch.h"
 #include "fastlint/ast/fixpoint.h"
 #include "fastlint/ast/lower.h"
+#include "fastlint/ast/printer.h"
 #include "fastlint/lint/directives.h"
 #include "fastlint/syntax/parser.h"
 #include "fastlint/types/type_source.h"
@@ -89,6 +90,13 @@ uint32_t utf16Column(string_view source, uint32_t lineStart, uint32_t offset)
     }
   }
   return units + 1;
+}
+
+/** UTF-16 code-unit offset of a byte position, as a fix range indexes the
+ * source (a JS string) rather than its bytes. */
+uint32_t utf16Offset(string_view source, uint32_t byteOffset)
+{
+  return utf16Column(source, 0, byteOffset) - 1;
 }
 
 void locate(const syntax::GrammarTree &tree, Diagnostic &d)
@@ -480,8 +488,64 @@ void Linter::lintSource(string_view source,
     lintPass(tree, diagnostics, file, bindings, fixes);
   };
 
+  // Applies one fixable diagnostic's fix to a fresh parse of the original and
+  // diffs, so the JSON output can carry an ESLint-shaped `{range, text}`. The
+  // k-th surviving fixable diagnostic matches the k-th collected fix.
+  auto singleFixEdit = [&](Diagnostic &d, int fixIndex) {
+    syntax::Diagnostics diagnostics;
+    syntax::GrammarTree tree;
+    syntax::Parser parser(source, parserOptions, diagnostics);
+    parser.parseFile(tree);
+    ast::AstFile file(&tree);
+    ast::lower(tree, file);
+    ast::Bindings bindings;
+    ast::bind(file, bindings);
+    Vector<ast::Fix> fixes;
+    FileResult scratch;
+    types::TypeFacts *facts = nullptr;
+    if (options.types) {
+      string error;
+      facts = options.types->beginFile(file, filename, tree.source(), error);
+    }
+    lintFile(tree, diagnostics, file, bindings, filename, config, facts, &fixes, scratch);
+    if (options.types) {
+      options.types->endFile();
+    }
+    if (fixIndex >= int(fixes.size())) {
+      return;
+    }
+    ast::applyFixes(file, span<ast::Fix>(&fixes[fixIndex], 1));
+    string printed;
+    ast::printAst(file, printed);
+    string_view a = source;
+    string_view b = view(printed);
+    size_t prefix = 0;
+    size_t limit = a.size() < b.size() ? a.size() : b.size();
+    while (prefix < limit && a[prefix] == b[prefix]) {
+      prefix++;
+    }
+    size_t suffix = 0;
+    while (suffix < a.size() - prefix && suffix < b.size() - prefix &&
+           a[a.size() - 1 - suffix] == b[b.size() - 1 - suffix])
+    {
+      suffix++;
+    }
+    d.hasFix = true;
+    d.fixStart = utf16Offset(source, uint32_t(prefix));
+    d.fixEnd = utf16Offset(source, uint32_t(a.size() - suffix));
+    d.fixText = copy(b.substr(prefix, b.size() - suffix - prefix));
+  };
+
   if (!options.fix) {
     lintText(source, nullptr);
+    if (options.fixEdits) {
+      int fixIndex = 0;
+      for (Diagnostic &d : out.diagnostics) {
+        if (d.fixable) {
+          singleFixEdit(d, fixIndex++);
+        }
+      }
+    }
     return;
   }
 

@@ -752,8 +752,10 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   - [x] SARIF: `--format sarif` writes a SARIF 2.1.0 log (`formatSarif`),
     driver `rules` list plus `results` with `ruleIndex`, `level` and a
     1-based `physicalLocation` region.
-  - [ ] JSON `fix` ranges (our fixes are tree edits; the text diff would have
-    to be derived from the reprint).
+  - [x] JSON `fix` ranges: a fixable message carries `fix: {range, text}` in
+    ESLint's shape. Each fix is applied alone to the original and the reprint is
+    diffed to a UTF-16 `[start, end]` span and replacement text
+    (`LintOptions::fixEdits`, computed only for `--format json`).
   - [x] Columns count UTF-16 code units, as editor protocols and ESLint's JSON
     do (one per byte for ASCII, so ASCII output is unchanged; one per basic-plane
     code point, two for an astral one).
