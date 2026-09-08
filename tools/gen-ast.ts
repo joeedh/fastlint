@@ -469,22 +469,50 @@ export function emitTables(def: Def): string {
   return out.join("\n");
 }
 
+/** The C ABI's node vocabulary and hash, for a plugin that includes no C++ headers. */
+export function emitPluginHeader(def: Def): string {
+  const out: string[] = [
+    banner("Plugin ABI node vocabulary"),
+    "#pragma once",
+    "",
+    "// Included by a native plugin alongside fastlint/plugin/abi.h. It carries the",
+    "// nodes.def hash the host checks at load and C mirrors of the node kinds and",
+    "// flags, so a plugin needs none of the host's C++ headers.",
+    "",
+    "#include <stdint.h>",
+    "",
+    "/** FNV-1a of nodes.def; `fastlint_plugin_init` refuses a host with a different value. */",
+    `#define FL_NODES_DEF_HASH 0x${def.hash}u`,
+    "",
+    "enum fl_kind {",
+  ];
+  def.nodes.forEach((node, i) => out.push(`  fl_kind_${node.name} = ${i},`));
+  out.push(`  fl_kind_count = ${def.nodes.length}`, "};", "", "enum fl_flag {");
+  def.flags.forEach((flag, bit) => out.push(`  fl_flag_${pascal(flag)} = 1u << ${bit},`));
+  out.push("};", "");
+  return out.join("\n");
+}
+
 export interface GenerateResult {
   /** Files written, or (in check mode) files that would change. */
   changed: string[];
 }
 
+export const pluginDir = path.join(repoRoot, "source", "fastlint", "plugin", "generated");
+
 export function generate(check: boolean): GenerateResult {
   const def = parseDef(fs.readFileSync(defPath, "utf8"));
-  const files: Record<string, string> = {
-    "kinds.h"  : emitKinds(def),
-    "views.h"  : emitViews(def),
-    "tables.cc": emitTables(def),
-  };
+  const files: { dir: string; name: string; content: string }[] = [
+    { dir: outDir, name: "kinds.h", content: emitKinds(def) },
+    { dir: outDir, name: "views.h", content: emitViews(def) },
+    { dir: outDir, name: "tables.cc", content: emitTables(def) },
+    { dir: pluginDir, name: "ast.h", content: emitPluginHeader(def) },
+  ];
   const changed: string[] = [];
   fs.mkdirSync(outDir, { recursive: true });
-  for (const [name, content] of Object.entries(files)) {
-    const file = path.join(outDir, name);
+  fs.mkdirSync(pluginDir, { recursive: true });
+  for (const { dir, name, content } of files) {
+    const file = path.join(dir, name);
     const current = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : undefined;
     if (current === content) continue;
     changed.push(path.relative(repoRoot, file));

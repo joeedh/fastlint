@@ -605,21 +605,26 @@ attachment and the printer contract, and could only return text edits.
 views are the same classes built-in rules use, so a built-in rule is a
 plugin that happens to be statically linked.
 
-- The C header (`fastlint/plugin/ast.h`) declares `fl_node` as an opaque
-  type and accessor functions: `fl_node_kind`, `fl_node_flags`,
-  `fl_node_parent`, `fl_node_child_count`, `fl_node_child`, `fl_node_text`
-  (a `{ptr, len}` UTF-8 pair), plus the fixer, binder and template entry
-  points. Calls across a shared-library boundary are plain calls, so a
-  field read costs a few nanoseconds.
-- The C header also declares the `Node` layout, so `kind`, `flags`,
-  `parent` and the child array can be read directly. The accessor functions
-  remain as the versioned path; a plugin chooses one or the other per
-  build.
-- The C++ views are written against a two-line accessor interface,
-  `ast/access.h`: `child(n, i)`, `kind(n)`, `flags(n)`, `text(n)`. The host
-  implements it with inline reads of `Node`; a plugin implements it with the
-  C functions or the exported layout. The view code is byte-identical on
-  both sides.
+- The stable C ABI lives in `fastlint/plugin/abi.h`: `fl_node` opaque, an
+  `fl_host_api` table of accessor function pointers (`kind`, `flags`,
+  `has_flag`, `data_byte`, `text` as a `{ptr, len}` UTF-8 pair, `parent`,
+  `child_count`, `child`, `tail`), plus `report`/`report_fix`, template
+  compilation and the fixer ops (`fixer_instantiate`, `fixer_replace`). The
+  host passes the table to `fastlint_plugin_init`; calls across the
+  shared-library boundary are plain calls, so a field read costs a few
+  nanoseconds.
+- gen-ast emits `fastlint/plugin/generated/ast.h`, the node vocabulary a
+  plugin needs with no C++ header: the `nodes.def` hash (`FL_NODES_DEF_HASH`)
+  the host checks at load, and C enums for the kinds and flags.
+- The C++ views are written against the accessor interface `ast/access.h`:
+  `kind(n)`, `flags(n)`, `hasFlag(n, f)`, `dataByte(n, i)`, `text(n)`,
+  `parent(n)`, `childCount(n)`, `child(n, i)`, `tail(n, from)`. The host
+  implements it with inline reads of `Node`; a plugin build (`FASTLINT_PLUGIN`)
+  routes each through the host table, with `plugin/plugin_node.h` supplying the
+  litestl-free `Node`, `View`, `span` and `string_view` the views name. The
+  view code that includes it is byte-identical on both sides.
+- Deferred: the direct-`Node`-layout fast path (the accessor table is the only
+  path today), the binder entry points, and a span-based `fixer_build`.
 
 ### Rules for the generated surface
 

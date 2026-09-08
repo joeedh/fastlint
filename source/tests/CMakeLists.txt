@@ -18,6 +18,7 @@ add_fastlint_test(fastlint
     lint_regex_test.cc
     lint_result_cache_test.cc
     parser_test.cc
+    plugin_host_test.cc
     rules_array_type_test.cc
     rules_curly_test.cc
     rules_eqeqeq_test.cc
@@ -65,3 +66,15 @@ add_fastlint_test(fastlint
     fastlint_lib
     fastlint_rule_tester
 )
+
+# The sample native plugin: a shared library built against the plugin headers
+# only, with no litestl and no host library, to prove the C++ views compile
+# plugin-side. The linter test loads it from SAMPLE_PLUGIN_PATH.
+add_library(sample_plugin MODULE plugin_sample/sample.cc)
+target_include_directories(sample_plugin PRIVATE ${CMAKE_SOURCE_DIR}/source)
+target_compile_definitions(sample_plugin PRIVATE FASTLINT_PLUGIN)
+target_link_libraries(sample_plugin PRIVATE fastlint_warnings)
+
+add_dependencies(fastlint_tests sample_plugin)
+target_compile_definitions(fastlint_tests
+  PRIVATE SAMPLE_PLUGIN_PATH="$<TARGET_FILE:sample_plugin>")

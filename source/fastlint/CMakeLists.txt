@@ -58,6 +58,7 @@ set(SRC
   ast/precedence.cc
   ast/printer.cc
   ast/template.cc
+  plugin/host.cc
   syntax/parser/declarations.cc
   syntax/parser/dump.cc
   syntax/parser/expressions.cc
@@ -107,6 +108,10 @@ set(SRC
   ast/generated/views.h
   ast/kind_info.h
   ast/lower.h
+  plugin/abi.h
+  plugin/host.h
+  plugin/plugin_node.h
+  plugin/generated/ast.h
   ast/precedence.h
   ast/printer.h
   ast/template.h

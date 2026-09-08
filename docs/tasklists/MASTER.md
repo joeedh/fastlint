@@ -1016,17 +1016,32 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   arrays so a TS rule does one call, not N.
 
 ### 7.0 Native plugin C ABI
-- [ ] `tools/gen-ast.ts` emits `fastlint/plugin/ast.h`: opaque `fl_node`,
-  accessor functions, the exported `Node` layout, fixer/binder/template
-  entry points, layout version and `nodes.def` hash.
-- [ ] `ast/access.h`: the accessor interface the C++ views are written
-  against, with a host implementation (inline `Node` reads) and a plugin
-  implementation (C functions or exported layout).
-- [ ] `fastlint_plugin_init(const fl_host_api *)` entry point returning a
-  rule table; host-side `LoadLibrary`/`dlopen`, version check, merge into
-  the kind-to-rules dispatch.
-- [ ] Plugin-side build of the C++ views: a sample plugin compiled against
-  the header only, no litestl, exercising a fix through templates.
+- [x] The stable ABI is `fastlint/plugin/abi.h` (hand-written): opaque
+  `fl_node`, the `fl_host_api` accessor table, `report`/`report_fix`, template
+  compilation and the fixer ops, plus the `fl_rule`/`fl_plugin` tables and
+  `FL_ABI_VERSION`. `tools/gen-ast.ts` emits `fastlint/plugin/generated/ast.h`
+  with `FL_NODES_DEF_HASH` and C kind/flag enums, wired into `gen-ast` and
+  `check` through the one `generate()`.
+  - Deferred from the original bullet: the exported `Node` layout for a direct
+    read path (the accessor table is the only path today), and the binder entry
+    points.
+- [x] `ast/access.h` now has both implementations behind `FASTLINT_PLUGIN`:
+  the host reads `Node` inline; a plugin routes each accessor through the
+  `fl_host_api` table, with `plugin/plugin_node.h` supplying the litestl-free
+  `Node`/`View`/`span`/`string_view` the generated views name. The views that
+  include it compile byte-identically on both sides.
+- [x] `fastlint_plugin_init(const fl_host_api *)` returns an `fl_plugin` rule
+  table; `plugin::Plugin::load` does `LoadLibrary`/`dlopen`, checks the ABI
+  version and the `nodes.def` hash, and wraps each `fl_rule` as a `RuleDef`
+  (one shared `create` recovers the `fl_rule` from the `RuleDef`, since `def`
+  is the wrapper's first member) for the linter's registry and its
+  kind-to-rules dispatch. `hostApi()` implements the table over `access::`,
+  `ast::Template` and `ast::Fixer`.
+- [x] Plugin-side build of the C++ views: `source/tests/plugin_sample` is a
+  shared library (CMake `MODULE`) built against the plugin headers only, no
+  litestl, no host library. Its `sample/no-foo` rule reads through the
+  `Identifier` view and fixes `foo` to `bar` through a template. `plugin_host`
+  loads it from disk and asserts the report and the applied fix.
 
 ### 7.2 N-API build
 - [ ] `node make.ts build --napi`: cmake target producing `fastlint.node`;
