@@ -181,7 +181,7 @@ whether the file is ignored.
 
 ## Output
 
-lint/format.h has two formatters over `FileResult`s.
+lint/format.h has three formatters over `FileResult`s.
 
 - `formatPretty` mirrors ESLint's stylish output: the file path, one
   `line:col  severity  message  rule` row per diagnostic with aligned
@@ -194,14 +194,21 @@ lint/format.h has two formatters over `FileResult`s.
   `column`, `endLine`, `endColumn`, `messageId`, and `fatal`, `fixable` and
   `suggestions` when set. The `fix` object ESLint emits (a text range and
   replacement) is absent: our fixes are tree edits, not text edits.
-- SARIF is not written yet.
+- `formatSarif` writes a SARIF 2.1.0 log for CI and code-scanning tools: one
+  `run` whose `tool.driver` names fastlint, its version and every reported
+  rule once (`id`, `helpUri`, `shortDescription`), and whose `results` carry
+  each diagnostic's `ruleId`, `ruleIndex` into that list, `level` (error,
+  warning or note), `message.text`, and a `physicalLocation` with the file
+  `uri` and a 1-based `region` (`startLine`, `startColumn`, `endLine`,
+  `endColumn`). A syntax-error diagnostic carries no rule, so it drops `ruleId`
+  and `ruleIndex`.
 
 ## Command line
 
 ```
 fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
               [--project <tsconfig>] [--type-stats] [--fix]
-              [--format pretty|json] [--color|--no-color] [--quiet]
+              [--format pretty|json|sarif] [--color|--no-color] [--quiet]
               [--max-warnings N] <file|dir>...
 ```
 
@@ -217,6 +224,8 @@ fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
   working set can be measured. A rule's count is the gain in the shared stats
   across its listener, so the per-rule totals sum to the run totals. Rules that
   asked nothing of the type server are omitted.
+- `--format` selects the output: `pretty` (the default stylish listing),
+  `json` (the ESLint-shaped array) or `sarif` (a SARIF 2.1.0 log).
 - `--fix` writes the fixed text back and prints `fixed N problems`.
 - `--quiet` drops warnings from the output and the counts.
 - Exit code 1 when any error remains (or warnings exceed `--max-warnings`),

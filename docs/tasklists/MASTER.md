@@ -745,7 +745,9 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   `// eslint-disable*` compatibility (decided: accepted as aliases, see
   docs/STRATEGY.md). Unused directives reported (`reportUnusedDisableDirectives`).
 - [x] Output: pretty terminal (stylish-shaped), `--format json` (ESLint-shaped).
-  - [ ] SARIF.
+  - [x] SARIF: `--format sarif` writes a SARIF 2.1.0 log (`formatSarif`),
+    driver `rules` list plus `results` with `ruleIndex`, `level` and a
+    1-based `physicalLocation` region.
   - [ ] JSON `fix` ranges (our fixes are tree edits; the text diff would have
     to be derived from the reprint).
   - [x] Columns count UTF-16 code units, as editor protocols and ESLint's JSON

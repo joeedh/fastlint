@@ -236,6 +236,17 @@ TEST(lint_linter, pretty_and_json_output)
   SNAPSHOT(json);
 }
 
+TEST(lint_linter, sarif_output)
+{
+  Harness h;
+  Vector<FileResult> results;
+  results.append(h.lint("debugger;\neval('x');\n", "src/a.ts"));
+  results.append(h.lint("let ok = 1;\n", "src/b.ts"));
+  string sarif;
+  formatSarif(span<const FileResult>(results.data(), results.size()), sarif);
+  SNAPSHOT(sarif);
+}
+
 TEST(lint_linter, builtin_registry_resolves_plugin_prefixes)
 {
   const Registry &registry = builtinRegistry();

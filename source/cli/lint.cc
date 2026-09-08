@@ -42,7 +42,7 @@ void usage()
   std::fprintf(
       stderr,
       "usage: fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]... "
-      "[--fix] [--format pretty|json] [--color|--no-color] [--quiet] "
+      "[--fix] [--format pretty|json|sarif] [--color|--no-color] [--quiet] "
       "[--max-warnings N] <file|dir>...\n");
 }
 
@@ -82,6 +82,7 @@ int lintCommand(int argc, char **argv)
   bool noConfig = false;
   bool fix = false;
   bool json = false;
+  bool sarif = false;
   bool quiet = false;
   const char *project = nullptr;
   bool typeStats = false;
@@ -106,6 +107,8 @@ int lintCommand(int argc, char **argv)
       const char *format = argv[++i];
       if (std::strcmp(format, "json") == 0) {
         json = true;
+      } else if (std::strcmp(format, "sarif") == 0) {
+        sarif = true;
       } else if (std::strcmp(format, "pretty") != 0 &&
                  std::strcmp(format, "stylish") != 0)
       {
@@ -234,6 +237,8 @@ int lintCommand(int argc, char **argv)
   string out;
   if (json) {
     lint::formatJson(span<const lint::FileResult>(results.data(), results.size()), out);
+  } else if (sarif) {
+    lint::formatSarif(span<const lint::FileResult>(results.data(), results.size()), out);
   } else {
     lint::FormatOptions format;
     format.color =

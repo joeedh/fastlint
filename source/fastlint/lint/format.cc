@@ -1,6 +1,8 @@
 #include "fastlint/lint/format.h"
 
 #include "fastlint/tsgo/json.h"
+#include "fastlint/version.h"
+#include "util/vector.h"
 
 #include <cstdio>
 #include <string>
@@ -205,6 +207,115 @@ void formatJson(span<const FileResult> results, string &out)
     w.endObject();
   }
   w.endArray();
+  append(out, w.text());
+  out += '\n';
+}
+
+const char *sarifLevel(Severity severity)
+{
+  switch (severity) {
+  case Severity::Error:
+    return "error";
+  case Severity::Warn:
+    return "warning";
+  default:
+    return "note";
+  }
+}
+
+void formatSarif(span<const FileResult> results, string &out)
+{
+  // The driver's `rules` list every reported rule once, first-seen order; a
+  // result points into it by index. A syntax error carries no rule.
+  litestl::util::Vector<const RuleDef *> rules;
+  auto ruleIndex = [&](const RuleDef *rule) -> int {
+    for (int i = 0; i < int(rules.size()); i++) {
+      if (rules[i] == rule) {
+        return i;
+      }
+    }
+    rules.append(rule);
+    return int(rules.size()) - 1;
+  };
+  for (const FileResult &result : results) {
+    for (const Diagnostic &d : result.diagnostics) {
+      if (d.rule) {
+        ruleIndex(d.rule);
+      }
+    }
+  }
+
+  tsgo::JsonWriter w;
+  w.beginObject();
+  w.member("version", "2.1.0");
+  w.member("$schema", "https://json.schemastore.org/sarif-2.1.0.json");
+  w.key("runs");
+  w.beginArray();
+  w.beginObject();
+  w.key("tool");
+  w.beginObject();
+  w.key("driver");
+  w.beginObject();
+  w.member("name", "fastlint");
+  w.member("informationUri", "https://github.com/joeedh/fastlint");
+  w.member("version", version());
+  w.key("rules");
+  w.beginArray();
+  for (const RuleDef *rule : rules) {
+    w.beginObject();
+    w.member("id", rule->meta.name);
+    if (rule->meta.docsUrl && rule->meta.docsUrl[0]) {
+      w.member("helpUri", rule->meta.docsUrl);
+    }
+    w.key("shortDescription");
+    w.beginObject();
+    w.member("text", rule->meta.description);
+    w.endObject();
+    w.endObject();
+  }
+  w.endArray();
+  w.endObject(); // driver
+  w.endObject(); // tool
+  w.key("results");
+  w.beginArray();
+  for (const FileResult &result : results) {
+    for (const Diagnostic &d : result.diagnostics) {
+      w.beginObject();
+      if (d.rule) {
+        w.member("ruleId", d.rule->meta.name);
+        w.member("ruleIndex", ruleIndex(d.rule));
+      }
+      w.member("level", sarifLevel(d.severity));
+      w.key("message");
+      w.beginObject();
+      w.member("text", view(d.message));
+      w.endObject();
+      w.key("locations");
+      w.beginArray();
+      w.beginObject();
+      w.key("physicalLocation");
+      w.beginObject();
+      w.key("artifactLocation");
+      w.beginObject();
+      w.member("uri", view(result.filename));
+      w.endObject();
+      w.key("region");
+      w.beginObject();
+      w.member("startLine", d.line);
+      w.member("startColumn", d.column);
+      w.member("endLine", d.endLine);
+      w.member("endColumn", d.endColumn);
+      w.endObject(); // region
+      w.endObject(); // physicalLocation
+      w.endObject(); // location
+      w.endArray();  // locations
+      w.endObject(); // result
+    }
+  }
+  w.endArray();  // results
+  w.endObject(); // run
+  w.endArray();  // runs
+  w.endObject(); // log
   append(out, w.text());
   out += '\n';
 }
