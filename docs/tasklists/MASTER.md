@@ -778,8 +778,11 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   - [x] `no-fallthrough`: `reportUnusedFallthroughComment` reports a
     fallthrough comment on a non-empty case that exits (the report lands on the
     comment); reachability is the statement-list approximation, not code paths.
-  - [ ] `lint::Regex` matches bytes; `\u` escapes above 0x7F and Unicode
-    classes fail to compile.
+  - [x] `lint::Regex` `\uXXXX`/`\u{...}`/`\xXX` escapes above ASCII match the
+    UTF-8 bytes of their code point (held in a group so a quantifier spans the
+    whole character); the same escape inside a character class still fails, as
+    do Unicode property classes. Fixed a range-endpoint escape that read its
+    hex from the wrong position.
 - [x] Batch B (binder-heavy): `prefer-const` (fixable), `no-unused-vars`,
   `no-shadow`.
   - [x] `prefer-const`: ESLint port over the binder; the fix flips the

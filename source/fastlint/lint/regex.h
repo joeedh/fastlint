@@ -4,8 +4,10 @@
 // options carry (`commentPattern`, ignore patterns), so ESLint configs keep
 // working. ECMAScript syntax over bytes: literals, `.`, classes, `\d\w\s\b`,
 // groups, alternation, greedy and lazy quantifiers, `^` and `$`, and the
-// `i` flag. Lookaround, backreferences and Unicode classes are not
-// supported and fail to compile.
+// `i` flag. A `\uXXXX`, `\u{...}` or `\xXX` escape above ASCII matches the
+// UTF-8 bytes of its code point, so a literal non-ASCII character works
+// outside a character class; the same escape inside a class fails to compile,
+// as do lookaround, backreferences and Unicode property classes.
 
 #include "util/string.h"
 #include "util/vector.h"

@@ -63,8 +63,11 @@ Options that hold regular expressions (`no-fallthrough`'s `commentPattern`,
 ignore patterns to come) compile through `lint::Regex` (lint/regex.h), a
 small backtracking matcher over bytes: literals, `.`, classes, `\d \w \s
 \b`, groups, alternation, greedy and lazy quantifiers, `^` and `$`, and the
-`i` flag. Lookaround, backreferences and Unicode property classes do not
-compile; a rule falls back to its default pattern when `compile` fails.
+`i` flag. A `\uXXXX`, `\u{...}` or `\xXX` escape above ASCII matches the
+UTF-8 bytes of its code point, so a literal non-ASCII character works outside
+a character class. Lookaround, backreferences, Unicode property classes and a
+multi-byte escape inside a character class do not compile; a rule falls back
+to its default pattern when `compile` fails.
 
 ## Dispatch
 

@@ -67,6 +67,28 @@ TEST(lint_regex, classes_and_escapes)
   MATCH("a\\tb", "a\tb");
   MATCH("[\\]]", "]");
   MATCH("^\\x41$", "A");
+  // A hex escape as a range endpoint (\x43 is 'C').
+  MATCH("^[A-\\x43]+$", "ABC");
+  NO_MATCH("^[A-\\x43]+$", "ABCD");
+}
+
+TEST(lint_regex, unicode_escapes)
+{
+  // A `\u`/`\x` escape above ASCII matches the UTF-8 bytes of its code point.
+  // The expected text is written as raw UTF-8 bytes to avoid source-encoding
+  // questions: "\xC3\xA9" is é, "\xE4\xB8\xAD" is 中, "\xF0\x9F\x98\x80" is 😀.
+  MATCH("caf\\u00e9", "caf\xC3\xA9");
+  NO_MATCH("caf\\u00e9", "cafe");
+  MATCH("caf\\u{e9}", "caf\xC3\xA9");
+  MATCH("\\xe9", "caf\xC3\xA9");
+  // A quantifier applies to the whole character, not its last byte.
+  MATCH("^caf\\u00e9+$", "caf\xC3\xA9\xC3\xA9");
+  MATCH("^\\u4e2d$", "\xE4\xB8\xAD");
+  MATCH("\\u{1f600}", "a\xF0\x9F\x98\x80");
+  // A multi-byte escape inside a character class cannot be a byte range.
+  lint::Regex re;
+  CHECK(!re.compile("[\\u00e9]"));
+  CHECK(!re.compile("[a-\\u00e9]"));
 }
 
 TEST(lint_regex, anchors_alternation_and_flags)

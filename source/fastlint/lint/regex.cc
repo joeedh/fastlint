@@ -38,6 +38,31 @@ int hexValue(char c)
   return -1;
 }
 
+/** Encodes `cp` as UTF-8 into `out` (up to four bytes) and returns the count. */
+int encodeUtf8(int cp, uint8_t out[4])
+{
+  if (cp < 0x80) {
+    out[0] = uint8_t(cp);
+    return 1;
+  }
+  if (cp < 0x800) {
+    out[0] = uint8_t(0xC0 | (cp >> 6));
+    out[1] = uint8_t(0x80 | (cp & 0x3F));
+    return 2;
+  }
+  if (cp < 0x10000) {
+    out[0] = uint8_t(0xE0 | (cp >> 12));
+    out[1] = uint8_t(0x80 | ((cp >> 6) & 0x3F));
+    out[2] = uint8_t(0x80 | (cp & 0x3F));
+    return 3;
+  }
+  out[0] = uint8_t(0xF0 | (cp >> 18));
+  out[1] = uint8_t(0x80 | ((cp >> 12) & 0x3F));
+  out[2] = uint8_t(0x80 | ((cp >> 6) & 0x3F));
+  out[3] = uint8_t(0x80 | (cp & 0x3F));
+  return 4;
+}
+
 /** Adds the ranges of a `\d`, `\w` or `\s` class; the caller negates the upper-case
  * forms. */
 void addNamedClass(Regex::Class &cls, char name)
@@ -105,6 +130,28 @@ struct Compiler {
       return 'x';
     }
     case 'u': {
+      // `\u{...}` names a code point of any width; `\uXXXX` names four hex digits.
+      // The caller expands a value above `0x7F` into its UTF-8 bytes.
+      if (more() && peek() == '{') {
+        size_t save = pos;
+        pos++;
+        int value = 0;
+        bool any = false;
+        while (more() && hexValue(peek()) >= 0) {
+          value = value * 16 + hexValue(peek());
+          pos++;
+          any = true;
+          if (value > 0x10FFFF) {
+            break;
+          }
+        }
+        if (any && value <= 0x10FFFF && more() && peek() == '}') {
+          pos++;
+          return value;
+        }
+        pos = save;
+        return 'u';
+      }
       if (pos + 4 <= pattern.size()) {
         int value = 0;
         for (int i = 0; i < 4; i++) {
@@ -114,13 +161,9 @@ struct Compiler {
           }
           value = value * 16 + h;
         }
-        if (value < 128) {
-          pos += 4;
-          return value;
-        }
+        pos += 4;
+        return value;
       }
-      // Multi-byte code points are beyond this byte matcher.
-      ok = false;
       return 'u';
     }
     case 'd':
@@ -221,6 +264,11 @@ struct Compiler {
         char e = peek();
         pos++;
         int value = escapeChar(e);
+        if (value > 0x7F) {
+          // A multi-byte code point cannot be a byte-range endpoint.
+          ok = false;
+          return;
+        }
         if (value < 0) {
           if (e == 'D' || e == 'W' || e == 'S') {
             // A negated class inside a set needs set subtraction; unsupported.
@@ -249,9 +297,12 @@ struct Compiler {
             ok = false;
             return;
           }
-          int value = escapeChar(peek());
+          // Advance past the escape letter before `escapeChar` reads its hex
+          // digits from `pos`, as the low-endpoint path above does.
+          char he = peek();
           pos++;
-          if (value < 0) {
+          int value = escapeChar(he);
+          if (value < 0 || value > 0x7F) {
             ok = false;
             return;
           }
@@ -333,7 +384,23 @@ struct Compiler {
         if (!ok) {
           return;
         }
-        if (value >= 0) {
+        if (value > 0x7F) {
+          // A code point above ASCII is matched as its UTF-8 bytes, held in a
+          // group so a following quantifier applies to the whole character.
+          uint8_t bytes[4];
+          int n = encodeUtf8(value, bytes);
+          Regex::Group group;
+          Regex::Sequence seq;
+          for (int i = 0; i < n; i++) {
+            Regex::Term byte{Regex::Term::Char};
+            byte.ch = bytes[i];
+            seq.append(byte);
+          }
+          group.alternatives.append(std::move(seq));
+          term.kind = Regex::Term::Group;
+          term.index = int(groups.size());
+          groups.append(std::move(group));
+        } else if (value >= 0) {
           term.ch = uint8_t(value);
         } else if (e == 'b') {
           term.kind = Regex::Term::WordBoundary;
