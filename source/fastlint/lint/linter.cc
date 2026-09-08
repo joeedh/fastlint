@@ -261,17 +261,23 @@ void Linter::lintFile(const syntax::GrammarTree &tree,
   }
 
   if (!diagnostics.empty()) {
+    // ESLint's parser throws on the first syntax error, so a file with one
+    // gets a single fatal message and no rule results. We recover past the
+    // error to keep parsing, but report only the earliest one to match.
+    const syntax::Diagnostic *first = nullptr;
     for (const syntax::Diagnostic &sd : diagnostics.items()) {
-      Diagnostic d;
-      d.fatal = true;
-      d.start = sd.offset;
-      d.end = sd.offset + sd.length;
-      d.message = copy("Parsing error: ");
-      append(d.message, view(sd.message));
-      locate(tree, d);
-      out.diagnostics.append(std::move(d));
+      if (!first || sd.offset < first->offset) {
+        first = &sd;
+      }
     }
-    sortByPosition(out.diagnostics);
+    Diagnostic d;
+    d.fatal = true;
+    d.start = first->offset;
+    d.end = first->offset + first->length;
+    d.message = copy("Parsing error: ");
+    append(d.message, view(first->message));
+    locate(tree, d);
+    out.diagnostics.append(std::move(d));
     count(out);
     return;
   }

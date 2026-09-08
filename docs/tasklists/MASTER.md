@@ -781,8 +781,10 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     the linter's text to the server so fixpoint passes are typed too
     (docs/type-facts.md "Type sources"). `--type-stats` prints the query
     counts.
-  - [ ] Rules do not run on files with syntax errors (ESLint behaviour);
-    revisit once recovery quality is measured.
+  - [x] A file with syntax errors reports only the earliest one as a single
+    fatal diagnostic and runs no rules, matching ESLint (whose parser throws on
+    the first error). We recover past it to keep parsing but report just the
+    first. Running rules on a recovered tree stays off until a use case asks.
 - [x] First rule end to end: `no-debugger` (fixable).
 
 ### 6.2 Syntactic rules (initial set)

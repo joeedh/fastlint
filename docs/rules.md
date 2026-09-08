@@ -128,10 +128,12 @@ text is linted once more without fixing so the diagnostics match it.
 
 ## Syntax errors
 
-When the parser reports diagnostics, `lintFile` emits them as fatal
-diagnostics (`Parsing error: ...`, no rule) and does not run rules, as ESLint
-does. Recovery makes running rules on a broken tree possible; it is off
-until a use case asks for it.
+When the parser reports diagnostics, `lintFile` emits the earliest one as a
+single fatal diagnostic (`Parsing error: ...`, no rule) and does not run
+rules, as ESLint does: its parser throws on the first syntax error, so a
+broken file gets one fatal message and no rule results. We recover past the
+error to keep parsing, but report only that first error to match. Running
+rules on a recovered tree is possible but off until a use case asks for it.
 
 ## Disable directives
 

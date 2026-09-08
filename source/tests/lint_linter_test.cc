@@ -174,6 +174,18 @@ TEST(lint_linter, syntax_errors_are_fatal_and_skip_rules)
   CHECK_EQ(r.warningCount, 0);
 }
 
+TEST(lint_linter, a_syntax_error_reports_only_the_first)
+{
+  Harness h;
+  // Several parse errors, but ESLint reports one fatal message; so do we.
+  FileResult r = h.lint("let x = ;\nfunction (\nif )\n");
+  REQUIRE_EQ(r.diagnostics.size(), 1u);
+  CHECK(r.diagnostics[0].fatal);
+  CHECK(r.diagnostics[0].rule == nullptr);
+  // The earliest error, at the first line's empty initializer.
+  CHECK_EQ(int(r.diagnostics[0].line), 1);
+}
+
 TEST(lint_linter, unknown_rules_are_reported_once_per_file)
 {
   Harness h("{\"rules\": {\"no-debugger\": \"error\", \"no-such-rule\": \"error\"}}");
