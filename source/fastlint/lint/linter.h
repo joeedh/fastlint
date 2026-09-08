@@ -13,6 +13,8 @@
 #include "fastlint/syntax/diagnostics.h"
 #include "fastlint/syntax/parser.h"
 #include "fastlint/syntax/tree.h"
+#include "fastlint/types/type_facts.h"
+#include "util/map.h"
 #include "util/string.h"
 #include "util/vector.h"
 
@@ -78,6 +80,8 @@ struct LintOptions {
   int maxPasses = 10;
   /** Null runs the syntactic rules only. */
   types::TypeSource *types = nullptr;
+  /** When set, each rule's type-query counts accumulate here, keyed by rule. */
+  Map<const RuleDef *, types::FactsStats> *ruleStats = nullptr;
 };
 
 /** Parser options implied by a file name's extension. */
@@ -109,7 +113,8 @@ public:
                 const ResolvedConfig &config,
                 types::TypeFacts *types,
                 Vector<ast::Fix> *fixes,
-                FileResult &out);
+                FileResult &out,
+                Map<const RuleDef *, types::FactsStats> *ruleStats = nullptr);
 
 private:
   const Registry &m_registry;

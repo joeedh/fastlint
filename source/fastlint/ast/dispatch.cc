@@ -46,7 +46,14 @@ void Dispatcher::fire(NodeKind kind, bool exit, Node *node)
 {
   int b = int(kind) * 2 + (exit ? 1 : 0);
   for (uint32_t i = m_starts[b]; i < m_starts[b + 1]; i++) {
-    m_entries[int(i)].listener(node);
+    Entry &e = m_entries[int(i)];
+    if (m_scopeHook) {
+      m_scopeHook(m_scopeCtx, e.owner, true);
+      e.listener(node);
+      m_scopeHook(m_scopeCtx, e.owner, false);
+    } else {
+      e.listener(node);
+    }
   }
 }
 

@@ -31,6 +31,23 @@ struct FactsStats {
   int typeFetches = 0;
   int childFetches = 0;
   int symbolFetches = 0;
+
+  /** Adds the counts gained between `before` and `after`. */
+  void addDelta(const FactsStats &before, const FactsStats &after)
+  {
+    nodeHits += after.nodeHits - before.nodeHits;
+    nodeMisses += after.nodeMisses - before.nodeMisses;
+    unmappedNodes += after.unmappedNodes - before.unmappedNodes;
+    typeFetches += after.typeFetches - before.typeFetches;
+    childFetches += after.childFetches - before.childFetches;
+    symbolFetches += after.symbolFetches - before.symbolFetches;
+  }
+
+  /** Type-server round trips: the counts a per-rule budget cares about. */
+  int fetches() const
+  {
+    return typeFetches + childFetches + symbolFetches;
+  }
 };
 
 /** The type questions rules ask, answered from the interned graph and fetched lazily from

@@ -213,3 +213,29 @@ TEST(ast_query, dispatch_with_no_listeners_is_a_no_op)
   d.run(l.file);
   CHECK_EQ(d.listenerCount(), 0);
 }
+
+TEST(ast_query, dispatch_scope_hook_brackets_each_listener_with_its_owner)
+{
+  Lowered l("a;");
+  std::string trace;
+  int ownerA = 0;
+  int ownerB = 0;
+  auto listen = [&](Node *) { trace += "L"; };
+  Dispatcher d;
+  d.on(NodeKind::Identifier, listen, &ownerA);
+  d.on(NodeKind::Identifier, listen, &ownerB);
+  struct Ctx {
+    std::string *trace;
+    int *a;
+    int *b;
+  } ctx{&trace, &ownerA, &ownerB};
+  d.setScope(
+      [](void *c, void *owner, bool begin) {
+        Ctx *ctx = static_cast<Ctx *>(c);
+        *ctx->trace += begin ? (owner == ctx->a ? "(a" : "(b") : ")";
+      },
+      &ctx);
+  d.run(l.file);
+  // Each listener runs bracketed by its owner's begin and a close, in order.
+  CHECK_EQ(trace, "(aL)(bL)");
+}

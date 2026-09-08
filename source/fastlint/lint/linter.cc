@@ -33,6 +33,30 @@ string_view view(const string &s)
   return string_view(s.c_str(), s.size());
 }
 
+/** Snapshots the shared type stats around one rule's listener so the gain is
+ * charged to that rule. Listeners do not nest, so a single slot suffices. */
+struct RuleAttribution {
+  types::TypeFacts *facts;
+  Map<const RuleDef *, types::FactsStats> *out;
+  types::FactsStats snapshot;
+};
+
+void attributeToRule(void *ctx, void *owner, bool begin)
+{
+  auto *attr = static_cast<RuleAttribution *>(ctx);
+  if (begin) {
+    attr->snapshot = attr->facts->stats();
+    return;
+  }
+  const auto *rule = static_cast<const RuleDef *>(owner);
+  types::FactsStats *acc = attr->out->lookup_ptr(rule);
+  if (!acc) {
+    attr->out->add_overwrite(rule, types::FactsStats{});
+    acc = attr->out->lookup_ptr(rule);
+  }
+  acc->addDelta(attr->snapshot, attr->facts->stats());
+}
+
 bool endsWith(string_view text, string_view suffix)
 {
   return text.size() >= suffix.size() &&
@@ -182,7 +206,8 @@ void Linter::lintFile(const syntax::GrammarTree &tree,
                       const ResolvedConfig &config,
                       types::TypeFacts *types,
                       Vector<ast::Fix> *fixes,
-                      FileResult &out)
+                      FileResult &out,
+                      Map<const RuleDef *, types::FactsStats> *ruleStats)
 {
   out.clear();
   out.filename = copy(filename);
@@ -245,13 +270,20 @@ void Linter::lintFile(const syntax::GrammarTree &tree,
 
   ast::Dispatcher dispatcher;
   for (Active &a : active) {
+    void *owner = const_cast<RuleDef *>(a.context->m_rule);
     for (RuleContext::Entry &entry : a.context->m_listeners) {
       if (entry.exit) {
-        dispatcher.onExit(entry.kind, ast::Listener(entry.listener));
+        dispatcher.onExit(entry.kind, ast::Listener(entry.listener), owner);
       } else {
-        dispatcher.on(entry.kind, ast::Listener(entry.listener));
+        dispatcher.on(entry.kind, ast::Listener(entry.listener), owner);
       }
     }
+  }
+  // A rule's type-server work is the delta of the shared stats across its
+  // listener; the hook snapshots on entry and attributes the gain on exit.
+  RuleAttribution attribution{types, ruleStats, {}};
+  if (types && ruleStats) {
+    dispatcher.setScope(&attributeToRule, &attribution);
   }
   if (dispatcher.listenerCount() > 0) {
     dispatcher.run(file);
@@ -389,7 +421,16 @@ void Linter::lintSource(string_view source,
         out.typeError = std::move(error);
       }
     }
-    lintFile(tree, diagnostics, file, bindings, filename, config, facts, fixes, out);
+    lintFile(tree,
+             diagnostics,
+             file,
+             bindings,
+             filename,
+             config,
+             facts,
+             fixes,
+             out,
+             options.ruleStats);
     if (facts && facts->lastError().size() > 0) {
       out.typeError = facts->lastError();
     }

@@ -27,6 +27,7 @@ class TypeSource;
 
 namespace fastlint::lint {
 
+using litestl::util::Map;
 using litestl::util::span;
 using litestl::util::string;
 using litestl::util::Vector;

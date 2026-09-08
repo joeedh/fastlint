@@ -10,6 +10,7 @@
 #include "util/string.h"
 #include "util/vector.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -30,9 +31,11 @@ namespace fastlint::cli {
 
 namespace {
 
+using litestl::util::Map;
 using litestl::util::span;
 using litestl::util::string;
 using litestl::util::Vector;
+using std::string_view;
 
 void usage()
 {
@@ -172,6 +175,7 @@ int lintCommand(int argc, char **argv)
   options.fix = fix;
   // Type-aware rules run only with a project; without one they are skipped.
   types::ProjectTypes types;
+  Map<const lint::RuleDef *, types::FactsStats> ruleStats;
   if (project) {
     string typeError;
     if (!types.open(project, typeError)) {
@@ -180,6 +184,9 @@ int lintCommand(int argc, char **argv)
       return 2;
     }
     options.types = &types;
+    if (typeStats) {
+      options.ruleStats = &ruleStats;
+    }
   }
   Vector<lint::FileResult> results;
   int errors = 0, warnings = 0, fixed = 0, unreadable = 0;
@@ -257,6 +264,33 @@ int lintCommand(int argc, char **argv)
                  rpc.calls,
                  rpc.bytesSent,
                  rpc.bytesReceived);
+    // Per-rule attribution, busiest first. Rules that asked nothing of the type
+    // server are omitted.
+    struct RuleLine {
+      string_view name;
+      types::FactsStats stats;
+    };
+    Vector<RuleLine> lines;
+    for (const auto &pair : ruleStats) {
+      if (pair.value.fetches() > 0) {
+        lines.append({string_view(pair.key->meta.name), pair.value});
+      }
+    }
+    std::sort(lines.data(),
+              lines.data() + lines.size(),
+              [](const RuleLine &a, const RuleLine &b) {
+                return a.stats.fetches() > b.stats.fetches();
+              });
+    for (const RuleLine &line : lines) {
+      std::fprintf(stderr,
+                   "  %-32.*s %d fetches (%d type, %d child, %d symbol)\n",
+                   int(line.name.size()),
+                   line.name.data(),
+                   line.stats.fetches(),
+                   line.stats.typeFetches,
+                   line.stats.childFetches,
+                   line.stats.symbolFetches);
+    }
   }
 
   if (unreadable > 0) {

@@ -899,9 +899,13 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     type-predicate check.
   - [ ] Suggestions are not applied anywhere, so a typed rule's suggestion
     output is untested (6.1 open item).
-- [ ] Each rule's type queries logged so the cache working set is measured.
-  - [x] `--type-stats` prints the totals of a run; per-rule attribution is
-    still open.
+- [x] Each rule's type queries logged so the cache working set is measured.
+  - [x] `--type-stats` prints the totals of a run.
+  - [x] Per-rule attribution: the dispatcher carries an owner token per
+    listener and fires a scope hook around each, so the linter charges the gain
+    in the shared type stats to the running rule. `--type-stats` lists the
+    fetches each rule drove, busiest first; the per-rule totals sum to the run
+    totals. Zero cost when the flag is off (no hook installed).
 
 ### 6.4 Dogfood
 - [x] Lint `C:/dev/TypeScript/packages/typescript/src` and our own `tools/`;

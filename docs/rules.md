@@ -209,7 +209,11 @@ fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
   cannot be typed is reported on stderr and gets the syntactic rules only.
 - `--type-stats` prints the type queries of the run on stderr: node cache
   hits and misses, nodes without a server counterpart, type, child and
-  symbol fetches, and the RPC call and byte counts.
+  symbol fetches, and the RPC call and byte counts. It then lists per-rule
+  attribution, busiest first: the fetches each rule drove, so a rule's cache
+  working set can be measured. A rule's count is the gain in the shared stats
+  across its listener, so the per-rule totals sum to the run totals. Rules that
+  asked nothing of the type server are omitted.
 - `--fix` writes the fixed text back and prints `fixed N problems`.
 - `--quiet` drops warnings from the output and the counts.
 - Exit code 1 when any error remains (or warnings exceed `--max-warnings`),
