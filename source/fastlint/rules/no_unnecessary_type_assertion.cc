@@ -84,7 +84,7 @@ public:
     if (constrained != actual) {
       return;
     }
-    TypeId contextual = facts().contextualTypeOf(node);
+    TypeId contextual = contextualTypeAt(node);
     if (!contextual) {
       return;
     }
@@ -142,6 +142,59 @@ private:
   static bool accepts(uint32_t operand, uint32_t context, uint32_t flag)
   {
     return (operand & flag) ? (context & flag) != 0 : true;
+  }
+
+  /** The contextual type of the target `node` flows into, but only for the
+   * positions that carry one: a call or `new` argument, the initializer of a
+   * type-annotated variable or class field, and the right side of a plain `=`.
+   * Every other position (a property value, an array element, a template span, a
+   * return) yields no contextual type, matching typescript-eslint's
+   * `getContextualType`. A `!` never appears as a bare property-value identifier,
+   * so that identifier-only case is not reachable here. */
+  TypeId contextualTypeAt(Node *node)
+  {
+    Node *parent = node->parent;
+    if (!parent) {
+      return 0;
+    }
+    switch (parent->kind) {
+    case NodeKind::CallExpression:
+      if (ast::CallExpression(parent).callee() == node) {
+        return 0;
+      }
+      return facts().contextualTypeOf(node);
+    case NodeKind::NewExpression:
+      if (ast::NewExpression(parent).callee() == node) {
+        return 0;
+      }
+      return facts().contextualTypeOf(node);
+    case NodeKind::VariableDeclarator: {
+      ast::VariableDeclarator declarator(parent);
+      Node *id = declarator.id();
+      if (declarator.init() == node && id && id->kind == NodeKind::Identifier &&
+          ast::Identifier(id).typeAnnotation())
+      {
+        return facts().contextualTypeOf(node);
+      }
+      return 0;
+    }
+    case NodeKind::PropertyDefinition: {
+      ast::PropertyDefinition prop(parent);
+      if (prop.value() == node && prop.typeAnnotation()) {
+        return facts().contextualTypeOf(node);
+      }
+      return 0;
+    }
+    case NodeKind::AssignmentExpression: {
+      ast::AssignmentExpression assign(parent);
+      if (assign.op() == ast::AssignmentOperator::Assign && assign.right() == node) {
+        return facts().contextualTypeOf(node);
+      }
+      return 0;
+    }
+    default:
+      return 0;
+    }
   }
 
   /** The flags of `type`, or the union of its members' flags. */

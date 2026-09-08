@@ -23,6 +23,13 @@ An operand typed `any` or `unknown` counts as nullable, since either could hold
 `null`, `undefined` and `void` members against the contextual type, and bails
 when the operand is `unknown` but the context is not.
 
+The nullable-context check applies only where the operand has a contextual type
+to compare against, matching upstream's `getContextualType`: a call or `new`
+argument, the initializer of a type-annotated variable or class field, and the
+right side of a plain `=`. A `!` in any other position (a property value, an
+array element, a template span, a `return`) carries no contextual type, so it is
+never reported `contextuallyUnnecessary` on that basis.
+
 A variable declared without an initializer and without a definite-assignment
 `!` is left alone: its value is absent at the declaration, so the assertion may
 be guarding a read before assignment, and removing it could produce

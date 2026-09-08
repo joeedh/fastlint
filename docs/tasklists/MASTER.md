@@ -906,6 +906,28 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
 ### 6.4 Dogfood
 - [ ] Lint `C:/dev/TypeScript/packages/typescript/src` and our own `tools/`;
   compare against typescript-eslint output; triage diffs.
+- [x] Ran the 13 type-aware rules over two real projects
+  (2026-09-07): `C:/dev/visualnovel` (well-typed, `strict`) and
+  `C:/dev/webgl-app-framework` (widely uses `any`).
+  - Precision signal: on the well-typed authoring package the unsafe-* rules
+    fire zero; on the `any`-heavy webgl scripts they dominate
+    (`no-unsafe-member-access` 198, `no-unsafe-assignment` 100, and the rest).
+    Both match how typescript-eslint's defaults behave on that code.
+  - `strict-boolean-expressions` is the loudest rule on both (not in the
+    recommended preset, expected).
+  - `no-unnecessary-type-assertion` findings on webgl are true positives; the
+    rule distinguishes a `!` on a required property (flagged) from one on an
+    optional property (left alone) on the same line.
+  - Fixed a false positive: `no-unnecessary-type-assertion` reported
+    `contextuallyUnnecessary` on a `!` in a property value (`{ file: m.get(k)! }`
+    where `file?` is optional). The nullable-context check now runs only where
+    the operand has a contextual type, matching typescript-eslint's
+    `getContextualType` (call/`new` argument, annotated variable or field
+    initializer, right of a plain `=`).
+  - Graceful degradation confirmed: a tsgo compiler panic on a file yields
+    "no types" for that file and the run continues.
+  - Running a narrow rule subset with `--no-config` surfaces existing
+    `eslint-disable` directives as unused; a byproduct, not a finding.
 
 ---
 

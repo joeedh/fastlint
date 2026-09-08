@@ -44,6 +44,13 @@ let x: number | undefined = undefined;
 let y: number | undefined = undefined;
 y = x!;
 )"},
+          // A property value carries no contextual type, so a `!` on a nullable
+          // operand there is not reported even when the property is optional.
+          {R"(
+declare const m: Map<string, string>;
+declare const k: string;
+const o: { file?: string } = { file: m.get(k)! };
+)"},
       },
       {
           // A call result that is already non-nullable.
