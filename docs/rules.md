@@ -266,7 +266,9 @@ fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
   config's `projects`/`project` decides; otherwise the nearest `tsconfig.json`
   walking up from the file's directory; otherwise a `tsconfig.json` beside the
   config file. A file that resolves to none gets the syntactic rules only,
-  which is not a degraded run.
+  which is not a degraded run; a TypeScript file in that position is warned
+  about on stderr once the run has a server, so the skipped type-aware rules
+  are not silent.
 - Discovery is best-effort: a server that fails to start disables the
   type-aware rules with a note on stderr, whereas an explicit `--project` that
   fails is an error. A file whose resolved tsconfig does not include it cannot

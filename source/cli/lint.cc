@@ -189,6 +189,13 @@ std::string cacheDirFor(const char *given, bool noCache, bool fix)
 
 /** Hashes everything beyond a file's own content and closure that changes its
  * diagnostics: the fastlint version, the config, the tsconfig and the lockfile. */
+/** A TypeScript source, whose type-aware rules a missing tsconfig would silently skip. */
+bool isTypeScript(const std::filesystem::path &path)
+{
+  std::string ext = path.extension().generic_string();
+  return ext == ".ts" || ext == ".tsx" || ext == ".mts" || ext == ".cts";
+}
+
 /** The nearest `tsconfig.json` at `dir` or an ancestor, or empty when none exists. */
 std::string tsconfigUpwards(const std::filesystem::path &dir)
 {
@@ -421,6 +428,12 @@ int lintCommand(int argc, char **argv)
       for (int i = 0; i < int(files.size()); i++) {
         if (!perFileProject[i].empty()) {
           types.setFileProject(files[i].generic_string(), perFileProject[i]);
+        } else if (isTypeScript(files[i])) {
+          // Types are engaged for the run, so a TypeScript file with no tsconfig
+          // is a gap the user should see, not a silent syntactic-only pass.
+          std::fprintf(stderr,
+                       "%s: no tsconfig resolved; type-aware rules skipped\n",
+                       files[i].generic_string().c_str());
         }
       }
     } else if (projectExplicit) {
