@@ -170,7 +170,7 @@ void Scanner::finishCurrent(uint32_t index)
          m_trivia[m_lastTriviaEnd + count - 1].kind == Trivia::Kind::Whitespace)
     count--;
   m_current.leadingTriviaCount = count;
-  m_current.precedingLineBreak = m_sawLineBreak;
+  m_current.precedingLineBreak = m_precedingLineBreak;
   m_lastTriviaEnd = uint32_t(m_trivia.size());
   m_sawLineBreak = false;
   m_currentIndex = index;
@@ -195,6 +195,9 @@ void Scanner::scanOne()
   }
   m_current = Token{};
   m_gtRemaining = 0;
+  // A continuation token (template middle/tail, JSX text) has no leading
+  // trivia; its preceding break is whatever the last finished token left.
+  m_precedingLineBreak = m_sawLineBreak;
   uint32_t start = uint32_t(m_pos);
   switch (m_mode) {
   case ScanMode::TemplateMiddle:
@@ -226,6 +229,9 @@ void Scanner::scanOne()
   bool sawLineBreak = false;
   skipTrivia(sawLineBreak);
   m_sawLineBreak = m_sawLineBreak || sawLineBreak;
+  // Trivia is fully consumed, so the preceding break is settled; a newline
+  // scanned inside the token body below must not change it.
+  m_precedingLineBreak = m_sawLineBreak;
   start = uint32_t(m_pos);
 
   if (atEnd()) {

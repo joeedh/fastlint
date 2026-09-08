@@ -248,6 +248,11 @@ private:
   /** Trivia recorded so far belongs to the next token until it is finished. */
   uint32_t m_lastTriviaEnd = 0;
   bool m_sawLineBreak = false;
+  /** Whether a line break preceded the current token, snapshotted after its
+   * leading trivia and before its body, so a newline inside a multi-line
+   * token (a template, a JSX text run, a string line continuation) does not
+   * become the token's own preceding break and misfire ASI. */
+  bool m_precedingLineBreak = false;
   /** Template nesting seen by scanAll(), which auto-rescans `}` into
    * middle/tail tokens while keeping the CloseBrace token too. */
   uint32_t m_templateDepth = 0;

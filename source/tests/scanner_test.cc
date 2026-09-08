@@ -246,6 +246,25 @@ TEST(scanner, line_breaks_drive_the_preceding_flag)
   CHECK(!scan.token(3).precedingLineBreak);
 }
 
+TEST(scanner, a_newline_inside_a_token_is_not_its_own_preceding_break)
+{
+  // The template head holds a newline, but nothing precedes the backtick, so
+  // its `precedingLineBreak` must stay false or ASI misfires after `return`.
+  Scanned scan("x `a\nb${y}`");
+  CHECK(!scan.token(0).precedingLineBreak);
+  CHECK_EQ(scan.token(1).kind, TokenKind::TemplateHead);
+  CHECK(!scan.token(1).precedingLineBreak);
+}
+
+TEST(scanner, a_newline_after_a_multiline_token_still_breaks)
+{
+  // A real newline between the template's end and the next token counts.
+  Scanned scan("`a\nb`\nc");
+  CHECK(!scan.token(0).precedingLineBreak);
+  CHECK_EQ(scan.token(1).kind, TokenKind::Identifier);
+  CHECK(scan.token(1).precedingLineBreak);
+}
+
 TEST(scanner, trivia_kinds_are_recorded)
 {
   std::string_view source = "// line\n/* multi\nline */ x";

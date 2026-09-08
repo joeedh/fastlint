@@ -388,6 +388,17 @@ TEST(parser, asi_flag_records_insertion)
   CHECK_EQ(count(p.text(), "(VariableStatement \";\""), size_t(1));
 }
 
+TEST(parser, return_keeps_a_multiline_template_argument)
+{
+  // The template's own newline must not trigger ASI on the same-line `return`;
+  // the template is the return's argument, not a statement after a bare return.
+  Parsed p("function f() { return `a\n${x}b`; }");
+  CHECK(p.ok());
+  CHECK_EQ(count(p.text(), "(ReturnStatement"), size_t(1));
+  CHECK(p.text().find("TemplateExpression") != std::string::npos);
+  CHECK_EQ(count(p.text(), "(ExpressionStatement"), size_t(0));
+}
+
 TEST(parser, missing_semicolon_is_an_error_not_asi)
 {
   Parsed p("let a = 1 let b = 2");
