@@ -22,6 +22,6 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck"                    : true,
   },
-  "include"        : ["make.ts", "tools/**/*.ts"],
+  "include"        : ["make.ts", "tools/**/*.ts", "source/fastlint/plugin/**/*.ts"],
   "exclude"        : ["node_modules", "build", "vendor", "tools/spikes/**/fixture/**"],
 }

@@ -1005,15 +1005,24 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
 "Interop" and "Plugins").
 
 ### 7.1 Binding surface
-- [ ] Bind `Node` access (`kind`, `flags`, `parent`, `child(i)`,
-  `childCount`, `span`, `text`), `TypeFacts` predicates, `ctx.report`, the
-  fixer API, templates and `match` — all handle based, no object graph
-  across the boundary.
-- [ ] Generate TS `.d.ts` + runtime via litestl `binding/generators/
-  typescript`; kind enums and child-name tables from the same `nodes.def`
-  as C++.
-- [ ] Batch-friendly traversal: expose `descendants(kind)` returning typed
-  arrays so a TS rule does one call, not N.
+- [x] The generated TS view surface, from the same `nodes.def` as the C++
+  views (`gen-ast` `emitTsViews` → `plugin/generated/ts/views.ts`): the
+  `NodeKind`/`Flag`/field-enum vocabularies as `as const` objects (TS `enum`
+  is out under `erasableSyntaxOnly`), the `childNames` tables, a handle-based
+  `Node` interface (`kind` as `type`, `flags`, `parent`, `child(i)`,
+  `childCount`, `text`, `hasFlag`), one interface per kind with typed child
+  and field accessors, the union aliases, and a `NodeByKind` map so `is` and
+  `descendants` narrow.
+- [x] Batch-friendly traversal: `descendants<K>(kind: K)` returns
+  `readonly KindNode<K>[]`, so a rule does one typed query, not N hops.
+- [x] `plugin/ts/example-rule.ts` exercises the surface (a typed
+  `descendants` query, `is` narrowing, a required-child read) so `tsc` keeps
+  it honest, and the root tsconfig now includes `source/fastlint/plugin`.
+- [ ] Deferred to the runtime (task 7.2 / 7.3, which need cmake-js / emsdk):
+  binding `TypeFacts` predicates, `ctx.report`, the fixer API, templates and
+  `match` through litestl `binding/generators/typescript`, and the WASM/N-API
+  runtime that implements the view accessors. A pre-existing `tsc` red in
+  `tools/parse-diff` is unrelated and left alone.
 
 ### 7.0 Native plugin C ABI
 - [x] The stable ABI is `fastlint/plugin/abi.h` (hand-written): opaque

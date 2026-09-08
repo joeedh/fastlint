@@ -469,6 +469,122 @@ export function emitTables(def: Def): string {
   return out.join("\n");
 }
 
+/** The `as const` object and its value-union type that stand in for a TS enum. */
+function constEnum(name: string, entries: [string, string][]): string[] {
+  const out = [`export const ${name} = {`];
+  for (const [key, value] of entries) out.push(`  ${key}: ${value},`);
+  out.push(
+    "} as const;",
+    `export type ${name} = (typeof ${name})[keyof typeof ${name}];`,
+    ""
+  );
+  return out;
+}
+
+/** The TS type of one child slot, mirroring the C++ view's return type. */
+function childType(child: Child): string {
+  if (child.list) {
+    return child.nullableElements ? "readonly (Node | null)[]" : "readonly Node[]";
+  }
+  return child.optional ? "Node | null" : "Node";
+}
+
+/**
+ * The handle-based TypeScript view surface, generated from the same nodes.def
+ * as the C++ views: the kind and flag vocabularies, the child-name tables, one
+ * interface per kind with typed accessors, the union aliases, and a kind → view
+ * map so `is` and `descendants` narrow. Types only; a runtime lands with the
+ * WASM/N-API build (docs/ast-design.md "Interop").
+ */
+export function emitTsViews(def: Def): string {
+  const out: string[] = [
+    banner("TypeScript node views").replace("// clang-format off\n", ""),
+  ];
+
+  out.push(
+    ...constEnum(
+      "NodeKind",
+      def.nodes.map((n, i) => [n.name, String(i)])
+    )
+  );
+  out.push(
+    `export const kindNames = [${def.nodes.map((n) => `"${n.name}"`).join(", ")}] as const;`,
+    ""
+  );
+  out.push(
+    ...constEnum(
+      "Flag",
+      def.flags.map((f, bit) => [pascal(f), `1 << ${bit}`])
+    )
+  );
+  for (const e of def.enums) {
+    out.push(
+      ...constEnum(
+        e.name,
+        e.values.map((v, i) => [pascal(v), String(i)])
+      )
+    );
+  }
+
+  out.push("/** The declared child slots of each kind, in order. */");
+  out.push("export const childNames: { readonly [kind: number]: readonly string[] } = {");
+  def.nodes.forEach((node, i) => {
+    if (node.children.length > 0) {
+      out.push(`  ${i}: [${node.children.map((c) => `"${c.name}"`).join(", ")}],`);
+    }
+  });
+  out.push("};", "");
+
+  out.push(
+    "/** A node handle. Accessors read the host tree; a rule never holds the layout. */",
+    "export interface Node {",
+    "  /** The node kind, the discriminant every view narrows. */",
+    "  readonly type: NodeKind;",
+    "  readonly flags: number;",
+    "  readonly parent: Node | null;",
+    "  readonly childCount: number;",
+    "  child(index: number): Node | null;",
+    "  readonly text: string;",
+    "  hasFlag(flag: Flag): boolean;",
+    "  is<K extends NodeKind>(kind: K): this is KindNode<K>;",
+    "  /** Every descendant of `kind` in preorder, as one typed array. */",
+    "  descendants<K extends NodeKind>(kind: K): readonly KindNode<K>[];",
+    "}",
+    ""
+  );
+
+  for (const node of def.nodes) {
+    out.push(`export interface ${node.name} extends Node {`);
+    out.push(`  readonly type: typeof NodeKind.${node.name};`);
+    for (const child of node.children) {
+      out.push(`  readonly ${accessorName(child.name)}: ${childType(child)};`);
+    }
+    for (const field of node.fields) {
+      if (field.kind === "flag") {
+        out.push(`  readonly is${pascal(field.name)}: boolean;`);
+      } else if (field.kind === "enum") {
+        out.push(`  readonly ${accessorName(field.name)}: ${field.enumName};`);
+      }
+    }
+    out.push("}", "");
+  }
+
+  for (const union of def.unions) {
+    out.push(`export type ${union.name} = ${union.members.join(" | ")};`, "");
+  }
+
+  out.push("/** Maps a kind value to its view, so `is` and `descendants` narrow. */");
+  out.push("export interface NodeByKind {");
+  def.nodes.forEach((node, i) => out.push(`  ${i}: ${node.name};`));
+  out.push("}", "");
+  out.push(
+    "export type KindNode<K extends NodeKind> =",
+    "  K extends keyof NodeByKind ? NodeByKind[K] : Node;",
+    ""
+  );
+  return out.join("\n");
+}
+
 /** The C ABI's node vocabulary and hash, for a plugin that includes no C++ headers. */
 export function emitPluginHeader(def: Def): string {
   const out: string[] = [
@@ -500,6 +616,8 @@ export interface GenerateResult {
 
 export const pluginDir = path.join(repoRoot, "source", "fastlint", "plugin", "generated");
 
+export const tsViewsDir = path.join(pluginDir, "ts");
+
 export function generate(check: boolean): GenerateResult {
   const def = parseDef(fs.readFileSync(defPath, "utf8"));
   const files: { dir: string; name: string; content: string }[] = [
@@ -507,10 +625,12 @@ export function generate(check: boolean): GenerateResult {
     { dir: outDir, name: "views.h", content: emitViews(def) },
     { dir: outDir, name: "tables.cc", content: emitTables(def) },
     { dir: pluginDir, name: "ast.h", content: emitPluginHeader(def) },
+    { dir: tsViewsDir, name: "views.ts", content: emitTsViews(def) },
   ];
   const changed: string[] = [];
   fs.mkdirSync(outDir, { recursive: true });
   fs.mkdirSync(pluginDir, { recursive: true });
+  fs.mkdirSync(tsViewsDir, { recursive: true });
   for (const { dir, name, content } of files) {
     const file = path.join(dir, name);
     const current = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : undefined;

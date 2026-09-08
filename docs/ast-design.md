@@ -591,6 +591,18 @@ into final text.
   side with no per-kind binding code.
 - Templates, `match`, and the fixer API bind as they are; a TS rule calls
   `instantiate` with TS-side node handles.
+- The TS view surface is generated from the same `nodes.def` as the C++
+  views, into `plugin/generated/ts/views.ts` (`gen-ast` `emitTsViews`): the
+  `NodeKind` and `Flag` vocabularies and the field enums as `as const`
+  objects (no TS `enum`, which `erasableSyntaxOnly` forbids), the
+  `childNames` tables, one interface per kind with typed child and field
+  accessors, the union aliases, and a `NodeByKind` map so `is(kind)` and
+  `descendants(kind)` narrow to the kind's view. `type` is the discriminant,
+  as in ESTree, which frees `kind` for the nodes that carry a `kind` field.
+  The interfaces are handle-based: a node is an opaque `Node`, never the
+  host layout. The runtime that implements the accessors lands with the
+  WASM/N-API build (task 7.2 / 7.3); `plugin/ts/example-rule.ts` type-checks
+  the surface until then.
 
 ## Plugins
 
