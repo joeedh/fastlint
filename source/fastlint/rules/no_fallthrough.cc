@@ -16,10 +16,13 @@ using ast::NodeKind;
 constexpr Message kMessages[] = {
     {"case", "Expected a 'break' statement before 'case'."},
     {"default", "Expected a 'break' statement before 'default'."},
+    {"unusedFallthroughComment",
+     "Found a comment that would permit fallthrough, but case cannot fall through."},
 };
 
 struct Options {
   bool allowEmptyCase = false;
+  bool reportUnusedFallthroughComment = false;
   Regex pattern;
   /** Directive comments never count as fallthrough comments. */
   Regex directive;
@@ -51,14 +54,12 @@ bool isFallthroughComment(RuleContext &ctx,
 }
 
 /**
- * Whether a comment permits the fall from `current` into `next`: the last
- * comment before a sole block's closing brace, or the last comment before
+ * The comment that permits the fall from `current` into `next`, or null: the
+ * last comment before a sole block's closing brace, or the last comment before
  * the next clause, as ESLint reads them.
  */
-bool hasFallthroughComment(RuleContext &ctx,
-                           const Options &options,
-                           Node *current,
-                           Node *next)
+const syntax::Trivia *
+fallthroughCommentOf(RuleContext &ctx, const Options &options, Node *current, Node *next)
 {
   span<Node *> body = ast::SwitchCase(current).consequent();
   if (body.size() == 1 && body[0]->kind == NodeKind::BlockStatement) {
@@ -67,12 +68,12 @@ bool hasFallthroughComment(RuleContext &ctx,
     uint32_t from = inner.size() > 0 ? inner[inner.size() - 1]->end : block->start + 1;
     if (const syntax::Trivia *comment = lastCommentIn(ctx, from, block->end)) {
       if (isFallthroughComment(ctx, options, *comment)) {
-        return true;
+        return comment;
       }
     }
   }
   const syntax::Trivia *comment = lastCommentIn(ctx, current->end, next->start);
-  return comment && isFallthroughComment(ctx, options, *comment);
+  return comment && isFallthroughComment(ctx, options, *comment) ? comment : nullptr;
 }
 
 void create(RuleContext &ctx)
@@ -82,6 +83,8 @@ void create(RuleContext &ctx)
   string_view flags = "i";
   if (const JsonValue *given = ctx.option(0)) {
     options->allowEmptyCase = given->getBool("allowEmptyCase", false);
+    options->reportUnusedFallthroughComment =
+        given->getBool("reportUnusedFallthroughComment", false);
     string_view custom = given->getString("commentPattern");
     if (!custom.empty()) {
       pattern = custom;
@@ -102,16 +105,28 @@ void create(RuleContext &ctx)
       Node *current = cases[i];
       Node *next = cases[i + 1];
       span<Node *> body = ast::SwitchCase(current).consequent();
+      // An empty case is a grouping that always falls through, so only a
+      // non-empty case whose statements exit cannot fall through.
+      bool exits = body.size() > 0 && listExits(body);
       bool fallsThrough;
       if (body.size() == 0) {
         // An empty case is a deliberate grouping unless a blank line separates them.
         fallsThrough = !options->allowEmptyCase &&
                        lineOf(ctx, next->start) > lineOf(ctx, current->end) + 1;
       } else {
-        fallsThrough = !listExits(body);
+        fallsThrough = !exits;
       }
-      if (fallsThrough && !hasFallthroughComment(ctx, *options, current, next)) {
-        ctx.report(next, ast::SwitchCase(next).test() ? "case" : "default");
+      const syntax::Trivia *comment = fallthroughCommentOf(ctx, *options, current, next);
+      if (fallsThrough) {
+        if (!comment) {
+          ctx.report(next, ast::SwitchCase(next).test() ? "case" : "default");
+        }
+      } else if (exits && options->reportUnusedFallthroughComment && comment) {
+        Report r;
+        r.node = next;
+        r.at(comment->offset, comment->offset + comment->length);
+        r.messageId = "unusedFallthroughComment";
+        ctx.report(std::move(r));
       }
     }
   });

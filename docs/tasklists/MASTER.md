@@ -775,7 +775,9 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     approximation (rules/util.h `alwaysExits`); a code-path analysis would
     also see `switch` exits and labelled breaks.
   - [ ] `no-empty`: upstream's "insert a comment" suggestion.
-  - [ ] `no-fallthrough`: `reportUnusedFallthroughComment`.
+  - [x] `no-fallthrough`: `reportUnusedFallthroughComment` reports a
+    fallthrough comment on a non-empty case that exits (the report lands on the
+    comment); reachability is the statement-list approximation, not code paths.
   - [ ] `lint::Regex` matches bytes; `\u` escapes above 0x7F and Unicode
     classes fail to compile.
 - [x] Batch B (binder-heavy): `prefer-const` (fixable), `no-unused-vars`,

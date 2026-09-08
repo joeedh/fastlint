@@ -26,13 +26,20 @@ grouping, not fallthrough; a blank line between them makes it fallthrough.
 ## Options
 
 ```json
-{ "allowEmptyCase": false, "commentPattern": "break[\\s\\w]+omitted" }
+{
+  "allowEmptyCase": false,
+  "commentPattern": "break[\\s\\w]+omitted",
+  "reportUnusedFallthroughComment": false
+}
 ```
 
 - `allowEmptyCase`: empty cases never report, blank lines or not.
 - `commentPattern`: a regular expression that replaces the default. The
   engine covers the usual ECMAScript syntax (docs/rules.md "Pattern
   options"); an unsupported pattern falls back to the default.
+- `reportUnusedFallthroughComment`: reports a fallthrough comment on a
+  non-empty case that exits, since the comment cannot take effect. The report
+  is placed on the comment (`unusedFallthroughComment`).
 
 ## Fix
 
@@ -41,6 +48,7 @@ None.
 ## Compared with ESLint
 
 Same messages and options as ESLint's `no-fallthrough`, with the same
-comment placement rules. `reportUnusedFallthroughComment` is not
-implemented. Reachability is the statement-list approximation described in
-no-unreachable rather than code-path analysis.
+comment placement rules, including `reportUnusedFallthroughComment`.
+Reachability is the statement-list approximation described in no-unreachable
+rather than code-path analysis, so a case counts as exiting only when its
+last statement (or a fully-exiting `if`/`try`) exits.

@@ -8,6 +8,7 @@ TEST(rules_no_fallthrough, cases)
 {
   const char *allowEmpty = R"([{"allowEmptyCase": true}])";
   const char *customPattern = R"([{"commentPattern": "break[\\s\\w]+omitted"}])";
+  const char *reportUnused = R"([{"reportUnusedFallthroughComment": true}])";
   test::runRuleTests(
       rules::kNoFallthrough,
       {
@@ -65,6 +66,11 @@ TEST(rules_no_fallthrough, cases)
           {"switch(foo) { case 0:\n\ncase 1: b(); }", allowEmpty},
           {"switch(foo) { case 0:\n\n\ncase 1: b(); }", allowEmpty},
           {"switch(foo) { case 0:\n// comment\n\ncase 1: b(); }", allowEmpty},
+          // A fallthrough comment on the last case has no next clause to permit.
+          {"switch(foo) { case 0: a(); break; /* falls through */ }", reportUnused},
+          // A non-matching comment before the next case is not a fallthrough comment.
+          {"switch(foo) { case 0: a(); break; /* just a comment */ case 1: b(); }",
+           reportUnused},
       },
       {
           {"switch(foo) { case 0: a();\ncase 1: b() }",
@@ -116,5 +122,19 @@ TEST(rules_no_fallthrough, cases)
            nullptr,
            allowEmpty},
           {"switch(foo) { case 0: a();\n/* falls through */\n\ncase 1: b(); }"},
+          // A case that exits cannot fall through, so its fallthrough comment is
+          // unused and reported at the comment when the option is on.
+          {"switch(foo) { case 0: a(); break;\n/* falls through */\ncase 1: b(); }",
+           {{"unusedFallthroughComment", 2, 1}},
+           nullptr,
+           reportUnused},
+          {"switch(foo) { default: a(); break;\n/* falls through */\ncase 1: b(); }",
+           {{"unusedFallthroughComment", 2, 1}},
+           nullptr,
+           reportUnused},
+          {"switch(foo) { case 0: a(); break;\n// falls through\ncase 1: b(); }",
+           {{"unusedFallthroughComment", 2, 1}},
+           nullptr,
+           reportUnused},
       });
 }
