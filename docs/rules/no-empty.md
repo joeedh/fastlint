@@ -21,9 +21,11 @@ deliberate and is not reported either.
 
 ## Fix
 
-None.
+None. An empty block statement carries a suggestion (`suggestComment`) that
+inserts `/* empty */` between the braces, which an editor applies; `--fix`
+never does. An empty `switch` is reported without a suggestion.
 
 ## Compared with ESLint
 
-Same reports, messages and option as ESLint's `no-empty`. Upstream offers a
-suggestion that inserts a comment; there is none here yet.
+Same reports, messages, option, and the block-statement `suggestComment`
+suggestion as ESLint's `no-empty`.

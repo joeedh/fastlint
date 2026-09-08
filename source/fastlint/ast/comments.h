@@ -31,6 +31,9 @@ struct Comment {
   /** Set by a fixer when the comment left the source text it came from; the
    * printer emits moved comments from this table instead of from the text. */
   bool moved = false;
+  /** A comment a fixer synthesized: `offset` indexes the file's synthesized
+   * text rather than the source, and `length` is unused. */
+  bool synthetic = false;
 };
 
 using CommentList = litestl::util::Vector<Comment, 1>;

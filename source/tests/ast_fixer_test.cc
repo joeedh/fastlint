@@ -349,6 +349,24 @@ TEST(ast_fixer, set_flag_makes_a_member_optional)
   CHECK_EQ(std::string(out.c_str()), "a?.b;");
 }
 
+TEST(ast_fixer, add_comment_fills_an_empty_block)
+{
+  Lowered l("if (x) {}\n");
+  Fixer fixer(l.file);
+  Node *block = l.statement(0)->children[1];
+  CHECK(fixer.addComment(block, "/* empty */"));
+  litestl::util::string out;
+  printAst(l.file, out);
+  CHECK_EQ(std::string(out.c_str()), "if (x) { /* empty */ }\n");
+}
+
+TEST(ast_fixer, add_comment_refuses_a_non_empty_block)
+{
+  Lowered l("if (x) { a(); }\n");
+  Fixer fixer(l.file);
+  CHECK(!fixer.addComment(l.statement(0)->children[1], "/* empty */"));
+}
+
 TEST(ast_fixer, moved_nodes_drop_old_parentheses_and_gain_needed_ones)
 {
   Lowered l("type A = (string | number)[]; type B = Array<string | number>;");

@@ -83,6 +83,27 @@ void Fixer::reprint(Node *node)
   node->dirty = true;
 }
 
+bool Fixer::addComment(Node *block, string_view text)
+{
+  if (!block) {
+    return false;
+  }
+  // A list child would make the placement between bare braces ill-defined.
+  if (block->children.size() > size_t(kindInfo(block->kind).fixedChildren)) {
+    return false;
+  }
+  Comment comment{};
+  comment.offset = m_file.addSyntheticComment(text);
+  comment.length = 0;
+  comment.multiLine = text.size() >= 2 && text[0] == '/' && text[1] == '*';
+  comment.place = CommentPlace::Dangling;
+  comment.moved = true;
+  comment.synthetic = true;
+  m_file.commentsFor(block).append(comment);
+  reprint(block);
+  return true;
+}
+
 void Fixer::setData(Node *node, int index, uint8_t value)
 {
   reprint(node);

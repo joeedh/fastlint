@@ -352,6 +352,10 @@ Fixers edit the AST. The file owns a `Fixer` that exposes:
   optional slot. Removing from a required slot is an authoring error and
   asserts in debug.
 - `set(Node *parent, int index, Node *fresh)`: sets an optional slot.
+- `addComment(Node *block, string_view text)`: puts a synthesized comment
+  inside an empty braced node (a block, static block, module block or a
+  switch with no cases), which prints between the braces; fails on a
+  non-empty node. See Comments for how a synthesized comment is stored.
 - `setData(Node *node, int index, uint8_t value)` / `setFlag(node, flag,
   on)`: changes an operator, a declaration kind or a flag in place. The node
   loses its captured layout and reprints from its kind template, because
@@ -410,6 +414,11 @@ are its methods (`identifier`, `literal`, `member`, `call`, `unary`,
   comment too, or `DropAll` to drop everything. `KeepTrailing` is
   lossless.
 - `replace` moves the old node's comments to the new node.
+- A `Comment` normally points at a source slice (`offset`, `length`). A
+  fixer can add a synthesized one (`addComment`): its text lives in the
+  file's arena, `synthetic` is set, and `offset` indexes that text through
+  `file.syntheticComment`. The printer reads a synthetic comment from there
+  rather than the source buffer.
 - A node printed from its kind template has lost the text that held its
   children's leading and trailing comments and its own dangling ones, so
   the printer emits them itself: a child's before and after the child, a

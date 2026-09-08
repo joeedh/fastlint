@@ -801,7 +801,12 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     exiting), matches `break`/`continue` to the loop or switch they target, and
     follows labelled jumps, so a `break` aimed at an inner loop no longer keeps
     a `while (true)` from exiting.
-  - [ ] `no-empty`: upstream's "insert a comment" suggestion.
+  - [x] `no-empty`: upstream's "insert a comment" suggestion. An empty block
+    statement carries a `suggestComment` suggestion that inserts `/* empty */`
+    between the braces, built on a new `Fixer::addComment` primitive for
+    synthesized comments (a `Comment` whose text lives in the file arena, not
+    the source; printed by `bracedStatements` between bare braces). An empty
+    `switch` is still reported without a suggestion, as upstream does.
   - [x] `no-fallthrough`: `reportUnusedFallthroughComment` reports a
     fallthrough comment on a non-empty case that exits (the report lands on the
     comment); reachability is the `completesNormally` analysis in rules/flow.h.

@@ -310,6 +310,34 @@ TEST(lint_linter, json_suggestion_fix_ranges)
   CHECK(applied.find("==") == applied.find("==="));
 }
 
+TEST(lint_linter, no_empty_suggests_a_comment_fix)
+{
+  Registry registry;
+  registry.add(rules::kNoEmpty);
+  Config config;
+  string error;
+  REQUIRE(config.parse("{\"rules\": {\"no-empty\": \"error\"}}", "", registry, error));
+  Linter linter(registry, config);
+  LintOptions options;
+  options.fixEdits = true;
+  FileResult result;
+  const char *src = "if (x) {}\n";
+  linter.lintSource(src, "a.ts", options, result);
+
+  REQUIRE_EQ(int(result.diagnostics.size()), 1);
+  const Diagnostic &d = result.diagnostics[0];
+  CHECK(!d.hasFix);
+  REQUIRE_EQ(int(d.suggestions.size()), 1);
+  const SuggestionResult &s = d.suggestions[0];
+  REQUIRE(s.hasFix);
+  std::string source(src);
+  std::string applied = source.substr(0, s.fixStart) +
+                        std::string(s.fixText.c_str(), s.fixText.size()) +
+                        source.substr(s.fixEnd);
+  // The suggested edit puts a comment between the braces.
+  CHECK_EQ(applied, "if (x) { /* empty */ }\n");
+}
+
 TEST(lint_linter, sarif_output)
 {
   Harness h;

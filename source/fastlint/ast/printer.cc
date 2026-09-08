@@ -387,10 +387,14 @@ private:
     }
     string_view source = f.grammar() ? f.grammar()->source() : string_view();
     for (const Comment &c : *list) {
-      if ((!c.moved && !own) || c.place != place || c.offset + c.length > source.size()) {
+      if ((!c.moved && !own) || c.place != place) {
         continue;
       }
-      string_view text = source.substr(c.offset, c.length);
+      if (!c.synthetic && c.offset + c.length > source.size()) {
+        continue;
+      }
+      string_view text =
+          c.synthetic ? f.syntheticComment(c.offset) : source.substr(c.offset, c.length);
       switch (place) {
       case CommentPlace::Leading: {
         string indent = lineIndent();
@@ -770,7 +774,17 @@ private:
   void bracedStatements(span<Node *> nodes)
   {
     if (nodes.size() == 0) {
-      put("{}");
+      // A fixer may have put a comment inside an otherwise empty braced node.
+      put('{');
+      size_t before = out.size();
+      if (templating) {
+        comments(templating, CommentPlace::Dangling, false);
+      }
+      if (out.size() != before) {
+        put(" }");
+      } else {
+        put('}');
+      }
       return;
     }
     string indent = lineIndent();

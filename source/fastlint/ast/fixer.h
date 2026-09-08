@@ -59,6 +59,13 @@ public:
   /** Sets fixed slot `index`; a null `fresh` clears an optional slot. */
   bool set(Node *parent, int index, Node *fresh);
   /**
+   * Puts a comment inside `block`, an empty braced node (a block, static block,
+   * module block or a switch with no cases). `text` carries its own delimiters,
+   * block or line. Fails on a non-empty node, since the placement is defined
+   * only between bare braces.
+   */
+  bool addComment(Node *block, string_view text);
+  /**
    * Changes an enum byte of `node` (an operator, a declaration kind). The
    * node reprints from its kind template, since the token lives in its own
    * text; the children keep theirs.

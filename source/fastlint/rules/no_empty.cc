@@ -11,6 +11,7 @@ using namespace lint;
 
 constexpr Message kMessages[] = {
     {"unexpected", "Empty {{type}} statement."},
+    {"suggestComment", "Add comment inside empty {{type}} statement."},
 };
 
 void create(RuleContext &ctx)
@@ -33,7 +34,16 @@ void create(RuleContext &ctx)
     if (hasCommentBetween(tree, node->start, node->end)) {
       return;
     }
-    ctx.report(node, "unexpected", {{"type", "block"}});
+    Report r;
+    r.node = node;
+    r.messageId = "unexpected";
+    r.data.append({"type", "block"});
+    Suggestion s;
+    s.messageId = "suggestComment";
+    s.data.append({"type", "block"});
+    s.fix = [node](ast::Fixer &fixer) { fixer.addComment(node, "/* empty */"); };
+    r.suggestions.append(std::move(s));
+    ctx.report(std::move(r));
   });
 
   ctx.on(ast::NodeKind::SwitchStatement, [&ctx, &tree](ast::Node *node) {
@@ -66,7 +76,7 @@ const RuleDef kNoEmpty{
         "https://github.com/joeedh/fastlint/blob/master/docs/rules/no-empty.md",
         /*recommended=*/true,
         /*fixable=*/false,
-        /*hasSuggestions=*/false,
+        /*hasSuggestions=*/true,
         /*typeAware=*/false,
         messagesOf(kMessages),
         kSchema,

@@ -103,6 +103,20 @@ public:
   {
     return m_comments[node];
   }
+  /** Stores synthesized comment text and returns its index, which a synthetic
+   * `Comment` holds in `offset`. The text keeps its comment delimiters, block
+   * or line, as a source comment's slice does. */
+  uint32_t addSyntheticComment(string_view text)
+  {
+    m_syntheticComments.append(intern(text));
+    return uint32_t(m_syntheticComments.size() - 1);
+  }
+  /** The text of the synthetic comment at `index`, or empty when out of range. */
+  string_view syntheticComment(uint32_t index) const
+  {
+    return index < m_syntheticComments.size() ? m_syntheticComments[int(index)]
+                                              : string_view();
+  }
   /** Appends `from`'s comments to `to` and drops `from`'s entry. */
   void moveComments(const Node *from, const Node *to);
   void dropComments(const Node *node)
@@ -144,6 +158,7 @@ private:
   Node *m_root = nullptr;
   Vector<PreorderEntry> m_preorder;
   Map<const Node *, CommentList> m_comments;
+  Vector<string_view> m_syntheticComments;
   Map<const Node *, Layout> m_layouts;
   Vector<DeadRange> m_dead;
   Vector<char *> m_chunks;
