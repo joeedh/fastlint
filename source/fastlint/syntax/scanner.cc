@@ -319,7 +319,9 @@ void Scanner::skipTrivia(bool &sawLineBreak)
       }
       sawLineBreak = true;
       m_sawLineBreak = true;
-      noteLineStart(start + 1);
+      // `m_pos` is past the whole break (two bytes for `\r\n`), so it is the
+      // first column of the next line; `start + 1` would land on the `\n`.
+      noteLineStart(uint32_t(m_pos));
       addTrivia(Trivia::Kind::NewLine, start, uint32_t(m_pos - start), true);
       continue;
     }
@@ -329,7 +331,9 @@ void Scanner::skipTrivia(bool &sawLineBreak)
       advanceChar();
       sawLineBreak = true;
       m_sawLineBreak = true;
-      noteLineStart(start + 1);
+      // `advanceChar` consumed the whole separator (three bytes for U+2028 or
+      // U+2029), so `m_pos` is the next line's first column.
+      noteLineStart(uint32_t(m_pos));
       addTrivia(Trivia::Kind::NewLine, start, uint32_t(m_pos - start), true);
       continue;
     }
@@ -645,12 +649,12 @@ void Scanner::scanString(uint32_t start)
       terminated = false;
       char e = byte(m_pos);
       if (e == '\r') {
-        uint32_t br = uint32_t(m_pos);
         m_pos += 1;
         if (!atEnd() && byte(m_pos) == '\n') {
           m_pos += 1;
         }
-        noteLineStart(br + 1);
+        // `m_pos` is past the whole break, so it is the next line's first column.
+        noteLineStart(uint32_t(m_pos));
         m_sawLineBreak = true;
         continue;
       }
@@ -777,11 +781,13 @@ void Scanner::scanTemplate(uint32_t start, ScanMode mode)
       noteLineStart(uint32_t(m_pos) + 1);
       m_sawLineBreak = true;
     } else if (c == '\r') {
-      noteLineStart(uint32_t(m_pos) + 1);
       m_sawLineBreak = true;
       if (m_pos + 1 < m_source.size() && byte(m_pos + 1) == '\n') {
         m_pos += 1;
       }
+      // `m_pos` sits on the `\n` for `\r\n` (or still the `\r` for a lone `\r`);
+      // the trailing `m_pos += 1` then makes `m_pos + 1` the next line's start.
+      noteLineStart(uint32_t(m_pos) + 1);
     }
     m_pos += 1;
   }

@@ -276,9 +276,9 @@ TEST(scanner, line_start_table_tracks_every_line_kind)
   Scanned scan(source);
   span<const uint32_t> starts = scan.scanner.lineStarts();
   CHECK_EQ(starts.size(), 4u);
-  CHECK_EQ(starts[1], 2u);
-  CHECK_EQ(starts[2], 4u);
-  CHECK_EQ(starts[3], 7u); // U+2028 is 3 bytes
+  CHECK_EQ(starts[1], 2u); // after "a\n"
+  CHECK_EQ(starts[2], 5u); // after "b\r\n", past both bytes of the break
+  CHECK_EQ(starts[3], 9u); // after the 3-byte U+2028
 }
 
 span<const syntax::Token> treeTokens(syntax::GrammarTree &tree)

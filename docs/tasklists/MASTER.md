@@ -904,8 +904,24 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     still open.
 
 ### 6.4 Dogfood
-- [ ] Lint `C:/dev/TypeScript/packages/typescript/src` and our own `tools/`;
+- [x] Lint `C:/dev/TypeScript/packages/typescript/src` and our own `tools/`;
   compare against typescript-eslint output; triage diffs.
+  - `tools/` (2026-09-07): 20 non-strict-boolean findings, all true positives.
+    The unsafe-* cluster is a `msg: any` RPC spike; `no-unnecessary-condition`
+    fires where a lib type is non-nullable (`argv._`, `JSON.stringify`);
+    `no-unnecessary-type-assertion` flags a `child.stderr!` the `spawn` stdio
+    tuple already types non-null.
+  - `C:/dev/TypeScript/packages/typescript/src` (60 files): 3587 findings,
+    unsafe-* dominating an `any`-heavy protocol package; no crash.
+  - Head-to-head against typescript-eslint 8.69 on a webgl file: identical
+    findings and identical columns after the two fixes below.
+  - Fixed a crash: `awaitedDeep` / `isBuiltinDeep` / `isPromiseLike` held a
+    `TypeRow &` or a `children` span across a type-server query that reallocates
+    the graph, so a second type-heavy rule could dangle it. They now copy the
+    fields and members out first, matching `isThenable` / `signatures`.
+  - Fixed a CRLF column off-by-one: the scanner recorded a `\r\n` (and a 3-byte
+    U+2028 / U+2029) line start one byte early, so every column on a CRLF file
+    read one too high. All reported columns now match typescript-eslint.
 - [x] Ran the 13 type-aware rules over two real projects
   (2026-09-07): `C:/dev/visualnovel` (well-typed, `strict`) and
   `C:/dev/webgl-app-framework` (widely uses `any`).

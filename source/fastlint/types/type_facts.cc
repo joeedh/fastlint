@@ -546,14 +546,23 @@ bool TypeFacts::isPromiseLike(TypeId type)
   if (bool *cached = m_promiseLike.lookup_ptr(int(type))) {
     return *cached;
   }
-  const TypeRow &row = m_graph.type(type);
+  // Copy the fields and members out before the queries below: `isPromiseLike`
+  // and `thenable` query the type server, which can reallocate the graph's row
+  // and child storage and dangle a held `TypeRow &` or a `children` span.
+  const SymbolId symbol = m_graph.type(type).symbol;
+  const SymbolId aliasSymbol = m_graph.type(type).aliasSymbol;
+  const ChildKind childKind = m_graph.type(type).childKind;
   bool result = false;
-  if (nameIs(row.symbol, "Promise", "PromiseLike") ||
-      nameIs(row.aliasSymbol, "Promise", "PromiseLike"))
+  if (nameIs(symbol, "Promise", "PromiseLike") ||
+      nameIs(aliasSymbol, "Promise", "PromiseLike"))
   {
     result = true;
-  } else if (row.childKind == ChildKind::UnionMembers) {
+  } else if (childKind == ChildKind::UnionMembers) {
+    Vector<TypeId, 4> members;
     for (TypeId member : m_graph.children(type)) {
+      members.append(member);
+    }
+    for (TypeId member : members) {
       if (isPromiseLike(member)) {
         result = true;
         break;
@@ -854,28 +863,37 @@ bool TypeFacts::isBuiltinDeep(TypeId type, std::string_view name, int depth)
     return false;
   }
   type = deepen(type);
-  const TypeRow &row = m_graph.type(type);
-  if (row.childKind == ChildKind::IntersectionMembers) {
+  // Copy the fields and members out before recursing: `isBuiltinDeep` queries
+  // the type server, which can reallocate the graph's row and child storage and
+  // dangle a held `TypeRow &` or a `children` span.
+  const uint32_t flags = m_graph.type(type).flags;
+  const ChildKind childKind = m_graph.type(type).childKind;
+  const SymbolId symbol = m_graph.type(type).symbol;
+  if (childKind == ChildKind::IntersectionMembers || childKind == ChildKind::UnionMembers)
+  {
+    Vector<TypeId, 4> members;
     for (TypeId member : m_graph.children(type)) {
-      if (isBuiltinDeep(member, name, depth + 1)) {
-        return true;
-      }
+      members.append(member);
     }
-    return false;
-  }
-  if (row.childKind == ChildKind::UnionMembers) {
-    for (TypeId member : m_graph.children(type)) {
+    if (childKind == ChildKind::IntersectionMembers) {
+      for (TypeId member : members) {
+        if (isBuiltinDeep(member, name, depth + 1)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    for (TypeId member : members) {
       if (!isBuiltinDeep(member, name, depth + 1)) {
         return false;
       }
     }
-    return row.childCount > 0;
+    return !members.isEmpty();
   }
-  if (row.flags & tsgo::TypeFlags::TypeParameter) {
+  if (flags & tsgo::TypeFlags::TypeParameter) {
     TypeId constraint = constraintOf(type);
     return constraint && isBuiltinDeep(constraint, name, depth + 1);
   }
-  SymbolId symbol = row.symbol;
   if (symbol && m_graph.text(m_graph.symbol(symbol).name) == name &&
       isDefaultLibrary(symbol))
   {
@@ -1034,13 +1052,24 @@ TypeId TypeFacts::awaitedDeep(TypeId type, int depth)
   if (!type || depth > 8) {
     return 0;
   }
-  const TypeRow &row = m_graph.type(type);
-  if (row.flags & (tsgo::TypeFlags::Any | tsgo::TypeFlags::Unknown)) {
+  // The type's flags and symbol are copied out before any type-server query
+  // below: a query appends rows to the graph and can reallocate its storage,
+  // which would dangle a `TypeRow &` held across the call.
+  const uint32_t flags = m_graph.type(type).flags;
+  const SymbolId symbol = m_graph.type(type).symbol;
+  if (flags & (tsgo::TypeFlags::Any | tsgo::TypeFlags::Unknown)) {
     return type;
   }
-  if (row.flags & tsgo::TypeFlags::Union) {
-    TypeId same = 0;
+  if (flags & tsgo::TypeFlags::Union) {
+    // Copy the members out before recursing: `awaitedDeep` queries the type
+    // server, which can reallocate the graph's child storage and dangle the
+    // span `unionMembers` returns into it.
+    Vector<TypeId, 4> members;
     for (TypeId member : unionMembers(type)) {
+      members.append(member);
+    }
+    TypeId same = 0;
+    for (TypeId member : members) {
       TypeId awaited = awaitedDeep(member, depth + 1);
       if (!awaited || (same && awaited != same)) {
         return 0;
@@ -1055,7 +1084,7 @@ TypeId TypeFacts::awaitedDeep(TypeId type, int depth)
   // The default library's `Promise<T>` resolves to `T`; other thenables are read through
   // the callback `then` hands their value to.
   TypeId value = 0;
-  if (nameIs(row.symbol, "Promise", "PromiseLike") && isDefaultLibrary(row.symbol)) {
+  if (nameIs(symbol, "Promise", "PromiseLike") && isDefaultLibrary(symbol)) {
     span<const TypeId> args = typeArguments(type);
     value = args.size() > 0 ? args[0] : 0;
   }
