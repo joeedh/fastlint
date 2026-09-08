@@ -132,4 +132,16 @@ export async function smokeNapi(): Promise<void> {
     `if (out[0].messages.length === 0) throw new Error("expected the recommended rules to report");`,
   ].join("\n");
   await run(process.execPath, ["-e", script], { cwd: repoRoot, env: buildEnv() });
+
+  // The rule-loading runtime: two TypeScript rules over the addon's accessors.
+  step("smoke test the TypeScript rule runtime");
+  const smoke = path.join(
+    repoRoot,
+    "source",
+    "fastlint",
+    "plugin",
+    "ts",
+    "runtime.smoke.ts"
+  );
+  await run(process.execPath, [smoke, addon], { cwd: repoRoot, env: buildEnv() });
 }

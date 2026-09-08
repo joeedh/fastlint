@@ -491,6 +491,8 @@ export interface Node {
   readonly childCount: number;
   child(index: number): Node | null;
   readonly text: string;
+  /** Byte offsets `[start, end)` into the source, for reports. */
+  readonly range: readonly [number, number];
   hasFlag(flag: Flag): boolean;
   is<K extends NodeKind>(kind: K): this is KindNode<K>;
   /** Every descendant of `kind` in preorder, as one typed array. */
@@ -1649,3 +1651,262 @@ export interface NodeByKind {
 
 export type KindNode<K extends NodeKind> =
   K extends keyof NodeByKind ? NodeByKind[K] : Node;
+
+/** An opaque node handle owned by the host; a rule passes it back, never reads it. */
+export type Handle = unknown;
+
+/** The accessor surface each embedding implements over its own tree memory. */
+export interface Host {
+  kind(handle: Handle): NodeKind;
+  flags(handle: Handle): number;
+  parent(handle: Handle): Handle | null;
+  childCount(handle: Handle): number;
+  child(handle: Handle, index: number): Handle | null;
+  text(handle: Handle): string;
+  dataByte(handle: Handle, byte: number): number;
+  start(handle: Handle): number;
+  end(handle: Handle): number;
+  descendants(handle: Handle, kind: NodeKind): Handle[];
+}
+
+// A member's backing store: a fixed child slot, the tail list, a flag bit or
+// a data byte. The generated `members` table pairs each with its slot index.
+const CHILD = 0;
+const LIST = 1;
+const FLAG = 2;
+const ENUM = 3;
+
+type MemberSpec = readonly [name: string, code: number, slot: number];
+
+/** Named members per kind, in view order: `[name, code, slot]`. */
+const members: { readonly [kind: number]: readonly MemberSpec[] } = {
+  0: [["body", LIST, 0], ["sourceType", ENUM, 0]],
+  1: [["typeAnnotation", CHILD, 0], ["isOptional", FLAG, 0]],
+  3: [["literalKind", ENUM, 0]],
+  4: [["parts", LIST, 0]],
+  5: [["isTail", FLAG, 20]],
+  6: [["tag", CHILD, 0], ["typeArguments", CHILD, 1], ["quasi", CHILD, 2]],
+  9: [["elements", LIST, 0]],
+  10: [["properties", LIST, 0]],
+  11: [["key", CHILD, 0], ["value", CHILD, 1], ["kind", ENUM, 0], ["isComputed", FLAG, 1], ["isShorthand", FLAG, 2], ["isMethod", FLAG, 3]],
+  12: [["argument", CHILD, 0]],
+  13: [["object", CHILD, 0], ["property", CHILD, 1], ["isComputed", FLAG, 1], ["isOptional", FLAG, 0]],
+  14: [["callee", CHILD, 0], ["typeArguments", CHILD, 1], ["arguments", LIST, 2], ["isOptional", FLAG, 0]],
+  15: [["callee", CHILD, 0], ["typeArguments", CHILD, 1], ["arguments", LIST, 2]],
+  16: [["source", CHILD, 0], ["options", CHILD, 1]],
+  17: [["meta", CHILD, 0], ["property", CHILD, 1]],
+  18: [["argument", CHILD, 0], ["op", ENUM, 0]],
+  19: [["argument", CHILD, 0], ["op", ENUM, 0], ["isPrefix", FLAG, 4]],
+  20: [["left", CHILD, 0], ["right", CHILD, 1], ["op", ENUM, 0]],
+  21: [["left", CHILD, 0], ["right", CHILD, 1], ["op", ENUM, 0]],
+  22: [["left", CHILD, 0], ["right", CHILD, 1], ["op", ENUM, 0]],
+  23: [["test", CHILD, 0], ["consequent", CHILD, 1], ["alternate", CHILD, 2]],
+  24: [["expressions", LIST, 0]],
+  25: [["argument", CHILD, 0]],
+  26: [["argument", CHILD, 0], ["isDelegate", FLAG, 5]],
+  27: [["id", CHILD, 0], ["typeParameters", CHILD, 1], ["returnType", CHILD, 2], ["body", CHILD, 3], ["params", LIST, 4], ["isAsync", FLAG, 6], ["isGenerator", FLAG, 7], ["isExpression", FLAG, 8]],
+  28: [["id", CHILD, 0], ["typeParameters", CHILD, 1], ["returnType", CHILD, 2], ["body", CHILD, 3], ["params", LIST, 4], ["isAsync", FLAG, 6], ["isGenerator", FLAG, 7]],
+  29: [["id", CHILD, 0], ["typeParameters", CHILD, 1], ["returnType", CHILD, 2], ["body", CHILD, 3], ["params", LIST, 4], ["isAsync", FLAG, 6], ["isGenerator", FLAG, 7], ["isDeclare", FLAG, 9]],
+  30: [["id", CHILD, 0], ["typeParameters", CHILD, 1], ["returnType", CHILD, 2], ["body", CHILD, 3], ["params", LIST, 4], ["isAsync", FLAG, 6], ["isGenerator", FLAG, 7], ["isDeclare", FLAG, 9]],
+  31: [["id", CHILD, 0], ["typeParameters", CHILD, 1], ["returnType", CHILD, 2], ["body", CHILD, 3], ["params", LIST, 4], ["isAsync", FLAG, 6], ["isGenerator", FLAG, 7]],
+  32: [["decorators", CHILD, 0], ["id", CHILD, 1], ["typeParameters", CHILD, 2], ["superClass", CHILD, 3], ["superTypeArguments", CHILD, 4], ["body", CHILD, 5], ["implements", LIST, 6], ["isAbstract", FLAG, 10], ["isDeclare", FLAG, 9]],
+  33: [["decorators", CHILD, 0], ["id", CHILD, 1], ["typeParameters", CHILD, 2], ["superClass", CHILD, 3], ["superTypeArguments", CHILD, 4], ["body", CHILD, 5], ["implements", LIST, 6], ["isAbstract", FLAG, 10]],
+  34: [["body", LIST, 0]],
+  35: [["decorators", LIST, 0]],
+  36: [["expression", CHILD, 0]],
+  37: [["decorators", CHILD, 0], ["key", CHILD, 1], ["value", CHILD, 2], ["kind", ENUM, 0], ["accessibility", ENUM, 1], ["isStatic", FLAG, 11], ["isComputed", FLAG, 1], ["isOverride", FLAG, 12], ["isOptional", FLAG, 0]],
+  38: [["decorators", CHILD, 0], ["key", CHILD, 1], ["value", CHILD, 2], ["kind", ENUM, 0], ["accessibility", ENUM, 1], ["isStatic", FLAG, 11], ["isComputed", FLAG, 1], ["isOverride", FLAG, 12], ["isOptional", FLAG, 0]],
+  39: [["decorators", CHILD, 0], ["key", CHILD, 1], ["typeAnnotation", CHILD, 2], ["value", CHILD, 3], ["accessibility", ENUM, 0], ["isStatic", FLAG, 11], ["isComputed", FLAG, 1], ["isDeclare", FLAG, 9], ["isReadonly", FLAG, 14], ["isDefinite", FLAG, 13], ["isOptional", FLAG, 0], ["isOverride", FLAG, 12]],
+  40: [["decorators", CHILD, 0], ["key", CHILD, 1], ["typeAnnotation", CHILD, 2], ["value", CHILD, 3], ["accessibility", ENUM, 0], ["isStatic", FLAG, 11], ["isComputed", FLAG, 1], ["isDeclare", FLAG, 9], ["isReadonly", FLAG, 14], ["isDefinite", FLAG, 13], ["isOptional", FLAG, 0], ["isOverride", FLAG, 12]],
+  41: [["decorators", CHILD, 0], ["key", CHILD, 1], ["typeAnnotation", CHILD, 2], ["value", CHILD, 3], ["accessibility", ENUM, 0], ["isStatic", FLAG, 11], ["isComputed", FLAG, 1], ["isDeclare", FLAG, 9], ["isReadonly", FLAG, 14], ["isDefinite", FLAG, 13], ["isOptional", FLAG, 0], ["isOverride", FLAG, 12]],
+  42: [["decorators", CHILD, 0], ["key", CHILD, 1], ["typeAnnotation", CHILD, 2], ["value", CHILD, 3], ["accessibility", ENUM, 0], ["isStatic", FLAG, 11], ["isComputed", FLAG, 1], ["isDeclare", FLAG, 9], ["isReadonly", FLAG, 14], ["isDefinite", FLAG, 13], ["isOptional", FLAG, 0], ["isOverride", FLAG, 12]],
+  43: [["body", LIST, 0]],
+  44: [["decorators", CHILD, 0], ["parameter", CHILD, 1], ["accessibility", ENUM, 0], ["isReadonly", FLAG, 14], ["isOverride", FLAG, 12]],
+  45: [["declarations", LIST, 0], ["kind", ENUM, 0], ["isDeclare", FLAG, 9]],
+  46: [["id", CHILD, 0], ["init", CHILD, 1], ["isDefinite", FLAG, 13]],
+  47: [["typeAnnotation", CHILD, 0], ["properties", LIST, 1]],
+  48: [["typeAnnotation", CHILD, 0], ["elements", LIST, 1]],
+  49: [["argument", CHILD, 0], ["typeAnnotation", CHILD, 1]],
+  50: [["left", CHILD, 0], ["right", CHILD, 1]],
+  51: [["expression", CHILD, 0], ["isDirective", FLAG, 15]],
+  52: [["body", LIST, 0]],
+  55: [["test", CHILD, 0], ["consequent", CHILD, 1], ["alternate", CHILD, 2]],
+  56: [["init", CHILD, 0], ["test", CHILD, 1], ["update", CHILD, 2], ["body", CHILD, 3]],
+  57: [["left", CHILD, 0], ["right", CHILD, 1], ["body", CHILD, 2]],
+  58: [["left", CHILD, 0], ["right", CHILD, 1], ["body", CHILD, 2], ["isAwait", FLAG, 16]],
+  59: [["test", CHILD, 0], ["body", CHILD, 1]],
+  60: [["body", CHILD, 0], ["test", CHILD, 1]],
+  61: [["argument", CHILD, 0]],
+  62: [["argument", CHILD, 0]],
+  63: [["label", CHILD, 0]],
+  64: [["label", CHILD, 0]],
+  65: [["label", CHILD, 0], ["body", CHILD, 1]],
+  66: [["discriminant", CHILD, 0], ["cases", LIST, 1]],
+  67: [["test", CHILD, 0], ["consequent", LIST, 1]],
+  68: [["block", CHILD, 0], ["handler", CHILD, 1], ["finalizer", CHILD, 2]],
+  69: [["param", CHILD, 0], ["body", CHILD, 1]],
+  70: [["object", CHILD, 0], ["body", CHILD, 1]],
+  71: [["source", CHILD, 0], ["attributes", CHILD, 1], ["specifiers", LIST, 2], ["importKind", ENUM, 0]],
+  72: [["imported", CHILD, 0], ["local", CHILD, 1], ["importKind", ENUM, 0]],
+  73: [["local", CHILD, 0]],
+  74: [["local", CHILD, 0]],
+  75: [["attributes", LIST, 0]],
+  76: [["key", CHILD, 0], ["value", CHILD, 1]],
+  77: [["declaration", CHILD, 0], ["source", CHILD, 1], ["attributes", CHILD, 2], ["specifiers", LIST, 3], ["exportKind", ENUM, 0]],
+  78: [["local", CHILD, 0], ["exported", CHILD, 1], ["exportKind", ENUM, 0]],
+  79: [["declaration", CHILD, 0], ["exportKind", ENUM, 0]],
+  80: [["exported", CHILD, 0], ["source", CHILD, 1], ["attributes", CHILD, 2], ["exportKind", ENUM, 0]],
+  81: [["openingElement", CHILD, 0], ["closingElement", CHILD, 1], ["children", LIST, 2]],
+  82: [["openingFragment", CHILD, 0], ["closingFragment", CHILD, 1], ["children", LIST, 2]],
+  83: [["name", CHILD, 0], ["typeArguments", CHILD, 1], ["attributes", LIST, 2], ["isSelfClosing", FLAG, 21]],
+  84: [["name", CHILD, 0]],
+  87: [["name", CHILD, 0], ["value", CHILD, 1]],
+  88: [["argument", CHILD, 0]],
+  89: [["expression", CHILD, 0]],
+  91: [["expression", CHILD, 0]],
+  94: [["object", CHILD, 0], ["property", CHILD, 1]],
+  95: [["namespaceName", CHILD, 0], ["name", CHILD, 1]],
+  96: [["expression", CHILD, 0], ["typeAnnotation", CHILD, 1]],
+  97: [["expression", CHILD, 0], ["typeAnnotation", CHILD, 1]],
+  98: [["expression", CHILD, 0]],
+  99: [["typeAnnotation", CHILD, 0], ["expression", CHILD, 1]],
+  100: [["expression", CHILD, 0], ["typeArguments", CHILD, 1]],
+  101: [["params", LIST, 0]],
+  102: [["constraint", CHILD, 0], ["defaultType", CHILD, 1], ["isIn", FLAG, 18], ["isOut", FLAG, 19], ["isConst", FLAG, 17]],
+  103: [["params", LIST, 0]],
+  104: [["id", CHILD, 0], ["typeParameters", CHILD, 1], ["body", CHILD, 2], ["extends", LIST, 3], ["isDeclare", FLAG, 9]],
+  105: [["body", LIST, 0]],
+  106: [["expression", CHILD, 0], ["typeArguments", CHILD, 1]],
+  107: [["expression", CHILD, 0], ["typeArguments", CHILD, 1]],
+  108: [["id", CHILD, 0], ["typeParameters", CHILD, 1], ["typeAnnotation", CHILD, 2], ["isDeclare", FLAG, 9]],
+  109: [["id", CHILD, 0], ["members", LIST, 1], ["isConst", FLAG, 17], ["isDeclare", FLAG, 9]],
+  110: [["id", CHILD, 0], ["initializer", CHILD, 1], ["isComputed", FLAG, 1]],
+  111: [["id", CHILD, 0], ["body", CHILD, 1], ["kind", ENUM, 0], ["isDeclare", FLAG, 9]],
+  112: [["body", LIST, 0]],
+  113: [["id", CHILD, 0], ["moduleReference", CHILD, 1], ["importKind", ENUM, 0]],
+  114: [["expression", CHILD, 0]],
+  115: [["expression", CHILD, 0]],
+  116: [["id", CHILD, 0]],
+  117: [["keyword", ENUM, 0]],
+  119: [["typeName", CHILD, 0], ["typeArguments", CHILD, 1]],
+  120: [["left", CHILD, 0], ["right", CHILD, 1]],
+  121: [["types", LIST, 0]],
+  122: [["types", LIST, 0]],
+  123: [["typeParameters", CHILD, 0], ["returnType", CHILD, 1], ["params", LIST, 2]],
+  124: [["typeParameters", CHILD, 0], ["returnType", CHILD, 1], ["params", LIST, 2], ["isAbstract", FLAG, 10]],
+  125: [["checkType", CHILD, 0], ["extendsType", CHILD, 1], ["trueType", CHILD, 2], ["falseType", CHILD, 3]],
+  126: [["typeParameter", CHILD, 0]],
+  127: [["typeParameter", CHILD, 0], ["nameType", CHILD, 1], ["typeAnnotation", CHILD, 2], ["readonlyModifier", ENUM, 0], ["optionalModifier", ENUM, 1]],
+  128: [["objectType", CHILD, 0], ["indexType", CHILD, 1]],
+  129: [["members", LIST, 0]],
+  130: [["elementType", CHILD, 0]],
+  131: [["elementTypes", LIST, 0]],
+  132: [["label", CHILD, 0], ["elementType", CHILD, 1], ["isOptional", FLAG, 0]],
+  133: [["typeAnnotation", CHILD, 0]],
+  134: [["typeAnnotation", CHILD, 0]],
+  135: [["typeAnnotation", CHILD, 0], ["op", ENUM, 0]],
+  136: [["exprName", CHILD, 0], ["typeArguments", CHILD, 1]],
+  137: [["parameterName", CHILD, 0], ["typeAnnotation", CHILD, 1], ["isAsserts", FLAG, 22]],
+  138: [["literal", CHILD, 0]],
+  139: [["parts", LIST, 0]],
+  140: [["argument", CHILD, 0], ["qualifier", CHILD, 1], ["typeArguments", CHILD, 2]],
+  141: [["key", CHILD, 0], ["typeAnnotation", CHILD, 1], ["isComputed", FLAG, 1], ["isOptional", FLAG, 0], ["isReadonly", FLAG, 14]],
+  142: [["key", CHILD, 0], ["typeParameters", CHILD, 1], ["returnType", CHILD, 2], ["params", LIST, 3], ["kind", ENUM, 0], ["isComputed", FLAG, 1], ["isOptional", FLAG, 0]],
+  143: [["typeParameters", CHILD, 0], ["returnType", CHILD, 1], ["params", LIST, 2]],
+  144: [["typeParameters", CHILD, 0], ["returnType", CHILD, 1], ["params", LIST, 2]],
+  145: [["typeAnnotation", CHILD, 0], ["parameters", LIST, 1], ["isReadonly", FLAG, 14], ["isStatic", FLAG, 11]],
+};
+
+class NodeHandle {
+  host: Host;
+  handle: Handle;
+  constructor(host: Host, handle: Handle) {
+    this.host = host;
+    this.handle = handle;
+  }
+  get type(): NodeKind {
+    return this.host.kind(this.handle);
+  }
+  get flags(): number {
+    return this.host.flags(this.handle);
+  }
+  get parent(): Node | null {
+    const p = this.host.parent(this.handle);
+    return p == null ? null : wrap(this.host, p);
+  }
+  get childCount(): number {
+    return this.host.childCount(this.handle);
+  }
+  child(index: number): Node | null {
+    const c = this.host.child(this.handle, index);
+    return c == null ? null : wrap(this.host, c);
+  }
+  get text(): string {
+    return this.host.text(this.handle);
+  }
+  get range(): readonly [number, number] {
+    return [this.host.start(this.handle), this.host.end(this.handle)];
+  }
+  hasFlag(flag: Flag): boolean {
+    return (this.host.flags(this.handle) & flag) !== 0;
+  }
+  is<K extends NodeKind>(kind: K): this is KindNode<K> {
+    return (this.host.kind(this.handle) as NodeKind) === kind;
+  }
+  descendants<K extends NodeKind>(kind: K): readonly KindNode<K>[] {
+    return this.host
+      .descendants(this.handle, kind)
+      .map((h) => wrap(this.host, h)) as unknown as readonly KindNode<K>[];
+  }
+}
+
+type Getter = (this: NodeHandle) => unknown;
+
+/** Builds one named-member getter from its `[code, slot]` backing. */
+function getter(code: number, slot: number): Getter {
+  if (code === CHILD) {
+    return function (this: NodeHandle) {
+      const c = this.host.child(this.handle, slot);
+      return c == null ? null : wrap(this.host, c);
+    };
+  }
+  if (code === LIST) {
+    return function (this: NodeHandle) {
+      const out: (Node | null)[] = [];
+      const n = this.host.childCount(this.handle);
+      for (let i = slot; i < n; i++) {
+        const c = this.host.child(this.handle, i);
+        out.push(c == null ? null : wrap(this.host, c));
+      }
+      return out;
+    };
+  }
+  if (code === FLAG) {
+    return function (this: NodeHandle) {
+      return (this.host.flags(this.handle) & (1 << slot)) !== 0;
+    };
+  }
+  return function (this: NodeHandle) {
+    return this.host.dataByte(this.handle, slot);
+  };
+}
+
+/** One prototype per kind, cloned from NodeHandle's and given the kind's getters. */
+const prototypes: { [kind: number]: object } = {};
+for (const key of Object.keys(members)) {
+  const kind = Number(key);
+  const proto = Object.create(NodeHandle.prototype) as object;
+  for (const [name, code, slot] of members[kind] ?? []) {
+    Object.defineProperty(proto, name, { get: getter(code, slot), enumerable: true });
+  }
+  prototypes[kind] = proto;
+}
+
+/** Wraps a host handle as the typed view for its kind. */
+export function wrap(host: Host, handle: Handle): Node {
+  const proto = prototypes[host.kind(handle)] ?? NodeHandle.prototype;
+  const node = Object.create(proto) as NodeHandle;
+  node.host = host;
+  node.handle = handle;
+  return node as unknown as Node;
+}

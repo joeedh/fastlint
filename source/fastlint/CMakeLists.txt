@@ -3,6 +3,7 @@ set(SRC
   cache/closure.cc
   cache/imports.cc
   cache/store.cc
+  embed/ast_session.cc
   embed/lint_text.cc
   lint/config.cc
   lint/directives.cc

@@ -545,6 +545,8 @@ export function emitTsViews(def: Def): string {
     "  readonly childCount: number;",
     "  child(index: number): Node | null;",
     "  readonly text: string;",
+    "  /** Byte offsets `[start, end)` into the source, for reports. */",
+    "  readonly range: readonly [number, number];",
     "  hasFlag(flag: Flag): boolean;",
     "  is<K extends NodeKind>(kind: K): this is KindNode<K>;",
     "  /** Every descendant of `kind` in preorder, as one typed array. */",
@@ -582,7 +584,174 @@ export function emitTsViews(def: Def): string {
     "  K extends keyof NodeByKind ? NodeByKind[K] : Node;",
     ""
   );
+  out.push(...emitTsRuntime(def));
   return out.join("\n");
+}
+
+/**
+ * The runtime the two embeddings share. `Host` is the low-level accessor surface
+ * the N-API addon and the WASM module each implement over their own memory;
+ * `wrap` turns a host handle into a `Node` whose named getters read through it,
+ * so a rule sees the typed view surface and never the layout. The per-kind
+ * member table is generated here so a new field in nodes.def needs no runtime
+ * edit.
+ */
+function emitTsRuntime(def: Def): string[] {
+  const out: string[] = [];
+  out.push(
+    "/** An opaque node handle owned by the host; a rule passes it back, never reads it. */",
+    "export type Handle = unknown;",
+    "",
+    "/** The accessor surface each embedding implements over its own tree memory. */",
+    "export interface Host {",
+    "  kind(handle: Handle): NodeKind;",
+    "  flags(handle: Handle): number;",
+    "  parent(handle: Handle): Handle | null;",
+    "  childCount(handle: Handle): number;",
+    "  child(handle: Handle, index: number): Handle | null;",
+    "  text(handle: Handle): string;",
+    "  dataByte(handle: Handle, byte: number): number;",
+    "  start(handle: Handle): number;",
+    "  end(handle: Handle): number;",
+    "  descendants(handle: Handle, kind: NodeKind): Handle[];",
+    "}",
+    ""
+  );
+
+  // Member codes shared with the generated per-kind table below.
+  out.push(
+    "// A member's backing store: a fixed child slot, the tail list, a flag bit or",
+    "// a data byte. The generated `members` table pairs each with its slot index.",
+    "const CHILD = 0;",
+    "const LIST = 1;",
+    "const FLAG = 2;",
+    "const ENUM = 3;",
+    "",
+    "type MemberSpec = readonly [name: string, code: number, slot: number];",
+    "",
+    "/** Named members per kind, in view order: `[name, code, slot]`. */",
+    "const members: { readonly [kind: number]: readonly MemberSpec[] } = {"
+  );
+  for (const node of def.nodes) {
+    const specs: string[] = [];
+    node.children.forEach((child, index) => {
+      specs.push(
+        `["${accessorName(child.name)}", ${child.list ? "LIST" : "CHILD"}, ${index}]`
+      );
+    });
+    for (const field of node.fields) {
+      if (field.kind === "flag") {
+        specs.push(`["is${pascal(field.name)}", FLAG, ${field.bit}]`);
+      } else if (field.kind === "enum") {
+        specs.push(`["${accessorName(field.name)}", ENUM, ${field.byte}]`);
+      }
+    }
+    if (specs.length > 0) {
+      out.push(`  ${def.nodes.indexOf(node)}: [${specs.join(", ")}],`);
+    }
+  }
+  out.push("};", "");
+
+  out.push(
+    "class NodeHandle {",
+    "  host: Host;",
+    "  handle: Handle;",
+    "  constructor(host: Host, handle: Handle) {",
+    "    this.host = host;",
+    "    this.handle = handle;",
+    "  }",
+    "  get type(): NodeKind {",
+    "    return this.host.kind(this.handle);",
+    "  }",
+    "  get flags(): number {",
+    "    return this.host.flags(this.handle);",
+    "  }",
+    "  get parent(): Node | null {",
+    "    const p = this.host.parent(this.handle);",
+    "    return p == null ? null : wrap(this.host, p);",
+    "  }",
+    "  get childCount(): number {",
+    "    return this.host.childCount(this.handle);",
+    "  }",
+    "  child(index: number): Node | null {",
+    "    const c = this.host.child(this.handle, index);",
+    "    return c == null ? null : wrap(this.host, c);",
+    "  }",
+    "  get text(): string {",
+    "    return this.host.text(this.handle);",
+    "  }",
+    "  get range(): readonly [number, number] {",
+    "    return [this.host.start(this.handle), this.host.end(this.handle)];",
+    "  }",
+    "  hasFlag(flag: Flag): boolean {",
+    "    return (this.host.flags(this.handle) & flag) !== 0;",
+    "  }",
+    "  is<K extends NodeKind>(kind: K): this is KindNode<K> {",
+    "    return (this.host.kind(this.handle) as NodeKind) === kind;",
+    "  }",
+    "  descendants<K extends NodeKind>(kind: K): readonly KindNode<K>[] {",
+    "    return this.host",
+    "      .descendants(this.handle, kind)",
+    "      .map((h) => wrap(this.host, h)) as unknown as readonly KindNode<K>[];",
+    "  }",
+    "}",
+    ""
+  );
+
+  out.push(
+    "type Getter = (this: NodeHandle) => unknown;",
+    "",
+    "/** Builds one named-member getter from its `[code, slot]` backing. */",
+    "function getter(code: number, slot: number): Getter {",
+    "  if (code === CHILD) {",
+    "    return function (this: NodeHandle) {",
+    "      const c = this.host.child(this.handle, slot);",
+    "      return c == null ? null : wrap(this.host, c);",
+    "    };",
+    "  }",
+    "  if (code === LIST) {",
+    "    return function (this: NodeHandle) {",
+    "      const out: (Node | null)[] = [];",
+    "      const n = this.host.childCount(this.handle);",
+    "      for (let i = slot; i < n; i++) {",
+    "        const c = this.host.child(this.handle, i);",
+    "        out.push(c == null ? null : wrap(this.host, c));",
+    "      }",
+    "      return out;",
+    "    };",
+    "  }",
+    "  if (code === FLAG) {",
+    "    return function (this: NodeHandle) {",
+    "      return (this.host.flags(this.handle) & (1 << slot)) !== 0;",
+    "    };",
+    "  }",
+    "  return function (this: NodeHandle) {",
+    "    return this.host.dataByte(this.handle, slot);",
+    "  };",
+    "}",
+    "",
+    "/** One prototype per kind, cloned from NodeHandle's and given the kind's getters. */",
+    "const prototypes: { [kind: number]: object } = {};",
+    "for (const key of Object.keys(members)) {",
+    "  const kind = Number(key);",
+    "  const proto = Object.create(NodeHandle.prototype) as object;",
+    "  for (const [name, code, slot] of members[kind] ?? []) {",
+    "    Object.defineProperty(proto, name, { get: getter(code, slot), enumerable: true });",
+    "  }",
+    "  prototypes[kind] = proto;",
+    "}",
+    "",
+    "/** Wraps a host handle as the typed view for its kind. */",
+    "export function wrap(host: Host, handle: Handle): Node {",
+    "  const proto = prototypes[host.kind(handle)] ?? NodeHandle.prototype;",
+    "  const node = Object.create(proto) as NodeHandle;",
+    "  node.host = host;",
+    "  node.handle = handle;",
+    "  return node as unknown as Node;",
+    "}",
+    ""
+  );
+  return out;
 }
 
 /** The C ABI's node vocabulary and hash, for a plugin that includes no C++ headers. */

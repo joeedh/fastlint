@@ -1023,11 +1023,16 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
 - [x] `plugin/ts/example-rule.ts` exercises the surface (a typed
   `descendants` query, `is` narrowing, a required-child read) so `tsc` keeps
   it honest, and the root tsconfig now includes `source/fastlint/plugin`.
-- [ ] Deferred to the runtime (task 7.2 / 7.3, which need cmake-js / emsdk):
-  binding `TypeFacts` predicates, `ctx.report`, the fixer API, templates and
-  `match` through litestl `binding/generators/typescript`, and the WASM/N-API
-  runtime that implements the view accessors. A pre-existing `tsc` red in
-  `tools/parse-diff` is unrelated and left alone.
+- [x] The runtime that backs the view accessors (`gen-ast` `emitTsRuntime`,
+  appended to `views.ts`): a `Host` accessor interface each embedding
+  implements over its own memory, a per-kind member table and a `wrap(host,
+  handle)` factory that gives a handle real getters for its children, flags and
+  data bytes. The N-API addon implements `Host`; the base `Node` gained a
+  `range` so a rule can report a span.
+- [ ] Still deferred to the runtime (need the type server or more binding):
+  `TypeFacts` predicates, the fixer API, and templates/`match` through litestl
+  `binding/generators/typescript`. An embedding has no tsgo process, so the
+  typed rules stay host-only for now.
 
 ### 7.0 Native plugin C ABI
 - [x] The stable ABI is `fastlint/plugin/abi.h` (hand-written): opaque
@@ -1067,11 +1072,19 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   devDependency.
 - [x] `fastlint/embed/lint_text.h` is the shared entry point both embeddings
   wrap: the recommended preset, no config lookup, no type-aware rules.
-- [ ] Rule loading: `fastlint.config.ts` imports TS rule modules; the CLI
-  hosts node (or the node CLI hosts the native core — decide; the latter is
-  simpler: `fastlint` npm package wraps the `.node` addon).
+- [x] The rule-loading runtime (`plugin/ts/runtime.ts`): `lint(addon, source,
+  filename, rules)` parses through the addon, wraps the root, walks it once and
+  dispatches each node to the ESLint-shaped visitors a rule's `create(context)`
+  returns, keyed by node-kind name; `context.report` collects a problem with
+  its message (from `messageId` + `{{data}}`), rule id, node type and 1-based
+  line/column. `plugin/ts/rules/no-debugger.ts` are two rules over it (a plain
+  visitor and an `is`-narrowed member read); `runtime.smoke.ts` runs them
+  through the built addon under `build --napi --smoke`.
+- [~] Rule loading from `fastlint.config.ts`: the runtime runs a rule list
+  today; discovering and importing rule modules from a config, and having the
+  `fastlint` npm package wrap the `.node` addon, is the remaining piece.
 - [ ] Threading model: TS rules run on the JS thread; C++ walks files in
-  parallel and queues callback batches.
+  parallel and queues callback batches. One file runs single-threaded now.
 
 ### 7.3 WASM build
 - [x] `node make.ts deps fetch emsdk` installs the pinned SDK into

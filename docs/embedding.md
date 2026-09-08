@@ -40,8 +40,35 @@ both without touching either.
 - `source/napi/addon.cc` calls the C N-API directly rather than through
   node-addon-api: the plugin ABI is already a C surface, and exceptions are off
   in this tree.
-- Exports are `version()` and `lintText(source, filename?)`, the latter
-  returning the JSON as a string.
+- Exports are `version()`, `lintText(source, filename?)` (the JSON as a string),
+  and the node accessors below.
+
+## The TypeScript rule runtime
+
+`lintText` runs the built-in rules; the rule runtime runs rules written in
+TypeScript over the same tree. It has two halves.
+
+- `source/fastlint/embed/ast_session.h` parses a buffer once and owns the source,
+  the grammar tree and the AST file as a unit, so every node it hands out stays
+  valid until the session is dropped. Both embeddings wrap it.
+- The addon exposes `parse(source, filename?)` (returns a session handle whose
+  finalizer frees it), `root(session)`, and the accessors `kind`, `flags`,
+  `parent`, `childCount`, `child`, `text`, `dataByte`, `start`, `end` and
+  `descendants(session, node, kind)`. Node handles are N-API externals over a
+  `const ast::Node *`; only the session external carries a finalizer.
+- The generated `Host` interface (plugin/generated/ts/views.ts) names exactly
+  those accessors, and `wrap(host, handle)` turns a handle into the typed view
+  for its kind. So a rule reads `node.callee`, `member.isComputed` and
+  `node.descendants(kind)` without ever seeing the layout.
+- `source/fastlint/plugin/ts/runtime.ts` is the driver: `lint(addon, source,
+  filename, rules)` builds a `Host` for the session, walks the tree once and
+  dispatches each node to the visitors a rule's `create(context)` returns
+  (keyed by node-kind name), collecting each `context.report` into a flat
+  message list. `plugin/ts/rules/no-debugger.ts` are two example rules;
+  `runtime.smoke.ts` runs them through the built addon under `--smoke`.
+- Type-aware rules do not run here either, for the same reason `lintText` skips
+  them: no tsgo process. `context` carries the filename and source text, not a
+  type facts handle.
 
 ## WASM module
 
