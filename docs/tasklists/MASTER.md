@@ -749,7 +749,9 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   overrides by glob; `extends` presets (`fastlint:recommended`, `fastlint:all`);
   `ignores`; `--rule name:severity` on the command line.
   - [ ] `fastlint.config.ts` (needs Node to evaluate; with task 7).
-  - [ ] Glob matching is case-sensitive; Windows paths are compared as given.
+  - [x] Glob matching ignores case on Windows (case-sensitive elsewhere), via a
+    `caseInsensitive` flag on `globMatch` that `Config::resolve` sets from the
+    platform; the path is already normalized to forward slashes before matching.
 - [x] Disable directives: `// fastlint-disable[-next-line] rule`, and
   `// eslint-disable*` compatibility (decided: accepted as aliases, see
   docs/STRATEGY.md). Unused directives reported (`reportUnusedDisableDirectives`).

@@ -98,6 +98,17 @@ TEST(lint_glob, matches_segments_stars_and_braces)
   CHECK(!globMatch("dist/**", "distx/a"));
 }
 
+TEST(lint_glob, case_insensitive_matches_regardless_of_case)
+{
+  // Case matters by default, as on a case-sensitive filesystem.
+  CHECK(!globMatch("src/**/*.ts", "Src/App/Main.TS"));
+  CHECK(!globMatch("src/*.{ts,tsx}", "src/A.TSX"));
+  // The flag matches letters regardless of case, as Windows compares paths.
+  CHECK(globMatch("src/**/*.ts", "Src/App/Main.TS", /*caseInsensitive=*/true));
+  CHECK(globMatch("src/*.{ts,tsx}", "src/A.TSX", /*caseInsensitive=*/true));
+  CHECK(!globMatch("src/*.ts", "src/a.js", /*caseInsensitive=*/true));
+}
+
 TEST(lint_config, severities_in_every_spelling)
 {
   Fixture f("{\"rules\": {\"no-debugger\": 2, \"optional-rule\": \"warn\", "

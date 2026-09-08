@@ -13,6 +13,14 @@ namespace {
 
 constexpr const char *kConfigName = "fastlint.config.json";
 
+// A case-insensitive filesystem compares paths without regard to case, so a
+// glob should match the same way there.
+#ifdef _WIN32
+constexpr bool kPathCaseInsensitive = true;
+#else
+constexpr bool kPathCaseInsensitive = false;
+#endif
+
 void append(string &out, string_view text)
 {
   for (char c : text) {
@@ -319,7 +327,7 @@ void Config::resolve(string_view filename, ResolvedConfig &out) const
   relativePath(filename, relative);
   string_view path = view(relative);
   for (const string &pattern : m_ignores) {
-    if (globMatch(view(pattern), path)) {
+    if (globMatch(view(pattern), path, kPathCaseInsensitive)) {
       out.ignored = true;
     }
   }
@@ -340,7 +348,7 @@ void Config::resolve(string_view filename, ResolvedConfig &out) const
   for (const Layer &layer : m_layers) {
     bool matches = layer.files.isEmpty();
     for (const string &pattern : layer.files) {
-      if (globMatch(view(pattern), path)) {
+      if (globMatch(view(pattern), path, kPathCaseInsensitive)) {
         matches = true;
       }
     }

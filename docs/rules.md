@@ -190,7 +190,9 @@ lint/directives.h reads every comment in the grammar tree's trivia.
 - `overrides` apply in order to the files their globs match; `files` may be
   one glob or a list. Globs (lint/glob.h) support `*`, `?`, `**` and
   `{a,b}`, match dotfiles, and are relative to the config file's directory
-  with forward slashes.
+  with forward slashes. A path is normalized to forward slashes before it is
+  matched, and on Windows the match ignores case, as the filesystem does; it
+  stays case-sensitive elsewhere.
 - `ignores` globs skip files entirely.
 - Unknown rule names are not a config error. They are reported once per
   linted file, as ESLint reports them.

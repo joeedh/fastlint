@@ -8,7 +8,17 @@ namespace {
 
 using std::string_view;
 
-bool matchExpanded(string_view p, string_view s)
+char lower(char c)
+{
+  return (c >= 'A' && c <= 'Z') ? char(c - 'A' + 'a') : c;
+}
+
+bool charsEqual(char a, char b, bool caseInsensitive)
+{
+  return caseInsensitive ? lower(a) == lower(b) : a == b;
+}
+
+bool matchExpanded(string_view p, string_view s, bool caseInsensitive)
 {
   while (!p.empty()) {
     if (p.size() >= 2 && p[0] == '*' && p[1] == '*') {
@@ -21,7 +31,7 @@ bool matchExpanded(string_view p, string_view s)
         return true;
       }
       for (size_t k = 0;; k++) {
-        if (matchExpanded(rest, s.substr(k))) {
+        if (matchExpanded(rest, s.substr(k), caseInsensitive)) {
           return true;
         }
         size_t slash = s.find('/', k);
@@ -35,7 +45,7 @@ bool matchExpanded(string_view p, string_view s)
     if (c == '*') {
       // Zero or more characters within the current segment.
       for (size_t k = 0;; k++) {
-        if (matchExpanded(p.substr(1), s.substr(k))) {
+        if (matchExpanded(p.substr(1), s.substr(k), caseInsensitive)) {
           return true;
         }
         if (k >= s.size() || s[k] == '/') {
@@ -46,13 +56,13 @@ bool matchExpanded(string_view p, string_view s)
     if (s.empty()) {
       // `dir/**` also names `dir` itself.
       return c == '/' && p.size() >= 3 && p[1] == '*' && p[2] == '*' &&
-             matchExpanded(p.substr(3), s);
+             matchExpanded(p.substr(3), s, caseInsensitive);
     }
     if (c == '?') {
       if (s[0] == '/') {
         return false;
       }
-    } else if (c != s[0]) {
+    } else if (!charsEqual(c, s[0], caseInsensitive)) {
       return false;
     }
     p = p.substr(1);
@@ -62,15 +72,15 @@ bool matchExpanded(string_view p, string_view s)
 }
 
 /** Expands the first `{a,b}` group of `pattern` and matches every alternative. */
-bool matchBraces(string_view pattern, string_view path)
+bool matchBraces(string_view pattern, string_view path, bool caseInsensitive)
 {
   size_t open = pattern.find('{');
   if (open == string_view::npos) {
-    return matchExpanded(pattern, path);
+    return matchExpanded(pattern, path, caseInsensitive);
   }
   size_t close = pattern.find('}', open);
   if (close == string_view::npos) {
-    return matchExpanded(pattern, path);
+    return matchExpanded(pattern, path, caseInsensitive);
   }
   string_view head = pattern.substr(0, open);
   string_view tail = pattern.substr(close + 1);
@@ -84,7 +94,7 @@ bool matchBraces(string_view pattern, string_view path)
     expanded.append(head);
     expanded.append(alternative);
     expanded.append(tail);
-    if (matchBraces(expanded, path)) {
+    if (matchBraces(expanded, path, caseInsensitive)) {
       return true;
     }
     if (comma == string_view::npos) {
@@ -96,12 +106,12 @@ bool matchBraces(string_view pattern, string_view path)
 
 } // namespace
 
-bool globMatch(string_view pattern, string_view path)
+bool globMatch(string_view pattern, string_view path, bool caseInsensitive)
 {
   if (pattern.size() >= 2 && pattern[0] == '.' && pattern[1] == '/') {
     pattern = pattern.substr(2);
   }
-  return matchBraces(pattern, path);
+  return matchBraces(pattern, path, caseInsensitive);
 }
 
 } // namespace fastlint::lint
