@@ -63,12 +63,41 @@ bool endsWith(string_view text, string_view suffix)
          text.substr(text.size() - suffix.size()) == suffix;
 }
 
+/** The 1-based column of `offset`, counting UTF-16 code units from `lineStart`
+ * as editor protocols and ESLint's JSON do: one per byte for ASCII, one per
+ * non-ASCII code point in the basic plane, two for an astral one. */
+uint32_t utf16Column(string_view source, uint32_t lineStart, uint32_t offset)
+{
+  uint32_t units = 0;
+  uint32_t i = lineStart;
+  uint32_t end = offset < source.size() ? offset : uint32_t(source.size());
+  while (i < end) {
+    unsigned char b = static_cast<unsigned char>(source[i]);
+    if (b < 0x80) {
+      units += 1;
+      i += 1;
+    } else if (b < 0xE0) {
+      units += 1;
+      i += 2;
+    } else if (b < 0xF0) {
+      units += 1;
+      i += 3;
+    } else {
+      // An astral code point is a surrogate pair, so two UTF-16 units.
+      units += 2;
+      i += 4;
+    }
+  }
+  return units + 1;
+}
+
 void locate(const syntax::GrammarTree &tree, Diagnostic &d)
 {
+  string_view source = tree.source();
   auto position = [&](uint32_t offset, uint32_t &line, uint32_t &column) {
     line = tree.lineOf(offset);
     uint32_t lineStart = line > 0 ? tree.lineStarts()[int(line) - 1] : 0;
-    column = offset - lineStart + 1;
+    column = utf16Column(source, lineStart, offset);
   };
   position(d.start, d.line, d.column);
   position(d.end, d.endLine, d.endColumn);

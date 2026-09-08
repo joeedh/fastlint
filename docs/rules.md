@@ -80,9 +80,9 @@ order per kind, rules in config order.
 ## Reports and diagnostics
 
 A `Report` becomes a `Diagnostic` (lint/linter.h): rule, severity from the
-config, byte span, one-based line and column (columns count bytes, not
-UTF-16 units), the message id and the interpolated text, whether a fix was
-offered, and any suggestions' interpolated texts. Diagnostics are sorted by
+config, byte span, one-based line and column (columns count UTF-16 code units,
+as editor protocols and ESLint's JSON do), the message id and the interpolated
+text, whether a fix was offered, and any suggestions' interpolated texts. Diagnostics are sorted by
 position. A report whose message id the rule does not declare produces an
 "Unknown message id" diagnostic rather than a crash, so a typo shows up in
 the rule's tests.

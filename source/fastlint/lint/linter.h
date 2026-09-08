@@ -38,7 +38,8 @@ struct Diagnostic {
   bool fixable = false;
   uint32_t start = 0;
   uint32_t end = 0;
-  /** One-based, columns in bytes. `endColumn` is the column after the last character. */
+  /** One-based, columns in UTF-16 code units (as editor protocols and ESLint's
+   * JSON count them). `endColumn` is the column after the last character. */
   uint32_t line = 0;
   uint32_t column = 0;
   uint32_t endLine = 0;

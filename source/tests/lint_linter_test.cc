@@ -130,6 +130,17 @@ TEST(lint_linter, reports_with_positions_and_severities)
   CHECK(!r.changed);
 }
 
+TEST(lint_linter, columns_count_utf16_units_not_bytes)
+{
+  Harness h;
+  // The `\xC3\xA9` is é: two UTF-8 bytes but one UTF-16 unit, so `debugger`
+  // sits one column earlier than a byte count would place it.
+  FileResult r = h.lint("var x = \"\xC3\xA9\"; debugger;");
+  CHECK_EQ(r.diagnostics.size(), 1u);
+  CHECK_EQ(r.diagnostics[0].column, 14u);
+  CHECK_EQ(r.diagnostics[0].endColumn, 23u);
+}
+
 TEST(lint_linter, options_state_and_exit_listeners)
 {
   Harness h("{\"rules\": {\"no-calls\": [\"error\", \"alert\"]}}");

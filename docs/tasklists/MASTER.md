@@ -748,7 +748,9 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
   - [ ] SARIF.
   - [ ] JSON `fix` ranges (our fixes are tree edits; the text diff would have
     to be derived from the reprint).
-  - [ ] Columns count bytes; UTF-16 columns for editor protocols.
+  - [x] Columns count UTF-16 code units, as editor protocols and ESLint's JSON
+    do (one per byte for ASCII, so ASCII output is unchanged; one per basic-plane
+    code point, two for an astral one).
 - [x] Rule test harness: `valid`/`invalid` cases with expected messages and
   fixer output (`testing/rule_tester.h`, `runRuleTests`).
 - [x] `fastlint lint` command: config discovery, `--fix`, `--format`,
