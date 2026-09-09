@@ -70,6 +70,26 @@ TypeScript over the same tree. It has two halves.
   them: no tsgo process. `context` carries the filename and source text, not a
   type facts handle.
 
+## Config and the file driver
+
+The runtime runs a rule list; a project supplies that list from a config, and
+the driver runs it over many files.
+
+- `source/fastlint/plugin/ts/config.ts` loads a `fastlint.config.ts` (or
+  `.js`/`.mjs`): `loadConfig` imports the module and reads its `rules`, and
+  `defineConfig` type-checks the literal at authoring. A rule is a value the
+  config imports; there is no plugin-resolution protocol beyond `import`.
+- `source/fastlint/plugin/ts/driver.ts` is the host: `lintFiles(files,
+  {configPath, addonPath, concurrency})` shards the files across a
+  `worker_threads` pool. Each worker loads the addon and the config once, and
+  the driver hands it the next file as soon as it returns the last, so a slow
+  file never idles the rest. The TypeScript rules run on the workers' threads;
+  the native parse runs inside each worker. One file, or `concurrency: 1`, stays
+  in the calling thread with no worker.
+- The decision this settles (task 7.2): the node side hosts the native core.
+  `plugin/ts/index.ts` is the package surface a `fastlint` npm package would
+  re-export, wrapping the built `.node` addon.
+
 ## WASM module
 
 - `node make.ts deps fetch emsdk` installs the pinned SDK into `vendor/emsdk`.

@@ -1080,11 +1080,19 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   line/column. `plugin/ts/rules/no-debugger.ts` are two rules over it (a plain
   visitor and an `is`-narrowed member read); `runtime.smoke.ts` runs them
   through the built addon under `build --napi --smoke`.
-- [~] Rule loading from `fastlint.config.ts`: the runtime runs a rule list
-  today; discovering and importing rule modules from a config, and having the
-  `fastlint` npm package wrap the `.node` addon, is the remaining piece.
-- [ ] Threading model: TS rules run on the JS thread; C++ walks files in
-  parallel and queues callback batches. One file runs single-threaded now.
+- [x] Rule loading from a config (`plugin/ts/config.ts`): `loadConfig` imports
+  a `fastlint.config.ts` (or `.js`/`.mjs`) and reads its `rules`; `defineConfig`
+  type-checks the literal. A rule is just a value the config imports, so there
+  is no plugin-resolution protocol beyond `import`. `plugin/ts/index.ts` is the
+  package surface a host wraps the `.node` addon with; `example.config.ts` is a
+  worked config. The decision recorded in this task is taken: the node side
+  hosts the native core rather than the CLI hosting node.
+- [x] Threading model (`plugin/ts/driver.ts`): `lintFiles(files, {configPath,
+  addonPath, concurrency})` shards files across a `worker_threads` pool, each
+  worker loading the addon and config once and linting whatever file the driver
+  hands it next, so the TypeScript rules run in parallel, one file per worker at
+  a time; one file or `concurrency: 1` stays in-thread. `driver.smoke.ts` runs
+  both paths under `build --napi --smoke`.
 
 ### 7.3 WASM build
 - [x] `node make.ts deps fetch emsdk` installs the pinned SDK into

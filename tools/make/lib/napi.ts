@@ -134,14 +134,17 @@ export async function smokeNapi(): Promise<void> {
   await run(process.execPath, ["-e", script], { cwd: repoRoot, env: buildEnv() });
 
   // The rule-loading runtime: two TypeScript rules over the addon's accessors.
+  const tsDir = path.join(repoRoot, "source", "fastlint", "plugin", "ts");
   step("smoke test the TypeScript rule runtime");
-  const smoke = path.join(
-    repoRoot,
-    "source",
-    "fastlint",
-    "plugin",
-    "ts",
-    "runtime.smoke.ts"
-  );
-  await run(process.execPath, [smoke, addon], { cwd: repoRoot, env: buildEnv() });
+  await run(process.execPath, [path.join(tsDir, "runtime.smoke.ts"), addon], {
+    cwd: repoRoot,
+    env: buildEnv(),
+  });
+
+  // The config loader and the worker-pool file driver.
+  step("smoke test the config loader and file driver");
+  await run(process.execPath, [path.join(tsDir, "driver.smoke.ts"), addon], {
+    cwd: repoRoot,
+    env: buildEnv(),
+  });
 }
