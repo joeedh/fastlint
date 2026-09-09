@@ -22,6 +22,12 @@ const distDir = path.join(repoRoot, "dist");
  * it. Not `dist/`, which the compile step wipes. */
 export const releaseDir = path.join(repoRoot, "build", "release");
 
+/** What `npm pack` calls the tarball. A scope becomes part of the filename with
+ * its punctuation flattened, so `@acme/fastlint` packs as `acme-fastlint`. */
+export function tarballName(name: string, version: string): string {
+  return `${name.replace(/^@/, "").replace("/", "-")}-${version}.tgz`;
+}
+
 /** Compiles the plugin surface to `dist/`, rewriting the `.ts` specifiers the
  * sources import each other by. */
 async function compile(): Promise<void> {
@@ -116,8 +122,8 @@ export async function buildPackage(options: {
 export async function packTarball(): Promise<string> {
   step("npm pack");
   fs.mkdirSync(releaseDir, { recursive: true });
-  const { manifest } = readVersions();
-  const tarball = path.join(releaseDir, `fastlint-${manifest}.tgz`);
+  const { name, manifest } = readVersions();
+  const tarball = path.join(releaseDir, tarballName(name, manifest));
   fs.rmSync(tarball, { force: true });
   await npm(["pack", "--ignore-scripts", "--pack-destination", releaseDir], {
     cwd    : repoRoot,
@@ -218,7 +224,7 @@ export async function installTest(tarball: string): Promise<void> {
     if (!rules.includes("curly") || !rules.includes("no-debugger")) {
       fail(`expected curly and no-debugger, got ${JSON.stringify(rules)}`);
     }
-    info(`ok: the installed fastlint ${expected} reported ${rules.join(", ")}`);
+    info(`ok: the installed CLI ${expected} reported ${rules.join(", ")}`);
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }

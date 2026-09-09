@@ -8,11 +8,11 @@ import path from "node:path";
 import type { CommandModule } from "yargs";
 
 import { color, fail, info, step, warn } from "./lib/log.ts";
-import { npm, npmWhoami, publishedVersions } from "./lib/npm.ts";
+import { npm, npmWhoami, publishBlocker, publishedVersions } from "./lib/npm.ts";
 import { repoRoot } from "./lib/paths.ts";
 import { capture } from "./lib/spawn.ts";
 import { readVersions } from "./lib/version.ts";
-import { releaseDir } from "./pack.ts";
+import { releaseDir, tarballName } from "./pack.ts";
 
 interface Args {
   tag: string;
@@ -47,8 +47,8 @@ export const command: CommandModule<object, Args> = {
       ) as never,
 
   handler: async (argv) => {
-    const { manifest: version } = readVersions();
-    const tarball = path.join(releaseDir, `fastlint-${version}.tgz`);
+    const { manifest: version, name } = readVersions();
+    const tarball = path.join(releaseDir, tarballName(name, version));
     if (!fs.existsSync(tarball)) {
       fail(
         `no ${path.relative(repoRoot, tarball)}; run \`node make.ts release <bump>\` first`
@@ -67,14 +67,16 @@ export const command: CommandModule<object, Args> = {
       warn(`there is no v${version} tag; \`release\` normally writes one`);
     }
 
-    const published = publishedVersions("fastlint");
-    if (published?.includes(version)) fail(`fastlint ${version} is already published`);
+    const published = publishedVersions(name);
+    if (published?.includes(version)) fail(`${name} ${version} is already published`);
 
     const who = npmWhoami();
     if (!who) {
       fail("not logged in to npm; run `npm login` in a terminal, then this again");
     }
-    info(`publishing fastlint ${version} as ${who} under the '${argv.tag}' tag`);
+    const blocker = publishBlocker(name, who);
+    if (blocker) fail(blocker);
+    info(`publishing ${name} ${version} as ${who} under the '${argv.tag}' tag`);
 
     step("npm publish");
     const result = await npm(
@@ -96,7 +98,7 @@ export const command: CommandModule<object, Args> = {
       info(color.green(`dry run: nothing was sent`));
       return;
     }
-    info(color.green(`published fastlint ${version}`));
-    info(`check it with \`npm view fastlint@${version}\``);
+    info(color.green(`published ${name} ${version}`));
+    info(`check it with \`npm view ${name}@${version}\``);
   },
 };

@@ -15,18 +15,22 @@ const nativePath = path.join(repoRoot, "source", "fastlint", "version.cc");
 const nativeVersion = /return\s+"(\d+\.\d+\.\d+)";/;
 
 export interface Versions {
+  /** The package name, which the release tasks need for every registry query. */
+  name: string;
   manifest: string;
   native: string;
 }
 
 export function readVersions(): Versions {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+    name?: string;
     version?: string;
   };
   const native = nativeVersion.exec(fs.readFileSync(nativePath, "utf8"));
+  if (!manifest.name) throw new Error("package.json has no name");
   if (!manifest.version) throw new Error("package.json has no version");
   if (!native) throw new Error(`no version literal in ${nativePath}`);
-  return { manifest: manifest.version, native: native[1]! };
+  return { name: manifest.name, manifest: manifest.version, native: native[1]! };
 }
 
 /** Both files as they stand, so a failed release can put them back. */

@@ -10,7 +10,7 @@ import path from "node:path";
 import type { CommandModule } from "yargs";
 
 import { color, fail, info, step, warn } from "./lib/log.ts";
-import { publishedVersions } from "./lib/npm.ts";
+import { npmWhoami, publishBlocker, publishedVersions } from "./lib/npm.ts";
 import { repoRoot } from "./lib/paths.ts";
 import { capture, run } from "./lib/spawn.ts";
 import {
@@ -61,20 +61,27 @@ function preflight(dryRun: boolean): void {
 }
 
 /** Fails when `version` is already taken, since neither a git tag nor an npm
- * version can be reused. The registry check is skipped when it cannot be
- * reached, because being offline is not a reason to refuse a release. */
-async function checkUnreleased(version: string): Promise<void> {
+ * version can be reused. A registry the run cannot reach is only reported:
+ * being offline is not a reason to refuse a release, since publishing is a
+ * separate command that checks again. */
+function checkUnreleased(name: string, version: string): void {
   const tag = `v${version}`;
   if (git("tag", "--list", tag)?.trim()) fail(`the tag ${tag} already exists`);
   if (git("ls-remote", "--tags", "origin", tag)?.trim()) {
     fail(`the tag ${tag} is already on origin`);
   }
-  const published = publishedVersions("fastlint");
+  const published = publishedVersions(name);
   if (published === undefined) {
     warn("could not reach the registry; not checking whether the version is published");
-  } else if (published.includes(version)) {
-    fail(`fastlint ${version} is already published`);
+    return;
   }
+  if (published.includes(version)) fail(`${name} ${version} is already published`);
+
+  // Reported rather than refused: the tag and the GitHub release are worth
+  // cutting even where npm will not take the name, and `publish` refuses.
+  const who = npmWhoami();
+  const blocker = who ? publishBlocker(name, who) : undefined;
+  if (blocker) warn(`${blocker}. \`node make.ts publish\` will refuse this release`);
 }
 
 export const command: CommandModule<object, Args> = {
@@ -115,14 +122,14 @@ export const command: CommandModule<object, Args> = {
 
   handler: async (argv) => {
     preflight(argv.dryRun);
-    const current = readVersions().manifest;
+    const { name, manifest: current } = readVersions();
     let version: string;
     try {
       version = nextVersion(argv.bump, current);
     } catch (error) {
       fail(error instanceof Error ? error.message : String(error));
     }
-    await checkUnreleased(version);
+    checkUnreleased(name, version);
     info(`${current} -> ${color.bold(version)}`);
 
     if (argv.check) {

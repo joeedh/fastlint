@@ -38,17 +38,45 @@ export function npmWhoami(): string | undefined {
   return capture(process.execPath, [cli, "whoami"])?.trim() || undefined;
 }
 
-/** The versions of `name` the registry already has, or undefined when the
- * package is unpublished or the registry could not be reached. */
-export function publishedVersions(name: string): string[] | undefined {
+/** One field of `npm view <name>`, parsed, or undefined when the package is
+ * unpublished or the registry could not be reached. */
+function view<T>(name: string, field: string): T | undefined {
   const cli = npmCli();
   if (!cli) return undefined;
-  const out = capture(process.execPath, [cli, "view", name, "versions", "--json"]);
+  const out = capture(process.execPath, [cli, "view", name, field, "--json"]);
   if (out === undefined) return undefined;
   try {
-    const parsed = JSON.parse(out) as string[] | string;
-    return typeof parsed === "string" ? [parsed] : parsed;
+    return JSON.parse(out) as T;
   } catch {
     return undefined;
   }
+}
+
+/** The versions of `name` the registry already has. A package with exactly one
+ * gets a bare string back rather than an array. */
+export function publishedVersions(name: string): string[] | undefined {
+  const parsed = view<string[] | string>(name, "versions");
+  if (parsed === undefined) return undefined;
+  return typeof parsed === "string" ? [parsed] : parsed;
+}
+
+/** The accounts allowed to publish `name`, as the registry lists them. Each
+ * entry reads `account <email>`, and only the account is kept. */
+export function maintainers(name: string): string[] | undefined {
+  const parsed = view<string[] | string>(name, "maintainers");
+  if (parsed === undefined) return undefined;
+  const entries = typeof parsed === "string" ? [parsed] : parsed;
+  return entries.map((entry) => entry.split(" ")[0]!);
+}
+
+/**
+ * Why publishing `name` as `account` would be refused, or undefined when it
+ * would go through. A name someone else holds is the case worth catching early:
+ * npm reports it as a bare 403 at the end of a release that otherwise worked.
+ */
+export function publishBlocker(name: string, account: string): string | undefined {
+  const owners = maintainers(name);
+  if (owners === undefined) return undefined;
+  if (owners.includes(account)) return undefined;
+  return `the name '${name}' on npm belongs to ${owners.join(", ")}; publish under a scope you own`;
 }
