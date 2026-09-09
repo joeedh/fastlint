@@ -28,6 +28,9 @@ export interface Addon {
   /** Releases a session's tree. The WASM heap has no finalizer, so its addon
    * supplies this; the N-API addon omits it and lets GC reclaim the session. */
   freeSession?(session: Handle): void;
+  /** The built-in rules in one native call, returning the `--format json`
+   * output. Both embeddings expose it; the runtime does not need it. */
+  lintText?(source: string, filename?: string): string;
 }
 
 /** A reported problem, in the shape a rule hands to `context.report`. */

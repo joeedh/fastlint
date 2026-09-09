@@ -90,6 +90,41 @@ the driver runs it over many files.
   `plugin/ts/index.ts` is the package surface a `fastlint` npm package would
   re-export, wrapping the built `.node` addon.
 
+## Writing a rule
+
+- `node make.ts new-rule <name> [--selector <NodeKind>] [--out <file>]` scaffolds
+  a rule module: a working `Rule` that reports on every `selector` node, for the
+  author to narrow. It imports the `fastlint` package surface.
+- A rule is the `Rule` shape from `plugin/ts/runtime.ts`: a `name`, optional
+  `messages` keyed by `messageId`, and `create(context)` returning visitors
+  keyed by node-kind name. `context.report({node, messageId, data})` records a
+  problem; `{{placeholder}}` in a message is filled from `data`.
+- `plugin/ts/rules/` holds ported examples: `no-debugger` and `no-console`
+  (a plain visitor and an `is`-narrowed member read), `no-var` (a `kind` enum),
+  `eqeqeq` (an `op` enum with `{{data}}`), and `no-empty` (a list child and a
+  source-slice check). They read the generated view surface and nothing else, so
+  they run under either embedding.
+- Reports only: the runtime has no fixer or type information yet. A rule that
+  needs a fix, or a type, stays a native rule for now.
+
+## Performance
+
+`node source/fastlint/plugin/ts/bench.ts <addon-or-module path> [repeats]`
+compares the shared C++ front end against the TypeScript runtime over an 87 KB
+synthetic source (21.6k nodes), best of the repeats.
+
+- The bare walk (parse subtracted from a one-rule run) is about 3 microseconds
+  per node on both embeddings. That is the cost of wrapping a node and reading
+  its kind and children back across the boundary, and it dominates: a native
+  rule pays a dispatch-map lookup per node instead, in nanoseconds.
+- Five inspecting rules take roughly 0.4 s where the front end takes 10 ms under
+  N-API, because each visitor's own accessor reads cross the boundary too. Rule
+  count barely matters; how much each rule inspects does.
+- The N-API front end parses far faster than the debug WASM one (about 10 ms
+  against 60 ms), but the per-node walk is close, since both pay a boundary
+  crossing per accessor. The standing cost to cut is the per-node handle: an
+  integer index or a batched node record would remove most of the crossings.
+
 ## WASM module
 
 - `node make.ts deps fetch emsdk` installs the pinned SDK into `vendor/emsdk`.

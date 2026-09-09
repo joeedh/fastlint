@@ -3,8 +3,11 @@
 // them, and `defineConfig` type-checks the shape.
 
 import { defineConfig } from "./config.ts";
+import { eqeqeq } from "./rules/eqeqeq.ts";
 import { noConsole, noDebugger } from "./rules/no-debugger.ts";
+import { noEmpty } from "./rules/no-empty.ts";
+import { noVar } from "./rules/no-var.ts";
 
 export default defineConfig({
-  rules: [noDebugger, noConsole],
+  rules: [noDebugger, noConsole, noVar, eqeqeq, noEmpty],
 });

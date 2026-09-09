@@ -1120,9 +1120,19 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   entry a playground calls.
 
 ### 7.4 Ecosystem
-- [ ] `create-fastlint-rule` template; docs; example rules ported from
-  typescript-eslint.
-- [ ] Perf budget: TS rule overhead vs native rule, documented.
+- [x] `create-fastlint-rule` template, docs, example rules. `node make.ts
+  new-rule <name> [--selector <NodeKind>] [--out]` scaffolds a `Rule` module
+  from the `fastlint` package surface (`tools/make/new-rule.ts`). Ported
+  examples live in `plugin/ts/rules/`: `no-debugger`/`no-console`, `no-var`
+  (enum field), `eqeqeq` (enum + `{{data}}`), `no-empty` (list child); they read
+  the generated views only, so they run under either embedding. The writing-a-
+  rule guide is in docs/embedding.md.
+- [x] Perf budget documented (docs/embedding.md "Performance"), measured by
+  `plugin/ts/bench.ts` against both embeddings. The bare walk is about 3 us per
+  node on each, virtually all of it boundary crossings; a native rule pays a
+  dispatch lookup per node instead. Five inspecting rules run about 40x the C++
+  front end under N-API. The per-node handle is the cost to cut later (an
+  integer index or a batched node record).
 
 ---
 
