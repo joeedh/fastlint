@@ -1136,6 +1136,77 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
 
 ---
 
+## 8. Unified config and the npm package
+
+Goal: one config schema read by the native binary and by a JavaScript loader,
+and a publishable `fastlint` npm package that resolves
+`fastlint.config.{ts,js,json}`, drives the native binary when one is present,
+and falls back to a bundled WASM build when one is not. Format unification only;
+a single command that runs native and plugin rules together
+(execution unification) stays a later decision.
+
+### 8.1 Unified JSON config schema
+The on-disk shape both consumers agree on. The native binary stays the JSON
+reader (it has no JS engine), and the JS side compiles `.ts`/`.js` down to it.
+- [ ] Settle the schema on the native `lint::Config` shape, since it is the
+  richer of the two: `extends` (presets), `rules` (name to a severity, or to
+  `[severity, options]`), `overrides` (files plus rules), `ignores`,
+  `project`/`projects`, `reportUnusedDisableDirectives`, `eslintDirectives`. The
+  current TS config (a bare `Rule[]` in `plugin/ts/config.ts`) is replaced by
+  this shape.
+- [ ] Add `plugins`: a map from a prefix to a JS module specifier. A plugin
+  rule is referenced namespaced as `prefix/rule`. The native binary skips a
+  namespaced rule it has no registry entry for, rather than reporting it unknown
+  (`lint::Config` already gathers `m_unknownRules`; teach it the prefix
+  distinction so a typo still warns).
+- [ ] Add a `binary` item naming the native fastlint executable the npm CLI
+  should drive when present. The WASM fallback (task 8.3) runs when it is absent
+  or cannot be resolved, so the item is an optimization, not a requirement.
+- [ ] Ship a JSON Schema so an editor validates `fastlint.config.json`
+  directly. `defineConfig` stays the typed authoring wrapper for `.ts`/`.js`.
+- [ ] Document the schema in docs/rules.md "Config", marking which keys are
+  native-only (the presets resolve against the C++ registry) and which the
+  plugin side reads. This settles the config half of the cross-cutting "ESLint
+  compatibility surface" item.
+
+### 8.2 Config compiler (the JS loader)
+The package's core: read `fastlint.config.{ts,js,json}` and emit schema-valid
+JSON.
+- [ ] A loader that imports a `.ts`/`.js` config (reusing the dynamic import in
+  `plugin/ts/config.ts`) or reads a `.json` one, resolves it to the 8.1 schema,
+  and writes or streams `fastlint.config.json`. A `.json` input passes through
+  after validation.
+- [ ] Resolve `plugins` specifiers to rule objects at compile time. The JSON the
+  native binary receives carries only resolved native rules; plugin rules are
+  routed to the embedding instead.
+- [ ] Make TS rules configurable the way native rules are: `RuleContext` gains
+  `options`, and `lint()` takes resolved `(rule, severity, options)` tuples
+  rather than a bare `Rule[]`. It skips a rule set to `off`, tags each message
+  with its severity, and applies `overrides`/`ignores` per file.
+- [ ] A `fastlint config` subcommand (or `node make.ts` task) that prints the
+  resolved JSON, for debugging and for the `--config` handoff to the native
+  binary.
+
+### 8.3 The npm `fastlint` package
+- [ ] A publishable package: a `package.json` with `bin` (the `fastlint` CLI),
+  `exports` (the rule and config surface `index.ts` already sketches), and
+  `files`, with `private` dropped. It needs a build, because the sources import
+  `../generated/ts/views.ts` with `.ts` extensions and ship no compiled JS
+  today.
+- [ ] Bundle the WASM build (`build/wasm/bin/fastlint.js` plus its `.wasm`) in
+  the package as the fallback engine, so `npm i fastlint` lints with no native
+  binary installed.
+- [ ] The CLI wrapper: resolve the config (task 8.2), then lint through the
+  native binary named by the `binary` item (or discovered on `PATH`) when it is
+  present, handing it the emitted JSON through `--config`; otherwise lint
+  through the bundled WASM runtime. Merge the native built-in results with the
+  plugin-rule results into one report.
+- [ ] Decide how the native binary is distributed: an optional
+  platform-specific dependency or a postinstall download, against WASM-only by
+  default. The WASM fallback is what lets that stay a performance choice.
+
+---
+
 ## Cross-cutting
 
 - [x] `docs/tests.md` — testing strategy + framework spec (written
