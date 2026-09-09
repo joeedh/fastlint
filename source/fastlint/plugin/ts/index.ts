@@ -32,7 +32,14 @@ export { defineConfig } from "./schema.ts";
 export { configNames, findConfig, loadCompiledConfig, loadConfigFile } from "./config.ts";
 
 export type { CompiledConfig, Plugin, ResolvedFile } from "./compile.ts";
-export { compileConfig, isIgnored, nativeConfig, resolveFile } from "./compile.ts";
+export {
+  compileConfig,
+  isIgnored,
+  nativeConfig,
+  nativeConfigName,
+  nativeConfigPath,
+  resolveFile,
+} from "./compile.ts";
 
 export { validateConfigFile } from "./validate.ts";
 

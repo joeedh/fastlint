@@ -1192,10 +1192,11 @@ JSON.
   resolved JSON, for debugging and for the `--config` handoff to the native
   binary. Landed as `node make.ts config [file] [--native] [--out <path>]`; the
   npm CLI grows the same command in 8.3.
-  - [ ] The native handoff document has to be written beside the config it came
-    from, since globs and tsconfig paths anchor at the config file's directory.
-    Either the CLI writes it there, or `fastlint lint` grows a flag naming the
-    directory to anchor at — 8.3 decides.
+  - [ ] The native handoff document is `.fastlint.native.json`
+    (`nativeConfigPath`), written beside the config it came from, since globs and
+    tsconfig paths anchor at the config file's directory. Whether the CLI keeps
+    writing it there, or `fastlint lint` grows a flag naming the directory to
+    anchor at, is 8.3's to decide.
 
 ### 8.3 The npm `fastlint` package
 - [ ] A publishable package: a `package.json` with `bin` (the `fastlint` CLI),

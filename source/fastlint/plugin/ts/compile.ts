@@ -188,13 +188,24 @@ export function resolveFile(compiled: CompiledConfig, filename: string): Resolve
   };
 }
 
+/** What the native handoff document is called. The leading dot marks it as
+ * generated: it is written next to the config it came from, and a project
+ * ignores it rather than committing it. */
+export const nativeConfigName = ".fastlint.native.json";
+
+/** Where `configPath`'s handoff document belongs. Globs and tsconfig paths
+ * anchor at the config file's directory, so it goes beside the config. */
+export function nativeConfigPath(configPath: string): string {
+  return path.join(path.dirname(path.resolve(configPath)), nativeConfigName);
+}
+
 /**
  * The config the native binary is handed through `--config`. It drops the keys
  * only this side reads and every rule a plugin owns, so the native run reports
  * no rule it cannot run and still reports a name nothing defines.
  *
- * Globs and tsconfig paths anchor at the config file's directory, so the result
- * has to be written beside the config it came from.
+ * Write it at `nativeConfigPath`, since anywhere else resolves the relative
+ * globs and tsconfig paths against the wrong directory.
  */
 export function nativeConfig(compiled: CompiledConfig): FastlintConfigFile {
   const prefixes = Object.keys(compiled.file.plugins ?? {});

@@ -10,3 +10,6 @@ vendor/dtl/
 vendor/sqlite/
 # The emscripten SDK, installed on demand by `node make.ts deps fetch emsdk`.
 vendor/emsdk/
+
+# The native handoff config, generated beside a fastlint config.
+.fastlint.native.json

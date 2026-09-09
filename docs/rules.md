@@ -211,9 +211,11 @@ or `.js` down to the same JSON, because the native binary runs no JavaScript
 - The npm CLI hands the native binary a document of its own through `--config`:
   the same config with `plugins`, `binary` and every plugin rule taken out, since
   it runs those itself (`nativeConfig` in plugin/ts/compile.ts). Everything else
-  is copied through, including a key this version does not know. Globs and
-  tsconfig paths anchor at the config file's directory, so that document has to
-  be written beside the config it came from.
+  is copied through, including a key this version does not know.
+- That document is generated, named `.fastlint.native.json`, and written next to
+  the config it came from, because globs and tsconfig paths anchor at the config
+  file's directory. Add it to the project's ignore file rather than committing
+  it.
 - The native binary skips a plugin rule on its own as well, which is what a
   hand-written config run through `fastlint lint` needs.
 - `project`, `projects` and the two directive settings are native-only, because
@@ -321,7 +323,9 @@ settings and whether the file is ignored.
   JSON before the native binary sees it.
 - `node make.ts config [file]` prints what a config compiles to.
   `--out <path>` writes it, so a `.ts` config becomes the `fastlint.config.json`
-  the native binary reads, and `--native` emits the handoff document instead.
+  the native binary reads, and `--native` emits the handoff document instead. An
+  `--out` naming a directory takes the usual filename inside it, so
+  `--native --out .` writes `.fastlint.native.json` here.
   The config is found by walking up from the working directory, preferring
   `fastlint.config.ts` over `.mts`, `.js`, `.mjs` and `.json`.
 - The loader (plugin/ts/config.ts) reads either form: a `.json` config is parsed

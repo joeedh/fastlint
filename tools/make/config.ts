@@ -4,7 +4,10 @@ import type { CommandModule } from "yargs";
 import { color, fail, info, step } from "./lib/log.ts";
 import { repoRoot } from "./lib/paths.ts";
 
-import { nativeConfig } from "../../source/fastlint/plugin/ts/compile.ts";
+import {
+  nativeConfig,
+  nativeConfigName,
+} from "../../source/fastlint/plugin/ts/compile.ts";
 import {
   findConfig,
   loadCompiledConfig,
@@ -32,13 +35,13 @@ export const command: CommandModule<object, Args> = {
       })
       .option("out", {
         type    : "string",
-        describe: "write the JSON to this file instead of stdout",
+        describe: "write the JSON to this file, or to the usual name in this directory",
       })
       .example("$0 config", "print the resolved config as JSON")
       .example("$0 config --out fastlint.config.json", "compile a .ts config to JSON")
       .example(
-        "$0 config --native --out native.config.json",
-        "emit the native handoff beside the config it came from"
+        "$0 config --native --out .",
+        `write the handoff document here as ${nativeConfigName}`
       )
       .epilogue(
         `See ${color.cyan("docs/rules.md")} "Config" for the schema and what each key means.`
@@ -63,7 +66,14 @@ export const command: CommandModule<object, Args> = {
       process.stdout.write(json);
       return;
     }
-    const out = path.resolve(argv.out);
+    // An `--out` naming a directory takes the conventional filename inside it:
+    // the generated `.fastlint.native.json` for the handoff document, and the
+    // config the native binary looks for otherwise.
+    const asked = path.resolve(argv.out);
+    const intoDir = fs.existsSync(asked) && fs.statSync(asked).isDirectory();
+    const out = intoDir
+      ? path.join(asked, argv.native ? nativeConfigName : "fastlint.config.json")
+      : asked;
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, json);
     step(`wrote ${path.relative(repoRoot, out)}`);
