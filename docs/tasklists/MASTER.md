@@ -1104,8 +1104,20 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   `Emscripten.cmake` toolchain and the `wasm`/`wasm-release` presets. litestl's
   `build_files/WASM.cmake` is not used: it re-derives the emsdk environment on
   every compile, which the captured delta makes unnecessary.
-- [ ] Same TS runtime over the WASM heap (litestl `typescriptRuntime`).
-- [ ] Use case: browser/playground, and editors without native addons.
+- [x] Same TS runtime over the WASM heap. `source/wasm/module.cc` exports the
+  node accessors as the WASM twin of the addon's (`fl_wasm_parse`, `fl_wasm_kind`,
+  `fl_wasm_child`, `fl_wasm_descendants`, ...), handles being heap pointers that
+  cross to JS as numbers. `plugin/ts/wasm_addon.ts` wraps the Emscripten module
+  as the same `Addon` the runtime consumes, re-reading the heap views each call
+  since `ALLOW_MEMORY_GROWTH` can swap them and freeing a session through
+  `Addon.freeSession` (the WASM heap has no finalizer; the addon's is a no-op).
+  So `lint` runs unchanged over WASM; `wasm.smoke.ts` proves it under `build
+  --wasm --smoke`. litestl's `typescriptRuntime` is not used: one accessor-based
+  runtime already backs both embeddings, so a second one would only diverge.
+- [x] Use case: browser/playground, and editors without native addons. The
+  module is an ES module with a factory export usable in a browser, a worker or
+  Node (`-sENVIRONMENT=web,worker,node`); `wasm_addon.loadWasmAddon` is the
+  entry a playground calls.
 
 ### 7.4 Ecosystem
 - [ ] `create-fastlint-rule` template; docs; example rules ported from

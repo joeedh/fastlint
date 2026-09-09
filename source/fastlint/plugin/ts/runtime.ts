@@ -25,6 +25,9 @@ export interface Addon {
   start(handle: Handle): number;
   end(handle: Handle): number;
   descendants(session: Handle, handle: Handle, kind: number): Handle[];
+  /** Releases a session's tree. The WASM heap has no finalizer, so its addon
+   * supplies this; the N-API addon omits it and lets GC reclaim the session. */
+  freeSession?(session: Handle): void;
 }
 
 /** A reported problem, in the shape a rule hands to `context.report`. */
@@ -118,8 +121,6 @@ export function lint(
 ): LintMessage[] {
   const session = addon.parse(source, filename);
   const host = hostFor(addon, session);
-  const root = wrap(host, addon.root(session));
-
   const messages: LintMessage[] = [];
   // A visitor list per kind value, so dispatch is one array lookup per node.
   const byKind = new Map<number, { rule: Rule; visit: (node: Node) => void }[]>();
@@ -170,7 +171,11 @@ export function lint(
       if (child) walk(child);
     }
   };
-  walk(root);
+  try {
+    walk(wrap(host, addon.root(session)));
+  } finally {
+    if (addon.freeSession) addon.freeSession(session);
+  }
 
   return messages;
 }

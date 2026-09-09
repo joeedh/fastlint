@@ -99,9 +99,17 @@ the driver runs it over many files.
 - The module is an ES module with a factory default export, so
   `import createFastlint from "./fastlint.js"` works in a bundler, a browser
   and Node alike.
-- Exports are `_fl_wasm_version`, `_fl_wasm_lint` and `_fl_wasm_free`, plus
-  `_malloc` and `_free`. `fl_wasm_lint` returns a `malloc`ed buffer the caller
-  hands back to `fl_wasm_free`.
+- Exports are `_fl_wasm_version`, `_fl_wasm_lint` and `_fl_wasm_free`, the node
+  accessors (`_fl_wasm_parse`, `_fl_wasm_root`, `_fl_wasm_kind`, `_fl_wasm_child`,
+  `_fl_wasm_descendants`, ...), plus `_malloc` and `_free`. `fl_wasm_lint`
+  returns a `malloc`ed buffer the caller hands back to `fl_wasm_free`.
+- The rule runtime runs over WASM too: `plugin/ts/wasm_addon.ts` wraps the
+  module as the same `Addon` the N-API path uses, so `lint` is unchanged. Node
+  handles are heap pointers passed as numbers; the shim re-reads `HEAPU8`/
+  `HEAPU32` on every use because `ALLOW_MEMORY_GROWTH` can swap the buffer, and
+  frees each session through `Addon.freeSession`, since the heap has no
+  finalizer. The worker-pool driver is N-API-only; a browser or playground runs
+  one file at a time on its single thread.
 - `-sFILESYSTEM=1` stays on because SQLite is linked in with the core and opens
   files through the libc layer.
 - Warnings are not errors under Emscripten. emcc tracks a different clang than

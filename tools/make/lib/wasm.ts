@@ -69,4 +69,17 @@ export async function smokeWasm(preset: WasmPreset): Promise<void> {
     `if (json[0].messages.length === 0) throw new Error("expected the recommended rules to report");`,
   ].join("\n");
   await run(process.execPath, ["--input-type=module", "-e", script], { cwd: repoRoot });
+
+  // The TypeScript rule runtime over the WASM heap: the same rules as the addon
+  // smoke, through the Emscripten module's accessors.
+  step("smoke test the TypeScript rule runtime over WASM");
+  const smoke = path.join(
+    repoRoot,
+    "source",
+    "fastlint",
+    "plugin",
+    "ts",
+    "wasm.smoke.ts"
+  );
+  await run(process.execPath, [smoke, module], { cwd: repoRoot });
 }
