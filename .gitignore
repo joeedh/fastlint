@@ -13,3 +13,6 @@ vendor/emsdk/
 
 # The native handoff config, generated beside a fastlint config.
 .fastlint.native.json
+
+# The publishable package, built by `node make.ts pack`.
+dist/

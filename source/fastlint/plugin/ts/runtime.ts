@@ -33,8 +33,16 @@ export interface Addon {
    * supplies this; the N-API addon omits it and lets GC reclaim the session. */
   freeSession?(session: Handle): void;
   /** The built-in rules in one native call, returning the `--format json`
-   * output. Both embeddings expose it; the runtime does not need it. */
-  lintText?(source: string, filename?: string): string;
+   * output. `config` is a `fastlint.config.json` document whose globs are
+   * anchored at `baseDir`; without one the recommended preset applies. Both
+   * embeddings expose it, and the CLI lints through it when no native binary is
+   * around; the rule runtime itself does not need it. */
+  lintText?(
+    source: string,
+    filename?: string,
+    config?: string,
+    baseDir?: string
+  ): string;
 }
 
 /** A reported problem, in the shape a rule hands to `context.report`. */

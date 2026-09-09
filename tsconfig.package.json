@@ -1,0 +1,25 @@
+// The published package's build (task 8.3). The repository runs its TypeScript
+// straight off disk, so the root config emits nothing; this one compiles the
+// plugin surface to `dist/` for `npm i fastlint`, rewriting each `.ts` import
+// specifier to the `.js` file beside it.
+{
+  "extends"        : "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit"     : false,
+    "declaration": true,
+    "sourceMap"  : true,
+    "outDir"     : "dist",
+    "rootDir"    : "source/fastlint/plugin"
+  },
+  "include"        : ["source/fastlint/plugin/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "build",
+    "vendor",
+    "source/fastlint/plugin/ts/**/*.test.ts",
+    "source/fastlint/plugin/ts/*.smoke.ts",
+    "source/fastlint/plugin/ts/bench.ts",
+    "source/fastlint/plugin/ts/example.config.ts",
+    "source/fastlint/plugin/ts/example-rule.ts"
+  ]
+}

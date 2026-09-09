@@ -3,26 +3,22 @@
 // back. The TypeScript rules run here, on this worker's own thread, while the
 // driver keeps every worker fed; that is the whole of the parallelism.
 
-import { createRequire } from "node:module";
 import { parentPort, workerData } from "node:worker_threads";
 
 import { loadCompiledConfig } from "./config.ts";
-import { lintOne, type LintRequest, type LintResult } from "./driver.ts";
-import type { Addon } from "./runtime.ts";
+import { loadAddon, lintOne, type LintRequest, type LintResult } from "./driver.ts";
 
-const data = workerData as { addonPath: string; configPath: string };
-const require = createRequire(import.meta.url);
-const addon = require(data.addonPath) as Addon;
+const data = workerData as { addonPath?: string; configPath: string };
 
-// Loaded once; every file this worker lints waits on the same promise.
-const ready = loadCompiledConfig(data.configPath);
+// Loaded once; every file this worker lints waits on the same promises.
+const ready = Promise.all([loadAddon(data.addonPath), loadCompiledConfig(data.configPath)]);
 
 const port = parentPort;
 if (!port) throw new Error("lint_worker must run as a worker thread");
 
 port.on("message", (request: LintRequest) => {
   void (async () => {
-    const compiled = await ready;
+    const [addon, compiled] = await ready;
     const file = lintOne(addon, compiled, request.filename);
     const result: LintResult = {
       id: request.id,

@@ -15,7 +15,9 @@ import { Worker } from "node:worker_threads";
 
 import { resolveFile, type CompiledConfig } from "./compile.ts";
 import { loadCompiledConfig } from "./config.ts";
+import { findWasmModule } from "./engine.ts";
 import { lint, type Addon, type LintMessage } from "./runtime.ts";
+import { loadWasmAddon } from "./wasm_addon.ts";
 
 /** A file handed to a worker. */
 export interface LintRequest {
@@ -43,11 +45,25 @@ export interface FileMessages {
 export interface LintFilesOptions {
   /** The `fastlint.config.*` file to take the rules from. */
   configPath: string;
-  /** The built `.node` addon to parse through. */
-  addonPath: string;
-  /** Worker count; defaults to the CPU count, capped at the file count. `1`
-   * runs in this thread with no workers. */
+  /** What to parse through: a built `.node` addon, or a WASM module's
+   * `fastlint.js`. Defaults to the bundled WASM build. */
+  addonPath?: string;
+  /** Worker count; defaults to the CPU count for the addon and to one for the
+   * WASM build, whose every worker would hold a heap of its own. `1` runs in
+   * this thread with no workers. */
   concurrency?: number;
+}
+
+/** Loads whichever embedding `addonPath` names, or the bundled WASM build. */
+export async function loadAddon(addonPath?: string): Promise<Addon> {
+  const resolved = addonPath ?? findWasmModule();
+  if (!resolved) {
+    throw new Error("no addon given and no bundled WASM build to fall back to");
+  }
+  if (resolved.endsWith(".node")) {
+    return createRequire(import.meta.url)(resolved) as Addon;
+  }
+  return loadWasmAddon(resolved);
 }
 
 /** Lints one file against the rules the config resolves for it. */
@@ -70,13 +86,12 @@ export function lintOne(
 }
 
 /** Lints `files` in this thread, without spawning a worker. */
-function lintInProcess(
+async function lintInProcess(
   files: readonly string[],
   compiled: CompiledConfig,
-  addonPath: string
-): FileMessages[] {
-  const require = createRequire(import.meta.url);
-  const addon = require(addonPath) as Addon;
+  addonPath: string | undefined
+): Promise<FileMessages[]> {
+  const addon = await loadAddon(addonPath);
   return files.map((filename) => lintOne(addon, compiled, filename));
 }
 
@@ -86,28 +101,31 @@ function lintInProcess(
  * worker loads the addon and the config once, and the driver hands it the next
  * file as soon as it returns the last, so a slow file never idles the others.
  *
- * A rule name under a declared plugin prefix that the plugin does not define is
- * warned about once, the way the native binary reports an unknown rule name.
+ * Nothing is written to stderr here. A caller that wants to report a rule name
+ * the plugin does not define reads `CompiledConfig.unknownRules`, as the CLI
+ * does.
  */
 export async function lintFiles(
   files: readonly string[],
   options: LintFilesOptions
 ): Promise<FileMessages[]> {
   const compiled = await loadCompiledConfig(options.configPath);
-  for (const name of compiled.unknownRules) {
-    console.warn(`${options.configPath}: rule '${name}' is not defined by its plugin`);
-  }
 
+  // A WASM worker would hold a heap of its own, so the pool is for the addon.
+  const isAddon = options.addonPath?.endsWith(".node") === true;
   const workers = Math.max(
     1,
-    Math.min(options.concurrency ?? os.cpus().length, files.length)
+    Math.min(options.concurrency ?? (isAddon ? os.cpus().length : 1), files.length)
   );
   if (workers <= 1 || files.length <= 1) {
     return lintInProcess(files, compiled, options.addonPath);
   }
 
   const results: FileMessages[] = new Array(files.length);
-  const url = new URL("./lint_worker.ts", import.meta.url);
+  // The published package ships compiled JavaScript, so the worker is named by
+  // the extension this module itself is running as.
+  const worker = import.meta.url.endsWith(".ts") ? "./lint_worker.ts" : "./lint_worker.js";
+  const url = new URL(worker, import.meta.url);
   const pool: Worker[] = [];
   let next = 0;
   let done = 0;

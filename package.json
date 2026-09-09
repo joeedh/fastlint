@@ -1,15 +1,33 @@
 {
   "name": "fastlint",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "description": "A fast TypeScript/JavaScript linter written in C++",
+  "license": "MIT",
   "packageManager": "pnpm@10.0.0",
   "engines": {
     "node": ">=24"
   },
+  "bin": {
+    "fastlint": "dist/ts/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/ts/index.d.ts",
+      "default": "./dist/ts/index.js"
+    },
+    "./schema.json": "./schema/fastlint.config.schema.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "schema",
+    "docs/rules.md",
+    "docs/plugins.md"
+  ],
   "scripts": {
-    "make": "node make.ts"
+    "make": "node make.ts",
+    "prepack": "node make.ts pack"
   },
   "devDependencies": {
     "@pathtx/prettier": "^3.3.0-dev",

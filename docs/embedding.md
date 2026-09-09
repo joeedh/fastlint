@@ -11,8 +11,13 @@ cmake directly.
 - `fastlint/embed/lint_text.h` is the whole surface: `lintText(source,
   filename, out)` fills `out` with the ESLint-shaped JSON that `--format json`
   prints.
-- The recommended preset applies. An embedding has no directory to search for
-  `fastlint.config.json`, so nothing is loaded from disk.
+- `lintTextWithConfig(source, filename, configJson, baseDir, out, error)` takes
+  the config as text instead, so a host that resolved one applies it. The parsed
+  `lint::Config` is cached on the config text and `baseDir`, since a run passes
+  the same one for every file; `error` comes back non-empty when the text does
+  not parse, and nothing is linted.
+- Without a config the recommended preset applies. An embedding has no directory
+  to search for `fastlint.config.json`, so nothing is loaded from disk.
 - Type-aware rules do not run. Typing a file needs a tsgo process and a
   resolved tsconfig, and neither host offers one.
 - `LintOptions::fixEdits` is on, so every fixable problem carries its edit. The
@@ -40,8 +45,10 @@ both without touching either.
 - `source/napi/addon.cc` calls the C N-API directly rather than through
   node-addon-api: the plugin ABI is already a C surface, and exceptions are off
   in this tree.
-- Exports are `version()`, `lintText(source, filename?)` (the JSON as a string),
-  and the node accessors below.
+- Exports are `version()`, `lintText(source, filename?, config?, baseDir?)` (the
+  JSON as a string), and the node accessors below. The trailing pair is the
+  resolved config and the directory its globs anchor at; leaving them out runs
+  the recommended preset.
 
 ## The TypeScript rule runtime
 
@@ -144,8 +151,8 @@ synthetic source (21.6k nodes), best of the repeats.
 - The module is an ES module with a factory default export, so
   `import createFastlint from "./fastlint.js"` works in a bundler, a browser
   and Node alike.
-- Exports are `_fl_wasm_version`, `_fl_wasm_lint` and `_fl_wasm_free`, the node
-  accessors (`_fl_wasm_parse`, `_fl_wasm_root`, `_fl_wasm_kind`, `_fl_wasm_child`,
+- Exports are `_fl_wasm_version`, `_fl_wasm_lint`, `_fl_wasm_lint_config` and
+  `_fl_wasm_free`, the node accessors (`_fl_wasm_parse`, `_fl_wasm_root`, `_fl_wasm_kind`, `_fl_wasm_child`,
   `_fl_wasm_descendants`, ...), plus `_malloc` and `_free`. `fl_wasm_lint`
   returns a `malloc`ed buffer the caller hands back to `fl_wasm_free`.
 - The rule runtime runs over WASM too: `plugin/ts/wasm_addon.ts` wraps the
@@ -164,6 +171,65 @@ synthetic source (21.6k nodes), best of the repeats.
   the top-level CMakeLists defines it for every target under Emscripten. Its
   allocator's block header is a byte multiple short without it, and the
   `static_assert` in `util/alloc.cc` catches that at compile time.
+
+## The npm package
+
+`npm i fastlint` installs a linter that works with no native binary on the
+machine, because the package carries the WASM build as its fallback engine. A
+native binary makes the same run faster; it changes nothing about what is
+reported.
+
+- `node make.ts pack [--wasm] [--smoke]` builds what is published.
+  `tsconfig.package.json` compiles source/fastlint/plugin to `dist/` with
+  declarations, `--wasm` builds the release module first, and the module is
+  copied to `dist/wasm/`. `--smoke` lints a throwaway project through
+  `dist/ts/cli.js` afterwards, which is the only check that catches a missing
+  file or a specifier the emit did not rewrite.
+- A `wasm-release` build is what ships. `pack` falls back to the debug module
+  with a warning when there is none: it is several times the size and slower to
+  parse with, so a package built that way is for trying the pipeline.
+- `package.json` declares `bin` (`fastlint` to dist/ts/cli.js), `exports` (the
+  rule and config surface, plus `fastlint/schema.json` for an editor) and
+  `files` (`dist`, `schema`, docs/rules.md and docs/plugins.md). `prepack` runs
+  `node make.ts pack`, so `npm publish` cannot ship a stale `dist/`.
+- The sources import each other with `.ts` extensions and Node 24 runs them off
+  disk, so the repository needs no build. The package does:
+  `rewriteRelativeImportExtensions` turns each specifier into the `.js` beside
+  it during the emit.
+
+### Which engine runs the built-in rules
+
+- The CLI drives the native binary the config's `binary` item names, or one
+  called `fastlint` on PATH. It writes `.fastlint.native.json` beside the config
+  and runs `lint --config … --format json`.
+- Without one it lints through `dist/wasm/fastlint.js`, one file at a time,
+  passing the same resolved config to `fl_wasm_lint_config`. Both engines
+  answer in the ESLint-shaped JSON, so the reports merge the same way.
+- `--engine native` turns the fallback off and fails when no binary resolves,
+  which is what a CI job wanting the fast path asks for. `--engine wasm` forces
+  the fallback, which is how the two are compared.
+- Rules from a plugin run in this process either way, over the N-API addon when
+  one is built and over the WASM module otherwise. The CLI merges the two lists
+  per file (plugin/ts/report.ts) and prints them as one listing.
+
+### Distributing the native binary
+
+WASM-only is what the package installs, and the native binary is found rather
+than fetched. The alternatives were an `optionalDependencies` entry per platform
+and a postinstall download.
+
+- A postinstall download is the one ruled out: it fetches an executable at
+  install time, which a locked-down CI or a corporate proxy blocks, and the
+  failure lands in the middle of `npm i` rather than at the first lint.
+- Per-platform optional dependencies are the better of the two, and are what to
+  add once releases are built. They need a tagged release pipeline publishing
+  `@fastlint/win32-x64` and its siblings, and that pipeline does not exist yet.
+- Until then the binary comes from the config's `binary` item or from PATH,
+  which covers the two cases that exist: this repository's own build, and a
+  binary a user installed themselves.
+- The fallback is what makes the choice a performance one. A package that could
+  not lint without a native binary would have to solve distribution before it
+  could ship at all.
 
 ## The emsdk environment
 

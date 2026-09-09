@@ -4,9 +4,37 @@ A fast TypeScript/JavaScript linter written in C++. It has its own scanner and
 recursive-descent parser, a flat arena AST with full trivia fidelity, type
 information from `tsc --api`, and a SQLite cache of type facts and rule results.
 
-Nothing lints yet — see docs/tasklists/MASTER.md for where the work stands.
+The built-in rules run in C++. Rules written in TypeScript run over the same
+parse through an N-API addon or a WASM build, so a project mixes both in one
+config. See docs/tasklists/MASTER.md for where the work stands.
 
-## Getting started
+## Install
+
+```sh
+npm i -D fastlint
+npx fastlint --init        # writes a starter fastlint.config.json
+npx fastlint src
+```
+
+The package bundles a WASM build of the linter, so it works with no native
+binary installed. Point the config's `binary` item at a native `fastlint`, or
+put one on PATH, and the same run goes through that instead:
+
+```jsonc
+{
+  "$schema": "./node_modules/fastlint/schema/fastlint.config.schema.json",
+  "extends": "fastlint:recommended",
+  "plugins": { "acme": "./rules/index.ts" },
+  "rules": { "curly": "error", "acme/no-foo": "warn" },
+  "ignores": ["**/dist/**"]
+}
+```
+
+`fastlint.config.ts` is read too, with `defineConfig` from the package for the
+types. docs/rules.md covers the schema and the CLI; docs/plugins.md is the guide
+for writing rules.
+
+## Building from source
 
 Requires Node 24, pnpm, and Visual Studio 18 (Community is enough). cmake,
 ninja, clang-format and `vcvarsall.bat` ship with VS and are found with
@@ -38,6 +66,8 @@ node make.ts run -- --version
 | `format` | clang-format over `source/`, the `@pathtx/prettier` fork over the TypeScript. `--check` only reports. |
 | `deps` | Updates submodules and fetches the externals: `deps fetch dtl` clones a pinned git external, `deps fetch sqlite` downloads the checksummed amalgamation zip into `vendor/`. |
 | `run` | Builds `fastlint` and runs it with the remaining arguments. |
+| `config` | Prints what a config compiles to; `--native` emits the handoff document, `--out` writes it. |
+| `pack` | Builds the publishable npm package into `dist/`; `--wasm` builds the engine it bundles, `--smoke` lints through the result. |
 | `clean` | Removes `build/<preset>`, or everything under `--all`. |
 
 ## Layout
@@ -57,3 +87,5 @@ node make.ts run -- --version
 - docs/tests.md — the test framework, snapshot format, and test strategy.
 - docs/debugging.md — debugging aids per subsystem.
 - docs/tsgo-api.md — what the `tsc --api` protocol actually serves.
+- docs/embedding.md — the N-API addon, the WASM module and the npm package.
+- docs/plugins.md — writing rules in TypeScript.

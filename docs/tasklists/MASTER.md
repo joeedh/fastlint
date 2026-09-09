@@ -1192,29 +1192,42 @@ JSON.
   resolved JSON, for debugging and for the `--config` handoff to the native
   binary. Landed as `node make.ts config [file] [--native] [--out <path>]`; the
   npm CLI grows the same command in 8.3.
-  - [ ] The native handoff document is `.fastlint.native.json`
+  - [x] The native handoff document is `.fastlint.native.json`
     (`nativeConfigPath`), written beside the config it came from, since globs and
-    tsconfig paths anchor at the config file's directory. Whether the CLI keeps
-    writing it there, or `fastlint lint` grows a flag naming the directory to
-    anchor at, is 8.3's to decide.
+    tsconfig paths anchor at the config file's directory. 8.3 settled on keeping
+    it there rather than adding an anchor flag to `fastlint lint`: the anchor a
+    flag would name is always the config's own directory, so the flag would carry
+    no information. .gitignore lists the name.
 
 ### 8.3 The npm `fastlint` package
-- [ ] A publishable package: a `package.json` with `bin` (the `fastlint` CLI),
+- [x] A publishable package: a `package.json` with `bin` (the `fastlint` CLI),
   `exports` (the rule and config surface `index.ts` already sketches), and
   `files`, with `private` dropped. It needs a build, because the sources import
   `../generated/ts/views.ts` with `.ts` extensions and ship no compiled JS
-  today.
-- [ ] Bundle the WASM build (`build/wasm/bin/fastlint.js` plus its `.wasm`) in
+  today. `tsconfig.package.json` emits `dist/` with declarations and rewrites
+  those specifiers; `node make.ts pack [--wasm] [--smoke]` builds it and
+  `prepack` runs it.
+- [x] Bundle the WASM build (`build/wasm/bin/fastlint.js` plus its `.wasm`) in
   the package as the fallback engine, so `npm i fastlint` lints with no native
-  binary installed.
-- [ ] The CLI wrapper: resolve the config (task 8.2), then lint through the
+  binary installed. `pack` copies the `wasm-release` module to `dist/wasm/` and
+  warns when it falls back to the debug one.
+  - [x] `embed::lintTextWithConfig` and `fl_wasm_lint_config`, so the fallback
+    applies the run's config. Without it the WASM path silently linted the
+    recommended preset while the native path read the config.
+- [x] The CLI wrapper: resolve the config (task 8.2), then lint through the
   native binary named by the `binary` item (or discovered on `PATH`) when it is
   present, handing it the emitted JSON through `--config`; otherwise lint
   through the bundled WASM runtime. Merge the native built-in results with the
-  plugin-rule results into one report.
-- [ ] Decide how the native binary is distributed: an optional
+  plugin-rule results into one report. `plugin/ts/{cli,engine,files,report}.ts`;
+  `--engine native|wasm` pins the choice, and both engines report identically.
+- [x] Decide how the native binary is distributed: an optional
   platform-specific dependency or a postinstall download, against WASM-only by
   default. The WASM fallback is what lets that stay a performance choice.
+  Decided WASM-only: the binary is found through the config's `binary` item or
+  on PATH, never fetched. A postinstall download fails inside a locked-down CI
+  during `npm i`; per-platform optional dependencies are the right next step but
+  need a release pipeline that does not exist yet. docs/embedding.md
+  "Distributing the native binary" records this.
 
 ---
 
@@ -1249,7 +1262,8 @@ JSON.
   50 files each; the parser itself holds flat at 8 MB across mutants.
   - [ ] Promote minimized cases to fixtures automatically.
 - [x] `make.ts bench` with JSON baselines and `--compare`.
-- [ ] `README.md` — what/why, quickstart, `make.ts` commands.
+- [x] `README.md` — what/why, quickstart, `make.ts` commands (8.3 restructured
+  it to lead with `npm i -D fastlint`).
 - [ ] `CLAUDE.md` — repo conventions (build, style, layout), pointing at
   docs/STRATEGY.md and this list.
 - [ ] Bench suite (`node make.ts bench`) tracking parse MB/s, lint files/s,

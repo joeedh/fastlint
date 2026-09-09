@@ -117,11 +117,15 @@ napi_value version(napi_env env, napi_callback_info)
   return out;
 }
 
-/** `lintText(source, filename?)` -> the ESLint-shaped JSON `--format json` prints. */
+/**
+ * `lintText(source, filename?, config?, baseDir?)` -> the ESLint-shaped JSON
+ * `--format json` prints. `config` is a `fastlint.config.json` document whose
+ * globs are anchored at `baseDir`; without one the recommended preset applies.
+ */
 napi_value lintText(napi_env env, napi_callback_info info)
 {
-  napi_value argv[2] = {nullptr, nullptr};
-  size_t argc = args(env, info, argv, 2);
+  napi_value argv[4] = {nullptr, nullptr, nullptr, nullptr};
+  size_t argc = args(env, info, argv, 4);
   if (argc < 1) {
     return typeError(env, "lintText(source, filename?) needs a source string");
   }
@@ -131,19 +135,38 @@ napi_value lintText(napi_env env, napi_callback_info info)
     return typeError(env, "source must be a string");
   }
 
-  Vector<char> filename;
-  if (argc >= 2) {
-    napi_valuetype type = napi_undefined;
-    napi_typeof(env, argv[1], &type);
-    if (type == napi_string && !utf8Arg(env, argv[1], filename)) {
-      return typeError(env, "filename must be a string");
+  // Each trailing argument is optional, and a non-string is read as absent so a
+  // caller may pass undefined for one it does not use.
+  auto optional = [&](size_t index, Vector<char> &out) -> bool {
+    if (argc <= index) {
+      return true;
     }
+    napi_valuetype type = napi_undefined;
+    napi_typeof(env, argv[index], &type);
+    return type != napi_string || utf8Arg(env, argv[index], out);
+  };
+  Vector<char> filename;
+  Vector<char> config;
+  Vector<char> baseDir;
+  if (!optional(1, filename)) {
+    return typeError(env, "filename must be a string");
+  }
+  if (!optional(2, config)) {
+    return typeError(env, "config must be a string");
+  }
+  if (!optional(3, baseDir)) {
+    return typeError(env, "baseDir must be a string");
   }
   std::string_view name =
       filename.size() > 1 ? view(filename) : std::string_view("input.ts");
 
   string json;
-  fastlint::embed::lintText(view(source), name, json);
+  string error;
+  fastlint::embed::lintTextWithConfig(
+      view(source), name, view(config), view(baseDir), json, error);
+  if (error.size() != 0) {
+    return typeError(env, error.c_str());
+  }
 
   napi_value out = nullptr;
   napi_create_string_utf8(env, json.c_str(), json.size(), &out);

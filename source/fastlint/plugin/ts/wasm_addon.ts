@@ -9,6 +9,12 @@ import type { Addon } from "./runtime.ts";
 /** The Emscripten module surface this shim reads. Heap views are re-read on
  * every use, because `ALLOW_MEMORY_GROWTH` can swap the backing buffer. */
 interface WasmModule {
+  _fl_wasm_lint_config(
+    source: number,
+    filename: number,
+    config: number,
+    baseDir: number
+  ): number;
   _fl_wasm_parse(source: number, filename: number): number;
   _fl_wasm_session_free(session: number): void;
   _fl_wasm_root(session: number): number;
@@ -32,6 +38,7 @@ interface WasmModule {
   _malloc(size: number): number;
   _free(ptr: number): void;
   stringToNewUTF8(text: string): number;
+  UTF8ToString(pointer: number): string;
   readonly HEAPU8: Uint8Array;
   readonly HEAPU32: Uint32Array;
   readonly HEAP32: Int32Array;
@@ -84,6 +91,21 @@ function addonFor(wasm: WasmModule): Addon {
       return out;
     },
     freeSession: (session) => wasm._fl_wasm_session_free(num(session)),
+    lintText(source, filename, config, baseDir) {
+      const pointers = [source, filename ?? "input.ts", config ?? "", baseDir ?? ""].map(
+        (text) => wasm.stringToNewUTF8(text)
+      );
+      const out = wasm._fl_wasm_lint_config(
+        pointers[0]!,
+        pointers[1]!,
+        pointers[2]!,
+        pointers[3]!
+      );
+      for (const pointer of pointers) wasm._free(pointer);
+      const json = out === 0 ? "[]" : wasm.UTF8ToString(out);
+      if (out !== 0) wasm._fl_wasm_free(out);
+      return json;
+    },
   };
 }
 

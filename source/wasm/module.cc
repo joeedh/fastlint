@@ -49,6 +49,52 @@ EMSCRIPTEN_KEEPALIVE char *fl_wasm_lint(const char *source, const char *filename
   return out;
 }
 
+/**
+ * Lints `source` against `config`, a `fastlint.config.json` document whose globs
+ * are anchored at `base_dir`. Returns the JSON the caller passes back to
+ * `fl_wasm_free`, or a one-element array holding the config's error when the
+ * document will not parse. A null or empty `config` is the recommended preset.
+ */
+EMSCRIPTEN_KEEPALIVE char *fl_wasm_lint_config(const char *source,
+                                               const char *filename,
+                                               const char *config,
+                                               const char *base_dir)
+{
+  litestl::util::string json;
+  litestl::util::string error;
+  fastlint::embed::lintTextWithConfig(
+      std::string_view(source ? source : ""),
+      std::string_view(filename && *filename ? filename : "input.ts"),
+      std::string_view(config ? config : ""),
+      std::string_view(base_dir ? base_dir : ""),
+      json,
+      error);
+  if (error.size() != 0) {
+    // The host reads one shape whatever happened, so a config error comes back
+    // as the fatal message a syntax error would.
+    json = litestl::util::string("[{\"filePath\":\"\",\"messages\":[{\"ruleId\":null,"
+                                 "\"severity\":2,\"message\":\"");
+    for (char c : error) {
+      if (c == '"' || c == '\\') {
+        json += '\\';
+      }
+      json += c;
+    }
+    for (char c : std::string_view("\",\"line\":1,\"column\":1,\"fatal\":true}],"
+                                   "\"errorCount\":1,\"warningCount\":0,"
+                                   "\"fixableErrorCount\":0,\"fixableWarningCount\":0}]"))
+    {
+      json += c;
+    }
+  }
+
+  char *out = static_cast<char *>(std::malloc(json.size() + 1));
+  if (out) {
+    std::memcpy(out, json.c_str(), json.size() + 1);
+  }
+  return out;
+}
+
 EMSCRIPTEN_KEEPALIVE void fl_wasm_free(char *text)
 {
   std::free(text);

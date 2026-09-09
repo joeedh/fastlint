@@ -310,6 +310,15 @@ settings and whether the file is ignored.
   is an optimization rather than a requirement (task 8.3).
 - The native binary checks the item's type and otherwise leaves it alone, so one
   config reports the same errors whichever side reads it.
+- The CLI hands it the run's config as `.fastlint.native.json`, written beside
+  the config it was compiled from and passed with `--config`. It goes there
+  because `overrides` globs, `ignores` and `project` paths all anchor at the
+  config file's directory, and a document read from anywhere else would resolve
+  them against the wrong root. The name is dotted so an editor and a `git
+  status` treat it as tooling state; .gitignore lists it.
+- The document is the config with `$schema`, `plugins` and `binary` removed and
+  every rule under a declared prefix stripped, so the binary sees only names its
+  registry defines. `node make.ts config --native` prints the same thing.
 
 ### Editor validation and typed authoring
 
@@ -409,6 +418,32 @@ fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
   "Result cache").
 - Exit code 1 when any error remains (or warnings exceed `--max-warnings`),
   2 on a usage or I/O failure, 0 otherwise.
+
+### The npm CLI
+
+The `fastlint` command the npm package installs (plugin/ts/cli.ts) is the front
+end that runs plugin rules, since the native binary has no JavaScript engine.
+
+```
+fastlint [--config <file>] [--format pretty|json] [--engine auto|native|wasm]
+         [--concurrency N] [--max-warnings N] [--quiet] [--color|--no-color]
+         <file|dir>...
+fastlint config [--native] [--out <path>]
+fastlint --init
+```
+
+- It resolves the config the way `node make.ts config` does, runs the built-in
+  rules through the native binary or the bundled WASM build (docs/embedding.md
+  "The npm package"), runs the plugin rules itself, and prints the two merged
+  into one listing.
+- The formatters, the severities and the exit codes match the native CLI's, so a
+  script reading either one reads the same thing. `--format json` prints the
+  same ESLint-shaped array.
+- `fastlint config` prints the resolved JSON, and `--native` the handoff
+  document. `fastlint --init` writes the starter `fastlint.config.json`, with a
+  `$schema` pointing into `node_modules`.
+- Options the native binary has and this one does not (`--fix`, `--rule`,
+  `--project`, `sarif`) are not refusals; they are unimplemented here.
 
 ## Result cache
 

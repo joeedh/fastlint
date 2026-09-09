@@ -22,7 +22,7 @@ target_link_options(fastlint_wasm PRIVATE
   # SQLite is linked in with the core and opens files through the libc layer,
   # so the in-memory filesystem stays on.
   "-sFILESYSTEM=1"
-  "-sEXPORTED_FUNCTIONS=_fl_wasm_version,_fl_wasm_lint,_fl_wasm_free,_fl_wasm_parse,_fl_wasm_session_free,_fl_wasm_root,_fl_wasm_kind,_fl_wasm_flags,_fl_wasm_parent,_fl_wasm_child_count,_fl_wasm_child,_fl_wasm_text_ptr,_fl_wasm_text_len,_fl_wasm_data_byte,_fl_wasm_start,_fl_wasm_end,_fl_wasm_descendants,_malloc,_free"
+  "-sEXPORTED_FUNCTIONS=_fl_wasm_version,_fl_wasm_lint,_fl_wasm_lint_config,_fl_wasm_free,_fl_wasm_parse,_fl_wasm_session_free,_fl_wasm_root,_fl_wasm_kind,_fl_wasm_flags,_fl_wasm_parent,_fl_wasm_child_count,_fl_wasm_child,_fl_wasm_text_ptr,_fl_wasm_text_len,_fl_wasm_data_byte,_fl_wasm_start,_fl_wasm_end,_fl_wasm_descendants,_malloc,_free"
   "-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,UTF8ToString,stringToNewUTF8,HEAPU8,HEAPU32,HEAP32")
 
 # Debug builds keep the names and the DWARF a browser's debugger reads; release
