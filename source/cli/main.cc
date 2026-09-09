@@ -47,7 +47,10 @@ int parseCommand(int argc, char **argv)
   bool summaryOnly = false;
   uint32_t limit = 0xffffffffu;
   for (int i = 2; i < argc; i++) {
-    if (std::strcmp(argv[i], "--summary") == 0) {
+    if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
+      std::printf("usage: fastlint parse [--summary] [--limit N] <file|dir>...\n");
+      return 0;
+    } else if (std::strcmp(argv[i], "--summary") == 0) {
       summaryOnly = true;
     } else if (std::strcmp(argv[i], "--limit") == 0 && i + 1 < argc) {
       limit = uint32_t(std::atoi(argv[++i]));
@@ -143,7 +146,11 @@ int dumpTreeCommand(int argc, char **argv)
   bool errors = false;
   bool spans = false;
   for (int i = 2; i < argc; i++) {
-    if (std::strcmp(argv[i], "--errors") == 0) {
+    if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
+      std::printf(
+          "usage: fastlint dump-tree [--errors] [--spans] (<file> | --batch <list>)\n");
+      return 0;
+    } else if (std::strcmp(argv[i], "--errors") == 0) {
       errors = true;
     } else if (std::strcmp(argv[i], "--spans") == 0) {
       spans = true;
@@ -202,7 +209,10 @@ int dumpAstCommand(int argc, char **argv)
   bool errors = false;
   bool bindings = false;
   for (int i = 2; i < argc; i++) {
-    if (std::strcmp(argv[i], "--errors") == 0) {
+    if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
+      std::printf("usage: fastlint dump-ast [--errors] [--bindings] <file>\n");
+      return 0;
+    } else if (std::strcmp(argv[i], "--errors") == 0) {
       errors = true;
     } else if (std::strcmp(argv[i], "--bindings") == 0) {
       bindings = true;
@@ -244,6 +254,61 @@ int dumpAstCommand(int argc, char **argv)
   return diagnostics.empty() ? 0 : 1;
 }
 
+/** Prints the top-level help: the banner, the command list with a one-line
+ * description each, and the global options. Per-command options come from
+ * `fastlint <command> --help`. */
+void printHelp()
+{
+  std::printf("%s\n", fastlint::buildBanner().c_str());
+  std::printf("\n"
+              "A fast TypeScript/JavaScript linter.\n"
+              "\n"
+              "usage: fastlint <command> [options] <file|dir>...\n"
+              "\n"
+              "commands:\n"
+              "  lint         lint files and report problems\n"
+              "  parse        report only syntax diagnostics, running no rules\n"
+              "  dump-tree    print a file's grammar tree\n"
+              "  dump-ast     print a file's lowered AST\n"
+              "\n"
+              "development commands:\n"
+              "  fuzz         mutate a corpus and parse it to find crashes\n"
+              "  bench        measure parse throughput in MB/s\n"
+              "  cache-bench  measure the type-fact cache\n"
+              "  cache        inspect or verify the type-fact cache\n"
+              "\n"
+              "global options:\n"
+              "  --init       write a starter fastlint.config.json and exit\n"
+              "  --version    print the version and exit\n"
+              "  -h, --help   show this help and exit\n"
+              "\n"
+              "Run `fastlint <command> --help` for a command's own options.\n");
+}
+
+/** Writes a starter `fastlint.config.json` in the current directory, extending
+ * the recommended preset. Refuses to overwrite an existing config. */
+int initCommand()
+{
+  const char *name = "fastlint.config.json";
+  std::error_code ec;
+  if (std::filesystem::exists(name, ec)) {
+    std::fprintf(stderr, "%s already exists\n", name);
+    return 1;
+  }
+  std::string body = "{\n"
+                     "  \"extends\": \"fastlint:recommended\",\n"
+                     "  \"rules\": {},\n"
+                     "  \"ignores\": [\"**/node_modules/**\", \"**/dist/**\"]\n"
+                     "}\n";
+  if (!writeFile(name, body)) {
+    std::fprintf(stderr, "cannot write %s\n", name);
+    return 2;
+  }
+  std::printf("wrote %s\n", name);
+  std::printf("extends fastlint:recommended; set rule severities under \"rules\".\n");
+  return 0;
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -253,6 +318,16 @@ int main(int argc, char **argv)
       std::printf("%s\n", fastlint::version());
       return 0;
     }
+    if (std::strcmp(argv[i], "--init") == 0) {
+      return initCommand();
+    }
+  }
+  // A bare invocation or a leading help flag prints the top-level help; a help
+  // flag after a command is left to that command.
+  if (argc == 1 || std::strcmp(argv[1], "-h") == 0 || std::strcmp(argv[1], "--help") == 0)
+  {
+    printHelp();
+    return 0;
   }
   if (argc > 1 && std::strcmp(argv[1], "lint") == 0) {
     return lintCommand(argc, argv);
@@ -278,15 +353,7 @@ int main(int argc, char **argv)
   if (argc > 1 && std::strcmp(argv[1], "cache") == 0) {
     return cacheCommand(argc, argv);
   }
-  std::printf("%s\n", fastlint::buildBanner().c_str());
-  std::printf("commands: lint [--config <file>] [--rule name:severity] [--fix] "
-              "[--format pretty|json] <file|dir>..., "
-              "parse [--summary] [--limit N] <file|dir>..., "
-              "dump-tree [--errors] [--spans] <file>, "
-              "dump-ast [--errors] [--bindings] <file>, "
-              "fuzz [--iterations N] [--seed S] <file|dir>..., "
-              "bench [--repeat N] [--json] <file|dir>..., "
-              "cache-bench [--cache <db>] [--limit N] [--keep] [--json] <tsconfig>, "
-              "cache verify [--cache-dir <dir>]\n");
-  return 0;
+  std::fprintf(stderr, "unknown command '%s'\n\n", argv[1]);
+  printHelp();
+  return 2;
 }

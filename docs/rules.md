@@ -258,6 +258,10 @@ fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
               [--no-cache] [--cache-dir <dir>] [--max-warnings N] <file|dir>...
 ```
 
+- `fastlint --init` writes a starter `fastlint.config.json` in the current
+  directory, extending `fastlint:recommended`, and refuses to overwrite an
+  existing one. `fastlint --help` lists the commands; `fastlint lint --help`
+  lists these options.
 - With no config file and no `--rule`, the recommended preset applies.
 - Type-aware rules need the tsconfig that owns each file. One `tsc --api`
   server runs, opening every tsconfig the run resolves in a single snapshot,

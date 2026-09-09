@@ -41,14 +41,35 @@ using litestl::util::string;
 using litestl::util::Vector;
 using std::string_view;
 
-void usage()
+void usage(std::FILE *out = stderr)
 {
+  std::fprintf(out, "usage: fastlint lint [options] <file|dir>...\n");
+}
+
+/** The full `lint` help: the usage line followed by every option. Printed to
+ * stdout on `--help`. */
+void help()
+{
+  usage(stdout);
   std::fprintf(
-      stderr,
-      "usage: fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]... "
-      "[--fix] [--format pretty|json|sarif] [--color|--no-color] [--quiet] "
-      "[--project <tsconfig>] [--type-stats] [--no-cache] [--cache-dir <dir>] "
-      "[--max-warnings N] <file|dir>...\n");
+      stdout,
+      "\n"
+      "options:\n"
+      "  --config <file>        config to load (default: fastlint.config.json upwards)\n"
+      "  --no-config            ignore any config file; use the recommended preset\n"
+      "  --rule <name:severity> override one rule (severity: off, warn, error, or 0-2)\n"
+      "  --fix                  rewrite files with the available fixes\n"
+      "  --format <fmt>         output format: pretty (default), json, or sarif\n"
+      "  --color | --no-color   force or disable color (default: on when a TTY)\n"
+      "  --quiet                report errors only, dropping warnings\n"
+      "  --project <tsconfig>   type every file with this tsconfig (enables type rules)\n"
+      "  --type-stats           print type-server fetch counts to stderr\n"
+      "  --no-cache             do not read or write the result cache\n"
+      "  --cache-dir <dir>      result-cache directory (default: node_modules/.cache)\n"
+      "  --max-warnings N       exit non-zero when warnings exceed N\n"
+      "  -h, --help             show this help\n"
+      "\n"
+      "Run `fastlint --init` to write a starter config.\n");
 }
 
 /** `name:severity` or `name=severity`. */
@@ -269,7 +290,10 @@ int lintCommand(int argc, char **argv)
   Vector<std::string> ruleFlags;
   for (int i = 2; i < argc; i++) {
     const char *arg = argv[i];
-    if (std::strcmp(arg, "--config") == 0 && i + 1 < argc) {
+    if (std::strcmp(arg, "--help") == 0 || std::strcmp(arg, "-h") == 0) {
+      help();
+      return 0;
+    } else if (std::strcmp(arg, "--config") == 0 && i + 1 < argc) {
       configPath = argv[++i];
     } else if (std::strcmp(arg, "--no-config") == 0) {
       noConfig = true;
