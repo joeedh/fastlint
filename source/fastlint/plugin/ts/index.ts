@@ -16,6 +16,20 @@ export { lint } from "./runtime.ts";
 export type { FastlintConfig } from "./config.ts";
 export { defineConfig, loadConfig } from "./config.ts";
 
+// The unified config shape (task 8.1). Its `defineConfig` replaces the rule-list
+// one above once the loader reads this shape (task 8.2).
+export type {
+  FastlintConfigFile,
+  Globs,
+  Override,
+  Preset,
+  ProjectMapping,
+  RuleSetting,
+  RuleSettings,
+  Severity,
+  SeverityName,
+} from "./schema.ts";
+
 export type { FileMessages, LintFilesOptions } from "./driver.ts";
 export { lintFiles } from "./driver.ts";
 

@@ -189,6 +189,68 @@ TEST(lint_config, ignores_unknown_rules_and_directive_settings)
   CHECK(resolved.unusedDirectives == Severity::Off);
 }
 
+TEST(lint_config, plugin_rules_are_skipped_and_typos_still_warn)
+{
+  Fixture f(
+      "{\"plugins\": {\"acme\": \"acme-rules\", \"@scope/pack\": \"./rules/index.ts\"},"
+      " \"rules\": {\"acme/no-foo\": [\"warn\", {\"depth\": 2}],"
+      "  \"@scope/pack/no-bar\": \"error\","
+      "  \"acmee/no-foo\": \"error\", \"no-debuger\": \"error\"},"
+      " \"overrides\": [{\"files\": \"src/**\", \"rules\": {\"acme/no-foo\": "
+      "\"error\"}}]}");
+  REQUIRE(f.ok);
+  ResolvedConfig resolved;
+  f.config.resolve("C:/project/lib/a.ts", resolved);
+
+  // A declared prefix defers the name to the npm CLI; every other unresolved
+  // name is a typo the linter reports.
+  REQUIRE_EQ(int(resolved.pluginRules.size()), 2);
+  CHECK_EQ(sv(resolved.pluginRules[0].name), "acme/no-foo");
+  CHECK(resolved.pluginRules[0].severity == Severity::Warn);
+  CHECK_EQ(sv(resolved.pluginRules[1].name), "@scope/pack/no-bar");
+  REQUIRE_EQ(int(resolved.unknownRules.size()), 2);
+  CHECK_EQ(sv(resolved.unknownRules[0]), "acmee/no-foo");
+  CHECK_EQ(sv(resolved.unknownRules[1]), "no-debuger");
+
+  // An override raises a plugin rule the way it raises a native one, and a bare
+  // severity keeps the options the base layer gave.
+  f.config.resolve("C:/project/src/a.ts", resolved);
+  REQUIRE_EQ(int(resolved.pluginRules.size()), 2);
+  CHECK(resolved.pluginRules[0].severity == Severity::Error);
+  REQUIRE(resolved.pluginRules[0].setting != nullptr);
+  CHECK_EQ(resolved.pluginRules[0].setting->at(1)->get("depth")->asInt(0), 2);
+
+  Vector<string> names;
+  f.config.pluginRuleNames(names);
+  REQUIRE_EQ(int(names.size()), 2);
+  CHECK_EQ(sv(names[0]), "acme/no-foo");
+
+  // The note leaves out a plugin rule no layer turns on.
+  Fixture off("{\"plugins\": {\"acme\": \"acme-rules\"},"
+              " \"rules\": {\"acme/no-foo\": \"off\"}}");
+  REQUIRE(off.ok);
+  off.config.pluginRuleNames(names);
+  CHECK(names.isEmpty());
+
+  Fixture bad("{\"plugins\": {\"acme\": 1}}");
+  CHECK(!bad.ok);
+  CHECK(sv(bad.error).find("module specifier") != std::string::npos);
+}
+
+TEST(lint_config, binary_is_validated_and_left_to_the_npm_cli)
+{
+  Fixture f("{\"binary\": \"./node_modules/.bin/fastlint\", \"rules\": {}}");
+  CHECK(f.ok);
+  Fixture bad("{\"binary\": true}");
+  CHECK(!bad.ok);
+  CHECK(sv(bad.error).find("\"binary\"") != std::string::npos);
+
+  // A key neither side reads is left alone, so an older binary reads a config
+  // written for a newer one.
+  Fixture forward("{\"$schema\": \"./fastlint.config.schema.json\", \"future\": 1}");
+  CHECK(forward.ok);
+}
+
 TEST(lint_config, command_line_rules_win)
 {
   Fixture f("{\"rules\": {\"no-debugger\": \"off\"}}");

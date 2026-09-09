@@ -144,6 +144,7 @@ bool Config::parse(string_view text,
 {
   m_layers.clear();
   m_ignores.clear();
+  m_pluginPrefixes.clear();
   m_unknownRules.clear();
   m_project = string();
   m_projects.clear();
@@ -157,6 +158,25 @@ bool Config::parse(string_view text,
   if (!root || !root->isObject()) {
     error = copy("config: the top level must be an object");
     return false;
+  }
+
+  // `plugins` is read first: it decides whether a namespaced rule name below is
+  // a plugin rule to skip or a name to report unknown.
+  if (const JsonValue *plugins = root->get("plugins")) {
+    if (!plugins->isObject()) {
+      error = copy("config: \"plugins\" must map a prefix to a module specifier");
+      return false;
+    }
+    for (int i = 0; i < plugins->size(); i++) {
+      const JsonValue *specifier = plugins->items[i];
+      if (!specifier || !specifier->isString() || specifier->asString().empty()) {
+        error = copy("config: plugin \"");
+        append(error, view(plugins->keys[i]));
+        append(error, "\" must name a module specifier string");
+        return false;
+      }
+      m_pluginPrefixes.append(copy(view(plugins->keys[i])));
+    }
   }
 
   Layer base;
@@ -265,6 +285,14 @@ bool Config::parse(string_view text,
   if (const JsonValue *eslint = root->get("eslintDirectives")) {
     m_eslintDirectives = eslint->asBool(true);
   }
+  // Only the npm CLI drives `binary`. It is checked here anyway, so one config
+  // reports the same errors whichever side reads it.
+  if (const JsonValue *binary = root->get("binary")) {
+    if (!binary->isString()) {
+      error = copy("config: \"binary\" must be a path to the fastlint executable");
+      return false;
+    }
+  }
   return true;
 }
 
@@ -309,7 +337,14 @@ bool Config::addRules(const JsonValue *rules,
     }
     const RuleDef *rule = registry.find(name);
     if (!rule) {
-      m_unknownRules.append(copy(name));
+      if (isPluginRule(name)) {
+        // The npm CLI imports the plugin and checks the rule name there, since
+        // only it knows what the plugin defines. A name under a prefix nothing
+        // declares stays unknown, so a typo still warns.
+        layer.pluginEntries.append({copy(name), severity, setting});
+      } else {
+        m_unknownRules.append(copy(name));
+      }
       continue;
     }
     if (!validateOptions(*rule, setting, error)) {
@@ -323,6 +358,42 @@ bool Config::addRules(const JsonValue *rules,
 void Config::setRule(const RuleDef *rule, Severity severity)
 {
   m_cliEntries.append({rule, severity, nullptr});
+}
+
+bool Config::isPluginRule(string_view name) const
+{
+  // A rule name carries no slash of its own, so everything before the last one
+  // is the prefix; a scoped package name keeps its own slash that way.
+  size_t slash = name.rfind('/');
+  if (slash == string_view::npos) {
+    return false;
+  }
+  string_view prefix = name.substr(0, slash);
+  for (const string &declared : m_pluginPrefixes) {
+    if (view(declared) == prefix) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void Config::pluginRuleNames(Vector<string> &out) const
+{
+  out.clear();
+  for (const Layer &layer : m_layers) {
+    for (const PluginRule &entry : layer.pluginEntries) {
+      if (entry.severity == Severity::Off) {
+        continue;
+      }
+      bool seen = false;
+      for (const string &name : out) {
+        seen = seen || view(name) == view(entry.name);
+      }
+      if (!seen) {
+        out.append(entry.name);
+      }
+    }
+  }
 }
 
 void Config::relativePath(string_view filename, string &out) const
@@ -355,6 +426,7 @@ void Config::resolve(string_view filename, ResolvedConfig &out) const
 {
   out.rules.clear();
   out.unknownRules.clear();
+  out.pluginRules.clear();
   out.unusedDirectives = m_unusedDirectives;
   out.eslintDirectives = m_eslintDirectives;
   out.ignored = false;
@@ -384,6 +456,18 @@ void Config::resolve(string_view filename, ResolvedConfig &out) const
     }
     out.rules.append({entry.rule, entry.severity, entry.setting});
   };
+  auto applyPlugin = [&](const PluginRule &entry) {
+    for (PluginRule &setting : out.pluginRules) {
+      if (view(setting.name) == view(entry.name)) {
+        setting.severity = entry.severity;
+        if (entry.setting && entry.setting->isArray()) {
+          setting.setting = entry.setting;
+        }
+        return;
+      }
+    }
+    out.pluginRules.append({entry.name, entry.severity, entry.setting});
+  };
   for (const Layer &layer : m_layers) {
     bool matches = layer.files.isEmpty();
     for (const string &pattern : layer.files) {
@@ -396,6 +480,9 @@ void Config::resolve(string_view filename, ResolvedConfig &out) const
     }
     for (const Entry &entry : layer.entries) {
       apply(entry);
+    }
+    for (const PluginRule &entry : layer.pluginEntries) {
+      applyPlugin(entry);
     }
   }
   for (const Entry &entry : m_cliEntries) {

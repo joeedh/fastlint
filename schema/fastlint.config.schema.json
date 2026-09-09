@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fastlint.dev/schema/fastlint.config.schema.json",
+  "title": "fastlint configuration",
+  "description": "fastlint.config.json: the rules to run, the files they apply to, and the settings both the native binary and the npm CLI read (docs/rules.md \"Config\").",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This schema, for editor validation. Neither the native binary nor the npm CLI reads it."
+    },
+    "extends": {
+      "description": "Presets filling the base layer before \"rules\".",
+      "oneOf": [
+        { "$ref": "#/definitions/preset" },
+        { "type": "array", "items": { "$ref": "#/definitions/preset" } }
+      ]
+    },
+    "plugins": {
+      "type": "object",
+      "description": "A prefix to the JavaScript module that defines its rules. A rule from one is named \"prefix/rule\". The npm CLI imports these; the native binary reads the keys, so it can tell a plugin rule from a misspelled name.",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "description": "A module specifier: a package name, or a path relative to this file."
+      }
+    },
+    "rules": {
+      "$ref": "#/definitions/rules",
+      "description": "Rule severities and options, by rule name."
+    },
+    "overrides": {
+      "type": "array",
+      "description": "Rule settings applied, in order, to the files each entry's globs match.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["files"],
+        "properties": {
+          "files": { "$ref": "#/definitions/globs" },
+          "rules": { "$ref": "#/definitions/rules" }
+        }
+      }
+    },
+    "ignores": {
+      "type": "array",
+      "description": "Globs whose files are not linted at all.",
+      "items": { "type": "string" }
+    },
+    "project": {
+      "type": "string",
+      "description": "The tsconfig the type-aware rules use for files no \"projects\" glob claims, relative to this file or absolute."
+    },
+    "projects": {
+      "type": "array",
+      "description": "Per-glob tsconfigs for the type-aware rules; the first entry a file matches wins.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["files", "project"],
+        "properties": {
+          "files": { "$ref": "#/definitions/globs" },
+          "project": { "type": "string" }
+        }
+      }
+    },
+    "reportUnusedDisableDirectives": {
+      "description": "How a disable directive that suppressed nothing is reported. `true` means \"warn\", `false` means \"off\".",
+      "oneOf": [{ "$ref": "#/definitions/severity" }, { "type": "boolean" }]
+    },
+    "eslintDirectives": {
+      "type": "boolean",
+      "description": "Honor `eslint-disable` comments as well as `fastlint-disable` ones."
+    },
+    "binary": {
+      "type": "string",
+      "description": "The native fastlint executable the npm CLI drives: a path relative to this file, or a name to find on PATH. The bundled WASM build runs when it is absent or cannot be resolved."
+    }
+  },
+  "definitions": {
+    "preset": {
+      "type": "string",
+      "enum": ["fastlint:recommended", "fastlint:all"]
+    },
+    "severity": {
+      "oneOf": [
+        { "type": "string", "enum": ["off", "warn", "error"] },
+        { "type": "integer", "minimum": 0, "maximum": 2 }
+      ]
+    },
+    "ruleSetting": {
+      "description": "A severity, or an array of the severity followed by the rule's options.",
+      "oneOf": [
+        { "$ref": "#/definitions/severity" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": [{ "$ref": "#/definitions/severity" }],
+          "additionalItems": true
+        }
+      ]
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/ruleSetting" }
+    },
+    "globs": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ]
+    }
+  }
+}

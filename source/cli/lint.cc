@@ -381,6 +381,26 @@ int lintCommand(int argc, char **argv)
     config.setRule(rule, severity);
   }
 
+  // A plugin rule needs a JavaScript host to import and run it. Passing over one
+  // in silence would read as a rule that found nothing.
+  Vector<string> pluginRules;
+  config.pluginRuleNames(pluginRules);
+  if (!pluginRules.isEmpty()) {
+    std::string names;
+    for (const string &name : pluginRules) {
+      if (!names.empty()) {
+        names += ", ";
+      }
+      names.append(name.c_str(), name.size());
+    }
+    std::fprintf(stderr,
+                 "%d plugin rule%s skipped (%s); lint through the fastlint npm CLI "
+                 "to run them\n",
+                 int(pluginRules.size()),
+                 pluginRules.size() == 1 ? "" : "s",
+                 names.c_str());
+  }
+
   lint::Linter linter(registry, config);
   lint::LintOptions options;
   options.fix = fix;

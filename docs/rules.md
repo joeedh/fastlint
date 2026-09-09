@@ -163,15 +163,21 @@ lint/directives.h reads every comment in the grammar tree's trivia.
 
 ## Config
 
-`fastlint.config.json` is found by walking up from the working directory
-(`Config::find`). Its shape:
+`fastlint.config.json` is the on-disk shape both consumers agree on. The native
+binary parses it in C++ (lint/config.cc) and finds it by walking up from the
+working directory (`Config::find`). The npm CLI compiles a `fastlint.config.ts`
+or `.js` down to the same JSON, because the native binary runs no JavaScript
+(task 8.2). schema/fastlint.config.schema.json validates the shape in an editor.
 
 ```json
 {
+  "$schema": "./node_modules/fastlint/schema/fastlint.config.schema.json",
   "extends": ["fastlint:recommended"],
+  "plugins": { "acme": "@acme/fastlint-rules" },
   "rules": {
     "no-debugger": "error",
-    "eqeqeq": ["error", "always"]
+    "eqeqeq": ["error", "always"],
+    "acme/no-legacy-import": "warn"
   },
   "overrides": [
     { "files": ["**/*.test.ts"], "rules": { "no-debugger": "off" } }
@@ -182,9 +188,37 @@ lint/directives.h reads every comment in the grammar tree's trivia.
     { "files": "packages/web/**", "project": "packages/web/tsconfig.json" }
   ],
   "reportUnusedDisableDirectives": "warn",
-  "eslintDirectives": true
+  "eslintDirectives": true,
+  "binary": "./node_modules/.bin/fastlint"
 }
 ```
+
+### Which side reads each key
+
+| Key | Native binary | npm CLI |
+| --- | --- | --- |
+| `extends` | resolves presets against the C++ registry | passes through |
+| `plugins` | reads the keys, to classify rule names | imports each specifier |
+| `rules` | takes the names its registry answers to | takes the namespaced ones |
+| `overrides` | yes | yes |
+| `ignores` | yes | yes |
+| `project`, `projects` | yes | no |
+| `reportUnusedDisableDirectives` | yes | no |
+| `eslintDirectives` | yes | no |
+| `binary` | checks the type | resolves the executable |
+| `$schema` | ignored | ignored |
+
+- The npm CLI hands the whole document to the native binary through `--config`,
+  so nothing is stripped in between. The native side skips the rules it cannot
+  run, and the CLI runs those itself.
+- `project`, `projects` and the two directive settings are native-only, because
+  an embedding has neither a tsgo process nor directive handling
+  (docs/embedding.md).
+- A key neither side knows is ignored rather than rejected, so an older native
+  binary reads a config a newer npm package wrote. The JSON Schema still marks
+  an unknown key, since a stray one is nearly always a typo.
+
+### Rules, presets and layers
 
 - A rule setting is a severity (`"off"`, `"warn"`, `"error"`, or 0 to 2) or
   an array whose first element is the severity and whose remaining elements
@@ -192,7 +226,7 @@ lint/directives.h reads every comment in the grammar tree's trivia.
   an earlier layer gave.
 - `extends` names presets: `fastlint:recommended` (every rule with
   `recommended` set, at error) and `fastlint:all`. Presets fill the base
-  layer before `rules`.
+  layer before `rules`, and they name native rules only.
 - `overrides` apply in order to the files their globs match; `files` may be
   one glob or a list. Globs (lint/glob.h) support `*`, `?`, `**` and
   `{a,b}`, match dotfiles, and are relative to the config file's directory
@@ -207,15 +241,73 @@ lint/directives.h reads every comment in the grammar tree's trivia.
   directory, or absolute. The `--project` flag overrides both. When the
   config names neither, the tsconfig is discovered per file (see Command
   line).
-- Unknown rule names are not a config error. They are reported once per
-  linted file, as ESLint reports them.
 - `--rule name:severity` on the command line layers on top of everything.
-- A `fastlint.config.ts` is planned; it needs Node to evaluate, so it waits
-  for the plugin work in task 7.
 
-`Config::resolve(filename)` yields a `ResolvedConfig`: the rules with their
-final severities and settings, the unknown names, the directive settings and
-whether the file is ignored.
+### Rule names
+
+Each key of a `rules` object resolves in this order.
+
+1. The C++ registry (`Registry::find`), which also accepts a native rule under
+   a known ESLint prefix, so `@typescript-eslint/no-shadow` resolves to
+   `no-shadow`. The key names a native rule.
+2. A name carrying a slash whose prefix `plugins` declares. The prefix is
+   everything before the last slash, so a scoped package name keeps the slash
+   of its own: `@acme/pack/no-foo` carries the prefix `@acme/pack`. The key
+   names a plugin rule.
+3. Anything else is unknown. An unknown name is not a config error; it is
+   reported once per linted file as `Definition for rule 'x' was not found.`,
+   as ESLint reports it.
+
+Splitting the second case from the third lets the native binary skip a plugin
+rule without hiding a typo.
+
+- `acme/no-fooo` under a declared `acme` prefix is a plugin rule, so the native
+  binary carries it and reports nothing. Only the npm CLI has imported the
+  plugin, so only it can tell the name from a typo, and it is the side that
+  warns.
+- `acmee/no-foo` names a prefix nothing declares, so it is unknown and warns. A
+  misspelled prefix reads exactly like a misspelled rule.
+- `no-debuger` is unknown and warns.
+- `fastlint lint` notes on stderr how many plugin rules it skipped and names
+  them, counting only the ones a layer turns on. A rule that ran nothing in
+  silence would look like a rule that found nothing.
+
+`Config::resolve(filename)` yields a `ResolvedConfig`, which keeps the two apart:
+`rules` carries the native settings and `pluginRules` the namespaced ones, both
+after every matching override, alongside the unknown names, the directive
+settings and whether the file is ignored.
+
+### Plugins
+
+- `plugins` maps a prefix to a JavaScript module specifier: a package name
+  (`@acme/fastlint-rules`) or a path relative to the config file
+  (`./rules/index.ts`).
+- The map holds a specifier rather than a plugin object, as ESLint's flat config
+  does. JSON cannot carry an imported object, and both sides read the same file.
+- The npm CLI imports the module the specifier names and runs its rules over the
+  embedding (task 8.2). The native binary runs the C++ rules of the same run.
+
+### The native binary
+
+- `binary` names the native executable the npm CLI drives: a path relative to
+  the config file, or a name to find on `PATH`. The CLI falls back to the
+  bundled WASM build when the item is absent or the path does not resolve, so it
+  is an optimization rather than a requirement (task 8.3).
+- The native binary checks the item's type and otherwise leaves it alone, so one
+  config reports the same errors whichever side reads it.
+
+### Editor validation and typed authoring
+
+- schema/fastlint.config.schema.json is a draft-07 JSON Schema over the shape
+  above. Point at it with a `$schema` member, or map `fastlint.config.json` to
+  it in the editor's own settings (`json.schemas` in VS Code).
+- `defineConfig` (plugin/ts/schema.ts) is the typed wrapper for a
+  `fastlint.config.ts` or `.js`: an identity helper over `FastlintConfigFile`,
+  the TypeScript mirror of this shape. A TypeScript config is worth writing for
+  the type checking, the comments and the computed values; it is compiled to
+  JSON before the native binary sees it.
+- The package surface still exports the pre-8.1 rule-list `defineConfig` from
+  plugin/ts/config.ts. The loader moves to this shape in task 8.2.
 
 ## Output
 

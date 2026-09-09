@@ -22,12 +22,25 @@ struct RuleSetting {
   const JsonValue *setting;
 };
 
+/** A rule configured under a declared `plugins` prefix. The registry has no
+ * entry for one and this binary runs no JavaScript, so the linter skips it; the
+ * npm CLI imports the plugin and runs it. */
+struct PluginRule {
+  /** The namespaced name as configured, `prefix/rule`. */
+  string name;
+  Severity severity;
+  const JsonValue *setting;
+};
+
 /** What one file is linted with. */
 struct ResolvedConfig {
   /** Every configured rule, including those set to `off`, in registry order. */
   Vector<RuleSetting> rules;
-  /** Names configured that no rule answers to. */
+  /** Names configured that no rule answers to, and that no declared plugin
+   * prefix claims. */
   Vector<string> unknownRules;
+  /** Rules under a declared plugin prefix, which only the npm CLI runs. */
+  Vector<PluginRule> pluginRules;
   Severity unusedDirectives = Severity::Warn;
   bool eslintDirectives = true;
   /** Matched an `ignores` glob. */
@@ -62,6 +75,10 @@ public:
   /** The rules `filename` is linted with, after every matching override. */
   void resolve(string_view filename, ResolvedConfig &out) const;
 
+  /** Every plugin rule the config turns on, once each, in the order the layers
+   * name them. Empty when the config declares no `plugins`. */
+  void pluginRuleNames(Vector<string> &out) const;
+
   /** The base directory globs and relative paths are anchored at (the config
    * file's directory). Empty when the config had none. */
   string_view baseDir() const
@@ -89,6 +106,7 @@ private:
     /** Empty for the base layer, which applies to every file. */
     Vector<string> files;
     Vector<Entry> entries;
+    Vector<PluginRule> pluginEntries;
   };
   struct ProjectMap {
     Vector<string> files;
@@ -103,6 +121,8 @@ private:
   string m_project;
   Vector<ProjectMap> m_projects;
   Vector<string> m_ignores;
+  /** The `plugins` keys: the prefixes a namespaced rule name may carry. */
+  Vector<string> m_pluginPrefixes;
   Vector<string> m_unknownRules;
   Vector<Entry> m_cliEntries;
   Severity m_unusedDirectives = Severity::Warn;
@@ -111,6 +131,8 @@ private:
   bool
   addRules(const JsonValue *rules, const Registry &registry, Layer &layer, string &error);
   bool addPreset(string_view name, const Registry &registry, Layer &layer, string &error);
+  /** True when `name` is `prefix/rule` for a prefix `plugins` declares. */
+  bool isPluginRule(string_view name) const;
   /** `filename` relative to the base directory, with forward slashes. */
   void relativePath(string_view filename, string &out) const;
 };

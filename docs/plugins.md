@@ -156,6 +156,11 @@ export default defineConfig({
 - `files` is an optional list or globs. The CLI resolves it; an API caller that
   passes its own file list may ignore it.
 
+The rule list above is what the loader reads today. The shape it moves to is
+settled in docs/rules.md "Config": one JSON document the native binary and the
+npm CLI both read, where `rules` maps a name to a severity and a plugin's rules
+are namespaced under a `plugins` prefix. The loader switches over in task 8.2.
+
 ## Running the rules
 
 Two entry points run a config's rules, both from the `fastlint` surface.

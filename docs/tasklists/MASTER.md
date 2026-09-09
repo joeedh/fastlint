@@ -1148,23 +1148,26 @@ a single command that runs native and plugin rules together
 ### 8.1 Unified JSON config schema
 The on-disk shape both consumers agree on. The native binary stays the JSON
 reader (it has no JS engine), and the JS side compiles `.ts`/`.js` down to it.
-- [ ] Settle the schema on the native `lint::Config` shape, since it is the
+- [x] Settle the schema on the native `lint::Config` shape, since it is the
   richer of the two: `extends` (presets), `rules` (name to a severity, or to
   `[severity, options]`), `overrides` (files plus rules), `ignores`,
   `project`/`projects`, `reportUnusedDisableDirectives`, `eslintDirectives`. The
   current TS config (a bare `Rule[]` in `plugin/ts/config.ts`) is replaced by
-  this shape.
-- [ ] Add `plugins`: a map from a prefix to a JS module specifier. A plugin
+  this shape. `plugin/ts/schema.ts` is the TypeScript mirror: the types plus
+  `defineConfig` over them.
+  - [ ] `loadConfig` and the driver still read the `Rule[]` shape, and index.ts
+    still exports its `defineConfig`; both swap over with the loader in 8.2.
+- [x] Add `plugins`: a map from a prefix to a JS module specifier. A plugin
   rule is referenced namespaced as `prefix/rule`. The native binary skips a
   namespaced rule it has no registry entry for, rather than reporting it unknown
   (`lint::Config` already gathers `m_unknownRules`; teach it the prefix
   distinction so a typo still warns).
-- [ ] Add a `binary` item naming the native fastlint executable the npm CLI
+- [x] Add a `binary` item naming the native fastlint executable the npm CLI
   should drive when present. The WASM fallback (task 8.3) runs when it is absent
   or cannot be resolved, so the item is an optimization, not a requirement.
-- [ ] Ship a JSON Schema so an editor validates `fastlint.config.json`
+- [x] Ship a JSON Schema so an editor validates `fastlint.config.json`
   directly. `defineConfig` stays the typed authoring wrapper for `.ts`/`.js`.
-- [ ] Document the schema in docs/rules.md "Config", marking which keys are
+- [x] Document the schema in docs/rules.md "Config", marking which keys are
   native-only (the presets resolve against the C++ registry) and which the
   plugin side reads. This settles the config half of the cross-cutting "ESLint
   compatibility surface" item.
