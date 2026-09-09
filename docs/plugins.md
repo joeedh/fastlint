@@ -1,6 +1,6 @@
 # Writing plugins
 
-A plugin is a rule, or a set of rules, written in TypeScript and run over the
+A plugin is a rule (or a set of rules) written in TypeScript and run over the
 same tree the built-in C++ rules see. This page is for the rule author: the
 shape of a rule, the node view it reads, how a config collects rules, and how
 the driver runs them. The build internals behind it (the N-API addon, the WASM
@@ -28,8 +28,12 @@ module, the shared `embed::lintText` entry point) are in docs/embedding.md.
   overrides the output path, which is `<name>.ts` in the current directory
   otherwise. The command refuses to overwrite an existing file, and prints the
   `import` line to add to a config.
-- The starter imports from the `fastlint` package surface, so it stands on its
-  own outside this repository.
+- `node make.ts new-rule --init` writes a starter `fastlint.config.ts` with an
+  empty rule list instead of a rule. It honors `--out` and refuses to overwrite,
+  and `--init` with a `<name>` is rejected. `node make.ts new-rule --help` lists
+  every option with an example of each.
+- The starters import from the `fastlint` package surface, so they stand on
+  their own outside this repository.
 
 ## The rule shape
 
