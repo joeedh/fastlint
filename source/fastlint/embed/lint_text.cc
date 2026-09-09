@@ -21,7 +21,7 @@ static const lint::Config &recommended()
   static const bool ready = [] {
     string error;
     return config.parse(
-        "{\"extends\": \"fastlint:recommended\"}", "", lint::builtinRegistry(), error);
+        "{\"extends\": \"lintrix:recommended\"}", "", lint::builtinRegistry(), error);
   }();
   (void)ready;
   return config;

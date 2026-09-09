@@ -1,6 +1,6 @@
 // The one version the project ships under. It is written in two places, since
 // the native binary cannot read package.json and npm cannot read a C++ source,
-// and a release writes both together so `fastlint --version` and the installed
+// and a release writes both together so `lintrix --version` and the installed
 // package never disagree.
 
 import fs from "node:fs";

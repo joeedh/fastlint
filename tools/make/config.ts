@@ -21,7 +21,7 @@ interface Args {
 
 export const command: CommandModule<object, Args> = {
   command : "config [file]",
-  describe: "resolve fastlint.config.{ts,js,json} and print the JSON it compiles to",
+  describe: "resolve lintrix.config.{ts,js,json} and print the JSON it compiles to",
   builder: (yargs) =>
     yargs
       .positional("file", {
@@ -38,7 +38,7 @@ export const command: CommandModule<object, Args> = {
         describe: "write the JSON to this file, or to the usual name in this directory",
       })
       .example("$0 config", "print the resolved config as JSON")
-      .example("$0 config --out fastlint.config.json", "compile a .ts config to JSON")
+      .example("$0 config --out lintrix.config.json", "compile a .ts config to JSON")
       .example(
         "$0 config --native --out .",
         `write the handoff document here as ${nativeConfigName}`
@@ -49,7 +49,7 @@ export const command: CommandModule<object, Args> = {
   handler: async (argv) => {
     const configPath = argv.file ? path.resolve(argv.file) : findConfig(process.cwd());
     if (!configPath) {
-      fail("no fastlint.config.{ts,mts,js,mjs,json} here or above");
+      fail("no lintrix.config.{ts,mts,js,mjs,json} here or above");
     }
     if (!fs.existsSync(configPath)) {
       fail(`${configPath} does not exist`);
@@ -67,12 +67,12 @@ export const command: CommandModule<object, Args> = {
       return;
     }
     // An `--out` naming a directory takes the conventional filename inside it:
-    // the generated `.fastlint.native.json` for the handoff document, and the
+    // the generated `.lintrix.native.json` for the handoff document, and the
     // config the native binary looks for otherwise.
     const asked = path.resolve(argv.out);
     const intoDir = fs.existsSync(asked) && fs.statSync(asked).isDirectory();
     const out = intoDir
-      ? path.join(asked, argv.native ? nativeConfigName : "fastlint.config.json")
+      ? path.join(asked, argv.native ? nativeConfigName : "lintrix.config.json")
       : asked;
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, json);

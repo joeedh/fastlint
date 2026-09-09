@@ -1,6 +1,6 @@
 # Testing
 
-How fastlint is tested: the in-house C++ framework, the snapshot system, and
+How lintrix is tested: the in-house C++ framework, the snapshot system, and
 the per-component test strategy. Debugging aids live in `debugging.md`.
 
 ## Principles
@@ -152,7 +152,7 @@ then all failures in full, then a summary (`412 passed, 2 failed, 3 skipped,
 
 ### CMake / `make.ts` integration
 
-- `add_fastlint_test(<name> <sources…> <libs…>)` macro creates the exe,
+- `add_lintrix_test(<name> <sources…> <libs…>)` macro creates the exe,
   links `testing`, and registers one ctest entry per *suite* by running
   `--list` at configure time (cheap; re-run on rebuild via a dependency).
 - `node make.ts test [--preset] [--filter] [--all] [--tag] [-u] [--asan]
@@ -199,7 +199,7 @@ then all failures in full, then a summary (`412 passed, 2 failed, 3 skipped,
 - Error recovery: fixtures of broken code snapshot both the tree (with
   `Error`/`Missing`) and diagnostics. Invariant: parser always terminates and
   consumes all tokens.
-- Fuzz (`node make.ts fuzz`, ASAN): `fastlint fuzz` mutates corpus files
+- Fuzz (`node make.ts fuzz`, ASAN): `lintrix fuzz` mutates corpus files
   at token level and with random bytes, parses each mutant and checks tree
   invariants; the driver pins a crash, hang or invariant failure to its
   seed, replays it under build/<preset>/fuzz-failures/ and minimizes it.
@@ -242,7 +242,7 @@ then all failures in full, then a summary (`412 passed, 2 failed, 3 skipped,
 
 ### Rules
 - `RuleTester`-shaped harness in `testing/rule_tester.h` (library
-  `fastlint_rule_tester`, since it links the linter): `runRuleTests(rule,
+  `lintrix_rule_tester`, since it links the linter): `runRuleTests(rule,
   {valid...}, {invalid...})`. Invalid cases list expected
   `(messageId, line, col, endLine, endCol, message)` and, for fixable rules,
   the output after `--fix`. One `SUBCASE` per case. See docs/rules.md
@@ -256,7 +256,7 @@ then all failures in full, then a summary (`412 passed, 2 failed, 3 skipped,
   own `tools/`; snapshot counts per rule (not positions) to catch drift.
 
 ### CLI
-- End-to-end: run `fastlint.exe` on fixture projects, snapshot stdout/stderr
+- End-to-end: run `lintrix.exe` on fixture projects, snapshot stdout/stderr
   with paths normalized and timings stripped; exit codes checked. Covers
   config loading, overrides, disable directives, `--fix` (compare resulting
   tree to expected), `--format json`.

@@ -423,7 +423,7 @@ are its methods (`identifier`, `literal`, `member`, `call`, `unary`,
   children's leading and trailing comments and its own dangling ones, so
   the printer emits them itself: a child's before and after the child, a
   dangling one before the first child that follows it in the source.
-- Directive comments (`eslint-disable`, `@ts-ignore`, `fastlint-disable`)
+- Directive comments (`eslint-disable`, `@ts-ignore`, `lintrix-disable`)
   are indexed by position in the grammar tree; rules never look for them by
   walking comments.
 

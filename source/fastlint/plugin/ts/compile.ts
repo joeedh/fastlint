@@ -191,7 +191,7 @@ export function resolveFile(compiled: CompiledConfig, filename: string): Resolve
 /** What the native handoff document is called. The leading dot marks it as
  * generated: it is written next to the config it came from, and a project
  * ignores it rather than committing it. */
-export const nativeConfigName = ".fastlint.native.json";
+export const nativeConfigName = ".lintrix.native.json";
 
 /** Where `configPath`'s handoff document belongs. Globs and tsconfig paths
  * anchor at the config file's directory, so it goes beside the config. */

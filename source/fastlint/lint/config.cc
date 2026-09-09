@@ -11,7 +11,7 @@ namespace fastlint::lint {
 
 namespace {
 
-constexpr const char *kConfigName = "fastlint.config.json";
+constexpr const char *kConfigName = "lintrix.config.json";
 
 // A case-insensitive filesystem compares paths without regard to case, so a
 // glob should match the same way there.
@@ -296,7 +296,7 @@ bool Config::parse(string_view text,
   // reports the same errors whichever side reads it.
   if (const JsonValue *binary = root->get("binary")) {
     if (!binary->isString()) {
-      error = copy("config: \"binary\" must be a path to the fastlint executable");
+      error = copy("config: \"binary\" must be a path to the lintrix executable");
       return false;
     }
   }
@@ -308,8 +308,8 @@ bool Config::addPreset(string_view name,
                        Layer &layer,
                        string &error)
 {
-  bool all = name == "fastlint:all";
-  if (!all && name != "fastlint:recommended") {
+  bool all = name == "lintrix:all";
+  if (!all && name != "lintrix:recommended") {
     error = copy("config: unknown preset \"");
     append(error, name);
     error += '"';

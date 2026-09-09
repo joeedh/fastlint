@@ -1,6 +1,6 @@
 # no-debugger
 
-Disallows `debugger` statements. In the `fastlint:recommended` preset.
+Disallows `debugger` statements. In the `lintrix:recommended` preset.
 
 ```ts
 debugger; // Unexpected 'debugger' statement.

@@ -27,7 +27,7 @@ async function inTempDir(
   contents: Record<string, string>,
   body: (dir: string) => Promise<void>
 ): Promise<void> {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fastlint-config-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lintrix-config-"));
   try {
     for (const [name, text] of Object.entries(contents)) {
       const file = path.join(dir, name);
@@ -43,7 +43,7 @@ async function inTempDir(
 test("a valid config reports no problems", () => {
   assert.deepStrictEqual(
     validateConfigFile({
-      extends: "fastlint:recommended",
+      extends: "lintrix:recommended",
       plugins: { acme: "@acme/rules" },
       rules: { "no-debugger": "error", "acme/no-foo": ["warn", { depth: 2 }] },
       overrides: [{ files: "**/*.test.ts", rules: { "no-debugger": "off" } }],
@@ -52,7 +52,7 @@ test("a valid config reports no problems", () => {
       projects: [{ files: "web/**", project: "web/tsconfig.json" }],
       reportUnusedDisableDirectives: 1,
       eslintDirectives: false,
-      binary: "./node_modules/.bin/fastlint",
+      binary: "./node_modules/.bin/lintrix",
     }),
     []
   );
@@ -81,7 +81,7 @@ test("validation names each problem the way the native parser does", () => {
     'config: overrides[0] "files" must be a glob or a list of globs',
   ]);
   assert.deepStrictEqual(validateConfigFile({ binary: true }), [
-    'config: "binary" must be a path to the fastlint executable',
+    'config: "binary" must be a path to the lintrix executable',
   ]);
 });
 
@@ -96,11 +96,11 @@ test("a prefix is everything before the last slash", () => {
 test("a .json config is read and validated", async () => {
   await inTempDir(
     {
-      "fastlint.config.json": '{"rules": {"no-debugger": "error"}}',
+      "lintrix.config.json": '{"rules": {"no-debugger": "error"}}',
       "bad.config.json": '{"rules": {"no-debugger": "loud"}}',
     },
     async (dir) => {
-      const file = await loadConfigFile(path.join(dir, "fastlint.config.json"));
+      const file = await loadConfigFile(path.join(dir, "lintrix.config.json"));
       assert.deepStrictEqual(file.rules, { "no-debugger": "error" });
       await assert.rejects(
         () => loadConfigFile(path.join(dir, "bad.config.json")),
@@ -172,7 +172,7 @@ test("overrides and ignores layer as they do natively", async () => {
 test("the native document drops the plugin rules and the keys only this side reads", async () => {
   const file: FastlintConfigFile = {
     $schema: "./schema.json",
-    extends: "fastlint:recommended",
+    extends: "lintrix:recommended",
     plugins: { example: "./rules/index.ts" },
     rules: { "no-debugger": "error", "example/no-var": "error", "typo/no-foo": "warn" },
     overrides: [
@@ -182,11 +182,11 @@ test("the native document drops the plugin rules and the keys only this side rea
       },
     ],
     ignores: ["dist/**"],
-    binary: "./fastlint",
+    binary: "./lintrix",
   };
   const compiled = await compileConfig(file, pluginDir);
   assert.deepStrictEqual(nativeConfig(compiled), {
-    extends: "fastlint:recommended",
+    extends: "lintrix:recommended",
     // A name under an undeclared prefix stays, so the native binary still warns.
     rules: { "no-debugger": "error", "typo/no-foo": "warn" },
     overrides: [{ files: "src/**", rules: { eqeqeq: "error" } }],

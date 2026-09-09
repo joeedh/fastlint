@@ -222,7 +222,7 @@ issuing requests afterwards), but a rule that trips one gets nothing back.
 ## Node handles
 
 `NodeHandle` is a string, `"<index>.<kind>.<canonical path>"`, e.g.
-`43.214.c:/dev/fastlint/tools/spikes/tsgo-api/fixture/src/main.ts`. Only the
+`43.214.c:/dev/lintrix/tools/spikes/tsgo-api/fixture/src/main.ts`. Only the
 index and path are read back; the kind is informational. The index is the
 node's position in the file's node index table
 (tsc/internal/api/session.go, `nodeHandleFrom` / `resolveNodeHandle`).

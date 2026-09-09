@@ -12,7 +12,7 @@ and the test framework itself are in `tests.md`.
   startup item to a test exe and its args in `launch.vs.json`
   (`node make.ts configure` writes a template if missing).
 - VS Code: `.vscode/launch.json` templates for `fastlint_tests.exe` and
-  `fastlint.exe` (cppvsdbg), generated the same way.
+  `lintrix.exe` (cppvsdbg), generated the same way.
 - Narrow before debugging: `--filter`, then `SUBCASE` path from the failure
   output, then a fixture. Fixture-driven tests mean the repro is usually
   already a file.
@@ -50,8 +50,8 @@ and the test framework itself are in `tests.md`.
   [--limit N] [--corpus dir...]` (asan preset by default). A failure is
   pinned to a seed, replayed to `build/<preset>/fuzz-failures/<n>-<name>`
   and minimized to `<n>-<name>.min.<ext>`; `<n>.txt` holds the report.
-  Reproduce by hand: `fastlint fuzz --check <input>` (parse + invariants),
-  `fastlint fuzz --replay <seed> --out <path> <file>` (regenerate a
+  Reproduce by hand: `lintrix fuzz --check <input>` (parse + invariants),
+  `lintrix fuzz --replay <seed> --out <path> <file>` (regenerate a
   mutant). Promote the minimized case to a fixture.
 
 ## Leaks
@@ -65,10 +65,10 @@ and the test framework itself are in `tests.md`.
 
 ## Scanner / parser
 
-- `fastlint dump-tokens <file> [--trivia]` — token stream with kinds, spans,
+- `lintrix dump-tokens <file> [--trivia]` — token stream with kinds, spans,
   flags (`precedingLineBreak`), optional trivia. First stop for "wrong token
   kind" bugs; check regex/divide and template mode transitions here.
-- `fastlint dump-tree [--spans] [--errors] (<file> | --batch <list>)` —
+- `lintrix dump-tree [--spans] [--errors] (<file> | --batch <list>)` —
   grammar-tree S-expression, the same dump the snapshots use. `--errors`
   lists diagnostics after the tree. `--spans` prints `Kind@start-end` and
   no token text, the form the differential harness diffs. `--batch` reads
@@ -77,7 +77,7 @@ and the test framework itself are in `tests.md`.
 - `node make.ts parse-diff --filter <name> --show 5` — diff one or a few
   files against tsgo; `--raw` skips the normalizer so both raw shapes show.
   The tsgo dumper alone: `echo <path> | .cache/parse-diff/tsgo-dump.exe`.
-- `fastlint parse [--summary] [--limit N] <file|dir>...` — parses every
+- `lintrix parse [--summary] [--limit N] <file|dir>...` — parses every
   `.ts`/`.tsx`/`.mts`/`.cts` file under the given paths and prints each
   diagnostic as `path:line:col: TSnnnn message`, then a summary line with
   counts, bytes and time. Exit code 1 when any file had a diagnostic. This
@@ -100,7 +100,7 @@ and the test framework itself are in `tests.md`.
 
 ## AST, fixers, printer
 
-- `fastlint dump-ast [--errors] [--bindings] <file>` — the rule-facing
+- `lintrix dump-ast [--errors] [--bindings] <file>` — the rule-facing
   tree (kinds, named slots, flags, enum fields, `@start-end` spans and
   attached comments), vs `dump-tree` for the grammar tree beneath it.
   `--bindings` appends the binder's scope tree: each scope with its
@@ -128,22 +128,22 @@ and the test framework itself are in `tests.md`.
 - tsgo crash or hang: its stderr is captured to
   `build/<preset>/tsgo-<pid>.log`. Reproduce with the reference TS client to
   separate our client bugs from tsgo bugs before filing anything.
-- Cache: `fastlint cache inspect [--file <path>]` prints the `files` row,
+- Cache: `lintrix cache inspect [--file <path>]` prints the `files` row,
   closure hash inputs, `node_types` count and rule-result hits for a file.
-  `fastlint cache verify` recomputes a sample against live tsgo and reports
+  `lintrix cache verify` recomputes a sample against live tsgo and reports
   mismatches — run this when a type-aware rule disagrees with tsc.
-- The SQLite file is at `<cache-dir>/fastlint.db`; open it with the `sqlite3`
+- The SQLite file is at `<cache-dir>/lintrix.db`; open it with the `sqlite3`
   CLI (`.schema`, `select … from node_types where file_hash = …`).
-- Stale results after an edit: check the import graph (`fastlint deps
+- Stale results after an edit: check the import graph (`lintrix deps
   <file>`) — an unresolved import means the closure hash didn't include the
   dependency. `--no-cache` confirms whether the cache is the culprit.
 - Type-flag confusion: flag bit names come from the generated
-  `enum_values` table; `fastlint cache inspect --decode-flags <n>` spells
+  `enum_values` table; `lintrix cache inspect --decode-flags <n>` spells
   them out.
 
 ## Rules
 
-- `fastlint --rule <name> --explain <file>` — for one rule, prints each
+- `lintrix --rule <name> --explain <file>` — for one rule, prints each
   node it visited, what it asked `TypeFacts`, and why it did or didn't
   report. Rules get this for free by using `ctx.explain(...)` instead of ad
   hoc logging.
@@ -156,7 +156,7 @@ and the test framework itself are in `tests.md`.
 
 ## Performance
 
-- `fastlint --timing` — per-phase (scan, parse, bind, rules by name, type
+- `lintrix --timing` — per-phase (scan, parse, bind, rules by name, type
   queries, cache I/O, print) totals and per-file worst offenders.
 - `--trace-json <file>` writes Chrome trace-event format; open in
   `chrome://tracing` or Perfetto. Spans per file/phase/rule plus tsgo
@@ -164,7 +164,7 @@ and the test framework itself are in `tests.md`.
 - `node make.ts bench [--save <name>] [--compare <name>] [--corpus dir...]`
   for parse throughput; results under .cache/bench/. Run on a quiet
   machine; `--repeat 5` (default) keeps the best pass.
-- Native profiling: Visual Studio's CPU Usage tool on `fastlint.exe` with the
+- Native profiling: Visual Studio's CPU Usage tool on `lintrix.exe` with the
   `relwithdebinfo` preset; or Windows Performance Recorder + WPA for
   wall-clock/blocking analysis (useful for the tsgo pipe waits).
 - Allocation churn: `--alloc-stats` prints litestl tracker totals per phase

@@ -81,12 +81,12 @@ std::string lintDescribe(const char *code, const char *unused = "warn")
 
 TEST(lint_directives, collects_every_form)
 {
-  Directives d("/* fastlint-disable */\n"
-               "// fastlint-enable no-debugger, other-rule -- reason\n"
+  Directives d("/* lintrix-disable */\n"
+               "// lintrix-enable no-debugger, other-rule -- reason\n"
                "// eslint-disable-line no-debugger\n"
                "/* eslint-disable-next-line\n   @typescript-eslint/no-debugger */\n"
-               "// fastlint-disable-next-line other-rule\n"
-               "// not a directive: fastlint-disable\n"
+               "// lintrix-disable-next-line other-rule\n"
+               "// not a directive: lintrix-disable\n"
                "// eslint-disable-line react/jsx-key\n");
   span<const Directive> items = d.set.directives();
   REQUIRE_EQ(int(items.size()), 5);
@@ -110,16 +110,16 @@ TEST(lint_directives, collects_every_form)
            "eslint-disable-next-line comment should not span multiple lines.");
 }
 
-TEST(lint_directives, unknown_fastlint_rules_and_multiline_line_directives_are_problems)
+TEST(lint_directives, unknown_lintrix_rules_and_multiline_line_directives_are_problems)
 {
-  Directives d("// fastlint-disable-next-line no-such-rule\n"
-               "/* fastlint-disable-line\n no-debugger */\n");
+  Directives d("// lintrix-disable-next-line no-such-rule\n"
+               "/* lintrix-disable-line\n no-debugger */\n");
   CHECK_EQ(int(d.set.directives().size()), 0);
   span<const DirectiveProblem> problems = d.set.problems();
   REQUIRE_EQ(int(problems.size()), 2);
   CHECK_EQ(sv(problems[0].message), "Definition for rule 'no-such-rule' was not found.");
   CHECK_EQ(sv(problems[1].message),
-           "fastlint-disable-line comment should not span multiple lines.");
+           "lintrix-disable-line comment should not span multiple lines.");
 }
 
 TEST(lint_directives, eslint_spellings_can_be_turned_off)
@@ -130,23 +130,23 @@ TEST(lint_directives, eslint_spellings_can_be_turned_off)
 
 TEST(lint_directives, block_directives_replay_as_a_state_machine)
 {
-  Directives d("/* fastlint-disable */\n"
+  Directives d("/* lintrix-disable */\n"
                "a;\n"
-               "/* fastlint-enable other-rule */\n"
+               "/* lintrix-enable other-rule */\n"
                "b;\n"
-               "/* fastlint-disable other-rule */\n"
+               "/* lintrix-disable other-rule */\n"
                "c;\n"
-               "/* fastlint-enable */\n"
+               "/* lintrix-enable */\n"
                "d;\n");
   // Offsets of the statements a, b, c, d.
-  CHECK(d.set.suppressor("no-debugger", 23, 2) == 0);
-  CHECK(d.set.suppressor("other-rule", 23, 2) == 0);
-  CHECK(d.set.suppressor("no-debugger", 59, 4) == 0);
-  CHECK(d.set.suppressor("other-rule", 59, 4) == -1);
-  CHECK(d.set.suppressor("other-rule", 97, 6) == 2);
-  CHECK(d.set.suppressor("no-debugger", 97, 6) == 0);
-  CHECK(d.set.suppressor("no-debugger", 122, 8) == -1);
-  CHECK(d.set.suppressor("other-rule", 122, 8) == -1);
+  CHECK(d.set.suppressor("no-debugger", 22, 2) == 0);
+  CHECK(d.set.suppressor("other-rule", 22, 2) == 0);
+  CHECK(d.set.suppressor("no-debugger", 57, 4) == 0);
+  CHECK(d.set.suppressor("other-rule", 57, 4) == -1);
+  CHECK(d.set.suppressor("other-rule", 93, 6) == 2);
+  CHECK(d.set.suppressor("no-debugger", 93, 6) == 0);
+  CHECK(d.set.suppressor("no-debugger", 117, 8) == -1);
+  CHECK(d.set.suppressor("other-rule", 117, 8) == -1);
   span<const Directive> items = d.set.directives();
   CHECK(items[0].used);
   CHECK(!items[1].used);
@@ -156,29 +156,28 @@ TEST(lint_directives, block_directives_replay_as_a_state_machine)
 
 TEST(lint_directives, suppress_and_report_unused)
 {
-  CHECK_EQ(lintDescribe("debugger; // fastlint-disable-line\n"
+  CHECK_EQ(lintDescribe("debugger; // lintrix-disable-line\n"
                         "// eslint-disable-next-line no-debugger\n"
                         "debugger;\n"
                         "debugger;\n"),
            "4:1 error Unexpected 'debugger' statement.\n");
-  CHECK_EQ(lintDescribe("/* fastlint-disable no-debugger */\n"
+  CHECK_EQ(lintDescribe("/* lintrix-disable no-debugger */\n"
                         "debugger;\n"
-                        "/* fastlint-enable no-debugger */\n"
+                        "/* lintrix-enable no-debugger */\n"
                         "debugger;\n"),
            "4:1 error Unexpected 'debugger' statement.\n");
-  CHECK_EQ(
-      lintDescribe("// fastlint-disable-next-line no-debugger\n"
-                   "let a = 1;\n"
-                   "// eslint-disable-next-line\n"
-                   "let b = 1;\n"),
-      "1:1 warning Unused fastlint-disable directive (no problems were reported from "
-      "'no-debugger').\n"
-      "3:1 warning Unused eslint-disable directive (no problems were reported).\n");
-  CHECK_EQ(lintDescribe("// fastlint-disable-next-line no-debugger\nlet a = 1;\n", "off"),
+  CHECK_EQ(lintDescribe("// lintrix-disable-next-line no-debugger\n"
+                        "let a = 1;\n"
+                        "// eslint-disable-next-line\n"
+                        "let b = 1;\n"),
+           "1:1 warning Unused lintrix-disable directive (no problems were reported from "
+           "'no-debugger').\n"
+           "3:1 warning Unused eslint-disable directive (no problems were reported).\n");
+  CHECK_EQ(lintDescribe("// lintrix-disable-next-line no-debugger\nlet a = 1;\n", "off"),
            "");
   CHECK_EQ(
-      lintDescribe("// fastlint-disable-next-line no-debugger\nlet a = 1;\n", "error"),
-      "1:1 error Unused fastlint-disable directive (no problems were reported from "
+      lintDescribe("// lintrix-disable-next-line no-debugger\nlet a = 1;\n", "error"),
+      "1:1 error Unused lintrix-disable directive (no problems were reported from "
       "'no-debugger').\n");
   // A directive for another linter's rule is neither applied nor reported.
   CHECK_EQ(lintDescribe("// eslint-disable-next-line react/jsx-key\nlet a = 1;\n"), "");

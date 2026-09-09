@@ -1,7 +1,7 @@
-// The unified config shape (task 8.1), mirrored in TypeScript. `fastlint.config.json`
+// The unified config shape (task 8.1), mirrored in TypeScript. `lintrix.config.json`
 // is the on-disk form both consumers read: the native binary parses it in C++
 // (lint/config.cc), and the npm CLI compiles a `.ts` or `.js` config down to it.
-// schema/fastlint.config.schema.json validates the same shape in an editor, and
+// schema/lintrix.config.schema.json validates the same shape in an editor, and
 // docs/rules.md "Config" documents what each key means and which side reads it.
 //
 // `defineConfig` here is the typed authoring wrapper for the new shape. The
@@ -18,7 +18,7 @@ export type Severity = SeverityName | 0 | 1 | 2;
 export type RuleSetting = Severity | readonly [Severity, ...unknown[]];
 
 /** A preset `extends` names. Both resolve against the C++ rule registry. */
-export type Preset = "fastlint:recommended" | "fastlint:all";
+export type Preset = "lintrix:recommended" | "lintrix:all";
 
 /** One glob or a list of them. */
 export type Globs = string | readonly string[];
@@ -40,7 +40,7 @@ export interface ProjectMapping {
 
 /** The whole config, as it is written on disk. */
 export interface FastlintConfigFile {
-  /** schema/fastlint.config.schema.json, for editor validation. */
+  /** schema/lintrix.config.schema.json, for editor validation. */
   readonly $schema?: string;
   readonly extends?: Preset | readonly Preset[];
   /** A prefix to the module defining its rules, so `prefix/rule` resolves. */

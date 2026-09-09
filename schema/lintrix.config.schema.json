@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://fastlint.dev/schema/fastlint.config.schema.json",
-  "title": "fastlint configuration",
-  "description": "fastlint.config.json: the rules to run, the files they apply to, and the settings both the native binary and the npm CLI read (docs/rules.md \"Config\").",
+  "$id": "https://lintrix.dev/schema/lintrix.config.schema.json",
+  "title": "lintrix configuration",
+  "description": "lintrix.config.json: the rules to run, the files they apply to, and the settings both the native binary and the npm CLI read (docs/rules.md \"Config\").",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -71,17 +71,17 @@
     },
     "eslintDirectives": {
       "type": "boolean",
-      "description": "Honor `eslint-disable` comments as well as `fastlint-disable` ones."
+      "description": "Honor `eslint-disable` comments as well as `lintrix-disable` ones."
     },
     "binary": {
       "type": "string",
-      "description": "The native fastlint executable the npm CLI drives: a path relative to this file, or a name to find on PATH. The bundled WASM build runs when it is absent or cannot be resolved."
+      "description": "The native lintrix executable the npm CLI drives: a path relative to this file, or a name to find on PATH. The bundled WASM build runs when it is absent or cannot be resolved."
     }
   },
   "definitions": {
     "preset": {
       "type": "string",
-      "enum": ["fastlint:recommended", "fastlint:all"]
+      "enum": ["lintrix:recommended", "lintrix:all"]
     },
     "severity": {
       "oneOf": [

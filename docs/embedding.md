@@ -17,7 +17,7 @@ cmake directly.
   the same one for every file; `error` comes back non-empty when the text does
   not parse, and nothing is linted.
 - Without a config the recommended preset applies. An embedding has no directory
-  to search for `fastlint.config.json`, so nothing is loaded from disk.
+  to search for `lintrix.config.json`, so nothing is loaded from disk.
 - Type-aware rules do not run. Typing a file needs a tsgo process and a
   resolved tsconfig, and neither host offers one.
 - `LintOptions::fixEdits` is on, so every fixable problem carries its edit. The
@@ -104,14 +104,14 @@ the driver runs it over many files.
   in the calling thread with no worker. A file an `ignores` glob claims is
   answered without a worker and without being read.
 - The decision this settles (task 7.2): the node side hosts the native core.
-  `plugin/ts/index.ts` is the package surface a `fastlint` npm package would
+  `plugin/ts/index.ts` is the package surface a `lintrix` npm package would
   re-export, wrapping the built `.node` addon.
 
 ## Writing a rule
 
 - `node make.ts new-rule <name> [--selector <NodeKind>] [--out <file>]` scaffolds
   a rule module: a working `Rule` that reports on every `selector` node, for the
-  author to narrow. It imports the `fastlint` package surface.
+  author to narrow. It imports the `lintrix` package surface.
 - A rule is the `Rule` shape from `plugin/ts/runtime.ts`: a `name`, optional
   `messages` keyed by `messageId`, and `create(context)` returning visitors
   keyed by node-kind name. `context.report({node, messageId, data})` records a
@@ -174,7 +174,7 @@ synthetic source (21.6k nodes), best of the repeats.
 
 ## The npm package
 
-`npm i fastlint` installs a linter that works with no native binary on the
+`npm i lintrix` installs a linter that works with no native binary on the
 machine, because the package carries the WASM build as its fallback engine. A
 native binary makes the same run faster; it changes nothing about what is
 reported.
@@ -188,8 +188,8 @@ reported.
 - A `wasm-release` build is what ships. `pack` falls back to the debug module
   with a warning when there is none: it is several times the size and slower to
   parse with, so a package built that way is for trying the pipeline.
-- `package.json` declares `bin` (`fastlint` to dist/ts/cli.js), `exports` (the
-  rule and config surface, plus `fastlint/schema.json` for an editor) and
+- `package.json` declares `bin` (`lintrix` to dist/ts/cli.js), `exports` (the
+  rule and config surface, plus `lintrix/schema.json` for an editor) and
   `files` (`dist`, `schema`, docs/rules.md and docs/plugins.md). `prepack` runs
   `node make.ts pack`, so `npm publish` cannot ship a stale `dist/`.
 - The sources import each other with `.ts` extensions and Node 24 runs them off
@@ -200,7 +200,7 @@ reported.
 ### Which engine runs the built-in rules
 
 - The CLI drives the native binary the config's `binary` item names, or one
-  called `fastlint` on PATH. It writes `.fastlint.native.json` beside the config
+  called `lintrix` on PATH. It writes `.lintrix.native.json` beside the config
   and runs `lint --config … --format json`.
 - Without one it lints through `dist/wasm/fastlint.js`, one file at a time,
   passing the same resolved config to `fl_wasm_lint_config`. Both engines
@@ -230,19 +230,19 @@ node make.ts publish                   # send that tarball to the registry
   is written.
 - The version lives in package.json and in source/fastlint/version.cc, because
   the native binary cannot read a manifest and npm cannot read a C++ source.
-  `release` writes both, so `fastlint --version` and the installed package never
+  `release` writes both, so `lintrix --version` and the installed package never
   drift. It puts both back if any later step fails.
 - The bump lands before the build, so the tarball, the tag and what the CLI
   prints are one number. `--dry-run` restores the files and stops before git.
 - The build is `pack --wasm`, and a run that would bundle the debug engine is
   refused rather than warned about, since a published package is not a place to
   find that out.
-- `npm pack` writes build/release/fastlint-`<version>`.tgz. That exact file is
+- `npm pack` writes build/release/lintrix-`<version>`.tgz. That exact file is
   what the install test runs, what `gh release create` uploads and what
   `publish` sends, so nothing is rebuilt between being checked and being shipped.
 - `pack --install` is the install test on its own: it installs the tarball into a
   throwaway project under its own HOME and npm cache, then lints through the
-  `fastlint` command npm links. Running the shim rather than the file it points
+  `lintrix` command npm links. Running the shim rather than the file it points
   at is the point, since that covers `bin`, the `files` list and the shim npm
   generates. `--smoke` (which `release` always runs) is the weaker check that
   runs `dist/ts/cli.js` in place.
@@ -262,7 +262,7 @@ and a postinstall download.
   failure lands in the middle of `npm i` rather than at the first lint.
 - Per-platform optional dependencies are the better of the two, and are what to
   add once releases are built. They need a tagged release pipeline publishing
-  `@fastlint/win32-x64` and its siblings, and that pipeline does not exist yet.
+  `@lintrix/win32-x64` and its siblings, and that pipeline does not exist yet.
 - Until then the binary comes from the config's `binary` item or from PATH,
   which covers the two cases that exist: this repository's own build, and a
   binary a user installed themselves.

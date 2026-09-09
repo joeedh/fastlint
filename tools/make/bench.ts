@@ -13,7 +13,7 @@ import {
 } from "./lib/paths.ts";
 import { run } from "./lib/spawn.ts";
 
-// Parse throughput on a corpus, via `fastlint bench` (I/O excluded, best of
+// Parse throughput on a corpus, via `lintrix bench` (I/O excluded, best of
 // `--repeat`). Results are JSON under .cache/bench/; `--save <name>` keeps one
 // as a baseline and `--compare <name>` prints the change against it.
 
@@ -73,7 +73,7 @@ export const command: CommandModule<object, Args> = {
   handler: async (argv) => {
     const preset = resolvePreset(argv);
     if (argv.build) await buildPreset(preset, { target: "fastlint" });
-    const exe = path.join(buildDir(preset), "bin", `fastlint${exeSuffix}`);
+    const exe = path.join(buildDir(preset), "bin", `lintrix${exeSuffix}`);
     const corpus = (argv.corpus ?? defaultCorpus).map((c) => path.resolve(c));
 
     const { stdout } = await run(

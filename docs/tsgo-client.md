@@ -1,6 +1,6 @@
 # tsgo client
 
-The C++ side of the type layer: how fastlint talks to `tsc --api`. The
+The C++ side of the type layer: how lintrix talks to `tsc --api`. The
 protocol facts it relies on are measured in docs/tsgo-api.md; this document
 covers the code under `source/fastlint/tsgo/`. Task 5.1 of
 docs/tasklists/MASTER.md.

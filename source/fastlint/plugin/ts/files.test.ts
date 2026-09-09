@@ -1,5 +1,5 @@
 // Collecting a run's files (task 8.3). Both engines lint the list this builds,
-// so what it walks past decides what a bare `fastlint .` covers.
+// so what it walks past decides what a bare `lintrix .` covers.
 
 import assert from "node:assert";
 import fs from "node:fs";
@@ -9,7 +9,7 @@ import { after, test } from "node:test";
 
 import { collectFiles, sourceExtensions } from "./files.ts";
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), "fastlint-files-"));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), "lintrix-files-"));
 const write = (relative: string, text = ""): string => {
   const full = path.join(root, relative);
   fs.mkdirSync(path.dirname(full), { recursive: true });

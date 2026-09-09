@@ -59,7 +59,7 @@ export async function smokeWasm(preset: WasmPreset): Promise<void> {
   const script = [
     `const createFastlint = (await import(${JSON.stringify(pathToFileURL(module).href)})).default;`,
     `const mod = await createFastlint();`,
-    `console.log("fastlint", mod.UTF8ToString(mod._fl_wasm_version()));`,
+    `console.log("lintrix", mod.UTF8ToString(mod._fl_wasm_version()));`,
     `const put = (s) => mod.stringToNewUTF8(s);`,
     `const source = put("if (a == b) debugger;"), name = put("smoke.ts");`,
     `const out = mod._fl_wasm_lint(source, name);`,

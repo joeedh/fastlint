@@ -43,7 +43,7 @@ using std::string_view;
 
 void usage(std::FILE *out = stderr)
 {
-  std::fprintf(out, "usage: fastlint lint [options] <file|dir>...\n");
+  std::fprintf(out, "usage: lintrix lint [options] <file|dir>...\n");
 }
 
 /** The full `lint` help: the usage line followed by every option. Printed to
@@ -55,7 +55,7 @@ void help()
       stdout,
       "\n"
       "options:\n"
-      "  --config <file>        config to load (default: fastlint.config.json upwards)\n"
+      "  --config <file>        config to load (default: lintrix.config.json upwards)\n"
       "  --no-config            ignore any config file; use the recommended preset\n"
       "  --rule <name:severity> override one rule (severity: off, warn, error, or 0-2)\n"
       "  --fix                  rewrite files with the available fixes\n"
@@ -69,7 +69,7 @@ void help()
       "  --max-warnings N       exit non-zero when warnings exceed N\n"
       "  -h, --help             show this help\n"
       "\n"
-      "Run `fastlint --init` to write a starter config.\n");
+      "Run `lintrix --init` to write a starter config.\n");
 }
 
 /** `name:severity` or `name=severity`. */
@@ -118,7 +118,7 @@ struct ResultCache {
   {
     cache::StoreOptions options;
     options.path = string(dbPath.c_str());
-    // A fastlint upgrade may change rule logic, so its version keys the store.
+    // A lintrix upgrade may change rule logic, so its version keys the store.
     options.tsgoVersion = string(fastlint::version());
     string error;
     if (!store.open(options, error)) {
@@ -203,13 +203,13 @@ std::string cacheDirFor(const char *given, bool noCache, bool fix)
   }
   std::error_code ec;
   if (std::filesystem::is_directory("node_modules", ec)) {
-    return "node_modules/.cache/fastlint";
+    return "node_modules/.cache/lintrix";
   }
   return std::string();
 }
 
 /** Hashes everything beyond a file's own content and closure that changes its
- * diagnostics: the fastlint version, the config, the tsconfig and the lockfile. */
+ * diagnostics: the lintrix version, the config, the tsconfig and the lockfile. */
 /** A TypeScript source, whose type-aware rules a missing tsconfig would silently skip. */
 bool isTypeScript(const std::filesystem::path &path)
 {
@@ -362,7 +362,7 @@ int lintCommand(int argc, char **argv)
       }
     } else if (ruleFlags.isEmpty()) {
       // With no config file and no --rule, the recommended preset applies.
-      config.parse("{\"extends\": \"fastlint:recommended\"}", "", registry, error);
+      config.parse("{\"extends\": \"lintrix:recommended\"}", "", registry, error);
       recommendedFallback = true;
     }
   }
@@ -394,7 +394,7 @@ int lintCommand(int argc, char **argv)
       names.append(name.c_str(), name.size());
     }
     std::fprintf(stderr,
-                 "%d plugin rule%s skipped (%s); lint through the fastlint npm CLI "
+                 "%d plugin rule%s skipped (%s); lint through the lintrix npm CLI "
                  "to run them\n",
                  int(pluginRules.size()),
                  pluginRules.size() == 1 ? "" : "s",

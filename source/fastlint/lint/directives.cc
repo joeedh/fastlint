@@ -117,8 +117,10 @@ void DirectiveSet::collect(const syntax::GrammarTree &tree,
       continue;
     }
     string_view body = trim(commentBody(source, trivia));
-    if (startsWith(body, "fastlint-")) {
-      addDirective(tree, registry, trivia, body.substr(8), false);
+    if (startsWith(body, kDirectivePrefix) && body.size() > kDirectivePrefix.size() &&
+        body[kDirectivePrefix.size()] == '-')
+    {
+      addDirective(tree, registry, trivia, body.substr(kDirectivePrefix.size()), false);
     } else if (eslintCompat && startsWith(body, "eslint-")) {
       addDirective(tree, registry, trivia, body.substr(6), true);
     }
@@ -143,7 +145,7 @@ void DirectiveSet::addDirective(const syntax::GrammarTree &tree,
   if (!keyword) {
     return;
   }
-  string_view prefix = eslint ? "eslint" : "fastlint";
+  string_view prefix = eslint ? string_view("eslint") : kDirectivePrefix;
   bool lineDirective = keyword->kind == DirectiveKind::DisableLine ||
                        keyword->kind == DirectiveKind::DisableNextLine;
   if (lineDirective && comment.lineBreak) {

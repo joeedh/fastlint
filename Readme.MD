@@ -1,4 +1,4 @@
-# fastlint
+# lintrix
 
 A fast TypeScript/JavaScript linter written in C++. It has its own scanner and
 recursive-descent parser, a flat arena AST with full trivia fidelity, type
@@ -11,26 +11,26 @@ config. See docs/tasklists/MASTER.md for where the work stands.
 ## Install
 
 ```sh
-npm i -D fastlint
-npx fastlint --init        # writes a starter fastlint.config.json
-npx fastlint src
+npm i -D lintrix
+npx lintrix --init        # writes a starter lintrix.config.json
+npx lintrix src
 ```
 
 The package bundles a WASM build of the linter, so it works with no native
-binary installed. Point the config's `binary` item at a native `fastlint`, or
+binary installed. Point the config's `binary` item at a native `lintrix`, or
 put one on PATH, and the same run goes through that instead:
 
 ```jsonc
 {
-  "$schema": "./node_modules/fastlint/schema/fastlint.config.schema.json",
-  "extends": "fastlint:recommended",
+  "$schema": "./node_modules/lintrix/schema/lintrix.config.schema.json",
+  "extends": "lintrix:recommended",
   "plugins": { "acme": "./rules/index.ts" },
   "rules": { "curly": "error", "acme/no-foo": "warn" },
   "ignores": ["**/dist/**"]
 }
 ```
 
-`fastlint.config.ts` is read too, with `defineConfig` from the package for the
+`lintrix.config.ts` is read too, with `defineConfig` from the package for the
 types. docs/rules.md covers the schema and the CLI; docs/plugins.md is the guide
 for writing rules.
 
@@ -65,7 +65,7 @@ node make.ts run -- --version
 | `check` | `format --check` + build + C++ tests + TS tests. What CI runs. |
 | `format` | clang-format over `source/`, the `@pathtx/prettier` fork over the TypeScript. `--check` only reports. |
 | `deps` | Updates submodules and fetches the externals: `deps fetch dtl` clones a pinned git external, `deps fetch sqlite` downloads the checksummed amalgamation zip into `vendor/`. |
-| `run` | Builds `fastlint` and runs it with the remaining arguments. |
+| `run` | Builds `lintrix` and runs it with the remaining arguments. |
 | `config` | Prints what a config compiles to; `--native` emits the handoff document, `--out` writes it. |
 | `pack` | Builds the publishable npm package into `dist/`; `--wasm` builds the engine it bundles, `--smoke` lints through the result, `--install` checks the tarball the way a user installs it. |
 | `release` | Bumps the version, builds and checks the package, tags and pushes, and creates the GitHub release. `--dry-run` stops before git. |
@@ -75,7 +75,7 @@ node make.ts run -- --version
 ## Layout
 
 - source/fastlint — the library; source/fastlint/rules holds the built-in rules.
-- source/cli — the `fastlint` executable.
+- source/cli — the `lintrix` executable.
 - source/testing — the in-house test framework; see docs/tests.md.
 - source/tests — tests for the library and the framework itself.
 - tests/\_\_snapshots\_\_ — committed snapshot files, reviewed like code.

@@ -11,7 +11,7 @@
 #include <string>
 #include <string_view>
 
-// `fastlint fuzz`: token-level mutations of real files, each parsed and
+// `lintrix fuzz`: token-level mutations of real files, each parsed and
 // checked against the tree invariants. Memory errors are the sanitizer's job
 // (the command is meant to run under the `asan` preset); the driver in
 // tools/make/fuzz.ts reads the `# <file> <seed>` line printed before every
@@ -331,9 +331,9 @@ struct FuzzArgs {
 int usage()
 {
   std::fprintf(stderr,
-               "usage: fastlint fuzz [--iterations N] [--seed S] <file|dir>...\n"
-               "       fastlint fuzz --replay <seed> --out <path> <file>\n"
-               "       fastlint fuzz --check <file>...\n");
+               "usage: lintrix fuzz [--iterations N] [--seed S] <file|dir>...\n"
+               "       lintrix fuzz --replay <seed> --out <path> <file>\n"
+               "       lintrix fuzz --check <file>...\n");
   return 2;
 }
 

@@ -50,7 +50,7 @@ EMSCRIPTEN_KEEPALIVE char *fl_wasm_lint(const char *source, const char *filename
 }
 
 /**
- * Lints `source` against `config`, a `fastlint.config.json` document whose globs
+ * Lints `source` against `config`, a `lintrix.config.json` document whose globs
  * are anchored at `base_dir`. Returns the JSON the caller passes back to
  * `fl_wasm_free`, or a one-element array holding the config's error when the
  * document will not parse. A null or empty `config` is the recommended preset.

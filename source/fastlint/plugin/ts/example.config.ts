@@ -1,5 +1,5 @@
-// An example fastlint config, loaded by the driver's smoke (task 7.2). A real
-// project's `fastlint.config.ts` looks like this: it declares the plugins whose
+// An example lintrix config, loaded by the driver's smoke (task 7.2). A real
+// project's `lintrix.config.ts` looks like this: it declares the plugins whose
 // rules it wants and sets a severity for each, and `defineConfig` type-checks
 // the shape.
 

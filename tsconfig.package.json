@@ -1,6 +1,6 @@
 // The published package's build (task 8.3). The repository runs its TypeScript
 // straight off disk, so the root config emits nothing; this one compiles the
-// plugin surface to `dist/` for `npm i fastlint`, rewriting each `.ts` import
+// plugin surface to `dist/` for `npm i lintrix`, rewriting each `.ts` import
 // specifier to the `.js` file beside it.
 {
   "extends"        : "./tsconfig.json",

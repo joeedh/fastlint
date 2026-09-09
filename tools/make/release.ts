@@ -142,7 +142,7 @@ export const command: CommandModule<object, Args> = {
     }
 
     // The version goes in before the build so the tarball, the tag and what
-    // `fastlint --version` prints are all the same number. Both files go back
+    // `lintrix --version` prints are all the same number. Both files go back
     // as they were if anything after this fails.
     const saved = versionFiles();
     const undo = (message: string): never => {

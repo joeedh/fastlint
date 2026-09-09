@@ -20,10 +20,10 @@ using litestl::util::Vector;
 int cacheCommand(int argc, char **argv)
 {
   if (argc < 3 || std::strcmp(argv[2], "verify") != 0) {
-    std::fprintf(stderr, "usage: fastlint cache verify [--cache-dir <dir>]\n");
+    std::fprintf(stderr, "usage: lintrix cache verify [--cache-dir <dir>]\n");
     return 2;
   }
-  std::string dir = "node_modules/.cache/fastlint";
+  std::string dir = "node_modules/.cache/lintrix";
   for (int i = 3; i < argc; i++) {
     if (std::strcmp(argv[i], "--cache-dir") == 0 && i + 1 < argc) {
       dir = argv[++i];

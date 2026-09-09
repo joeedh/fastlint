@@ -31,7 +31,7 @@
 #include <sys/resource.h>
 #endif
 
-// `fastlint cache-bench`: two passes over a project through the type cache. The cold pass
+// `lintrix cache-bench`: two passes over a project through the type cache. The cold pass
 // starts from an empty database and fetches every expression's type from tsgo; the warm
 // pass reopens the same database and replays. Both report timings per phase, the peak
 // working set and the database size (MASTER 5.5).
@@ -572,7 +572,7 @@ int cacheBenchCommand(int argc, char **argv)
   }
   if (options.tsconfig.empty()) {
     std::fprintf(stderr,
-                 "usage: fastlint cache-bench [--cache <db>] [--limit N] [--keep] "
+                 "usage: lintrix cache-bench [--cache <db>] [--limit N] [--keep] "
                  "[--json] [--unmapped] "
                  "<tsconfig>\n");
     return 2;

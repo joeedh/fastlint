@@ -1,4 +1,4 @@
-# fastlint
+# lintrix
 
 A fast TypeScript/JavaScript linter written in C++. It has its own scanner and
 recursive-descent parser, a flat arena AST with full trivia fidelity so fixers

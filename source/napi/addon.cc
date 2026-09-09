@@ -119,7 +119,7 @@ napi_value version(napi_env env, napi_callback_info)
 
 /**
  * `lintText(source, filename?, config?, baseDir?)` -> the ESLint-shaped JSON
- * `--format json` prints. `config` is a `fastlint.config.json` document whose
+ * `--format json` prints. `config` is a `lintrix.config.json` document whose
  * globs are anchored at `baseDir`; without one the recommended preset applies.
  */
 napi_value lintText(napi_env env, napi_callback_info info)

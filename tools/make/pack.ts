@@ -23,7 +23,7 @@ const distDir = path.join(repoRoot, "dist");
 export const releaseDir = path.join(repoRoot, "build", "release");
 
 /** What `npm pack` calls the tarball. A scope becomes part of the filename with
- * its punctuation flattened, so `@acme/fastlint` packs as `acme-fastlint`. */
+ * its punctuation flattened, so `@acme/lintrix` packs as `acme-lintrix`. */
 export function tarballName(name: string, version: string): string {
   return `${name.replace(/^@/, "").replace("/", "-")}-${version}.tgz`;
 }
@@ -62,11 +62,11 @@ function bundleWasm(preset: "wasm" | "wasm-release"): void {
  * missing file or a broken specifier shows up. */
 async function smoke(): Promise<void> {
   step("smoke test the package CLI");
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fastlint-pack-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lintrix-pack-"));
   try {
     fs.writeFileSync(
-      path.join(dir, "fastlint.config.json"),
-      '{"extends": "fastlint:recommended", "rules": {"curly": "warn"}}\n'
+      path.join(dir, "lintrix.config.json"),
+      '{"extends": "lintrix:recommended", "rules": {"curly": "warn"}}\n'
     );
     fs.writeFileSync(path.join(dir, "a.ts"), "if (a) b();\ndebugger;\n");
     const cli = path.join(distDir, "ts", "cli.js");
@@ -136,13 +136,13 @@ export async function packTarball(): Promise<string> {
 }
 
 const installTestConfig = `{
-  "extends": "fastlint:recommended",
+  "extends": "lintrix:recommended",
   "rules": { "curly": "error" }
 }
 `;
 
 /**
- * Installs `tarball` into a throwaway project and lints through the `fastlint`
+ * Installs `tarball` into a throwaway project and lints through the `lintrix`
  * command npm links. It is the check that covers what the tarball left out, the
  * `bin` wiring and the shim npm generates from it.
  *
@@ -151,7 +151,7 @@ const installTestConfig = `{
  */
 export async function installTest(tarball: string): Promise<void> {
   step("install the tarball into a throwaway project");
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "fastlint-install-"));
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "lintrix-install-"));
   // The shim runs through cmd.exe on Windows, which does not quote what it is
   // handed, so a space anywhere in this path would split the command.
   if (/\s/.test(scratch)) fail(`the temp path has a space in it: ${scratch}`);
@@ -163,12 +163,12 @@ export async function installTest(tarball: string): Promise<void> {
   fs.writeFileSync(
     path.join(project, "package.json"),
     `${JSON.stringify(
-      { name: "fastlint-install-test", private: true, type: "module" },
+      { name: "lintrix-install-test", private: true, type: "module" },
       undefined,
       2
     )}\n`
   );
-  fs.writeFileSync(path.join(project, "fastlint.config.json"), installTestConfig);
+  fs.writeFileSync(path.join(project, "lintrix.config.json"), installTestConfig);
   fs.writeFileSync(path.join(project, "src", "a.ts"), "if (a) b();\ndebugger;\n");
 
   // Node reads USERPROFILE first on Windows and HOME on POSIX, so both are set
@@ -182,8 +182,8 @@ export async function installTest(tarball: string): Promise<void> {
 
   const shim =
     process.platform === "win32"
-      ? "node_modules\\.bin\\fastlint.cmd"
-      : "./node_modules/.bin/fastlint";
+      ? "node_modules\\.bin\\lintrix.cmd"
+      : "./node_modules/.bin/lintrix";
   const shell = process.platform === "win32";
 
   try {

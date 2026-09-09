@@ -266,7 +266,7 @@ editors can map them. The scanner and the parser share one list.
 
 ## Debugging
 
-`fastlint dump-tree [--spans] [--errors] <file>` prints the s-expression
+`lintrix dump-tree [--spans] [--errors] <file>` prints the s-expression
 dump. Each node is one line: the kind, a `:` followed by flag names, and
 then, in quotes, the tokens in the node's range that no child owns. For
 `const x = 42;`:

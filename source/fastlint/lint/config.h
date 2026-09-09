@@ -1,6 +1,6 @@
 #pragma once
 
-// `fastlint.config.json` (docs/rules.md "Config"): rule severities and
+// `lintrix.config.json` (docs/rules.md "Config"): rule severities and
 // options, `extends` presets, `overrides` by glob, `ignores`, and the
 // directive settings. Resolved per file into the rules the linter runs.
 

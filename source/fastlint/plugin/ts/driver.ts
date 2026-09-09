@@ -43,7 +43,7 @@ export interface FileMessages {
 }
 
 export interface LintFilesOptions {
-  /** The `fastlint.config.*` file to take the rules from. */
+  /** The `lintrix.config.*` file to take the rules from. */
   configPath: string;
   /** What to parse through: a built `.node` addon, or a WASM module's
    * `fastlint.js`. Defaults to the bundled WASM build. */

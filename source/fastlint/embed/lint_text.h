@@ -23,7 +23,7 @@ using litestl::util::string;
 void lintText(std::string_view source, std::string_view filename, string &out);
 
 /**
- * Lints `source` with `configJson`, a `fastlint.config.json` document the host
+ * Lints `source` with `configJson`, a `lintrix.config.json` document the host
  * read, whose globs are anchored at `baseDir` as they would be on disk. The
  * document is parsed once and reused while the host keeps passing the same one,
  * since a run lints many buffers against one config. An empty `configJson` is

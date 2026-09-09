@@ -48,7 +48,7 @@ Each option is a boolean. Defaults: `allowString` and `allowNumber` on;
 The condition detection, the variant table and the messages match upstream.
 Not ported: the suggestion fixes (each message carries fixes such as
 `Boolean(value)` or `value != null` upstream; suggestions are not applied
-anywhere in fastlint yet), the array-method-predicate path
+anywhere in lintrix yet), the array-method-predicate path
 (`array.some(x => x)` reporting on the predicate return type, with its
 `predicateCannotBeAsync` and `explicitBooleanReturnType` messages), and the
 truthiness-assertion-function argument path.

@@ -32,7 +32,7 @@ const cli = yargs(hideBin(process.argv))
   .usage("$0 <command> [options]")
   .strict()
   .demandCommand(1, "run `node make.ts --help` for the command list")
-  // `run --version` should reach fastlint rather than printing make.ts's own.
+  // `run --version` should reach lintrix rather than printing make.ts's own.
   .version(false)
   .help()
   .alias("h", "help")

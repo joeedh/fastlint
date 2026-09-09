@@ -8,7 +8,7 @@ import type { FastlintConfigFile, RuleSetting, Severity } from "./schema.ts";
 /** Prefixes the C++ registry strips from a rule name, which a plugin may not claim. */
 const reservedPrefixes = ["@typescript-eslint", "typescript-eslint"];
 
-const presets = ["fastlint:recommended", "fastlint:all"];
+const presets = ["lintrix:recommended", "lintrix:all"];
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -175,7 +175,7 @@ export function validateConfigFile(value: unknown): string[] {
   }
 
   if ("binary" in config && typeof config["binary"] !== "string") {
-    errors.push('config: "binary" must be a path to the fastlint executable');
+    errors.push('config: "binary" must be a path to the lintrix executable');
   }
 
   return errors;

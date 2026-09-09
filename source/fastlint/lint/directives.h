@@ -1,8 +1,8 @@
 #pragma once
 
 // Disable directives in comments (docs/rules.md "Disable directives"):
-// `fastlint-disable`, `fastlint-enable`, `fastlint-disable-line` and
-// `fastlint-disable-next-line`, each with an optional rule list and a `--`
+// `lintrix-disable`, `lintrix-enable`, `lintrix-disable-line` and
+// `lintrix-disable-next-line`, each with an optional rule list and a `--`
 // justification. The `eslint-` spellings are accepted as aliases.
 
 #include "fastlint/lint/registry.h"
@@ -14,6 +14,10 @@
 #include <string_view>
 
 namespace fastlint::lint {
+
+/** What a directive comment starts with, before the `-disable` keyword. The
+ * `eslint-` spellings are accepted alongside it (`Config::eslintDirectives`). */
+constexpr string_view kDirectivePrefix = "lintrix";
 
 enum class DirectiveKind : uint8_t { Disable, Enable, DisableLine, DisableNextLine };
 
@@ -44,7 +48,7 @@ public:
   /**
    * Reads every comment of `tree`. Directives naming a rule `registry` does
    * not know are dropped when spelled `eslint-` (another linter's rule) and
-   * reported when spelled `fastlint-`. With `eslintCompat` false the
+   * reported when spelled `lintrix-`. With `eslintCompat` false the
    * `eslint-` spellings are ordinary comments.
    */
   void

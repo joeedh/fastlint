@@ -14,11 +14,11 @@ import { assertConfigFile } from "./validate.ts";
 /** The config file names, in the order a search prefers them. An authored
  * config wins over a compiled one, since the compiled one is its output. */
 export const configNames = [
-  "fastlint.config.ts",
-  "fastlint.config.mts",
-  "fastlint.config.js",
-  "fastlint.config.mjs",
-  "fastlint.config.json",
+  "lintrix.config.ts",
+  "lintrix.config.mts",
+  "lintrix.config.js",
+  "lintrix.config.mjs",
+  "lintrix.config.json",
 ];
 
 /** The nearest config walking up from `dir`, or undefined when there is none. */

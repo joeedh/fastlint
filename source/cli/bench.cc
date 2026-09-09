@@ -12,7 +12,7 @@
 #include <string>
 #include <string_view>
 
-// `fastlint bench`: parse throughput with file I/O taken out of the timing.
+// `lintrix bench`: parse throughput with file I/O taken out of the timing.
 // Every file is read up front, then the whole set is parsed `--repeat` times
 // and the fastest pass is reported, so the number is the parser's and not the
 // disk cache's.
@@ -71,7 +71,7 @@ int benchCommand(int argc, char **argv)
     }
   }
   if (files.isEmpty() || repeat == 0) {
-    std::fprintf(stderr, "usage: fastlint bench [--repeat N] [--json] <file|dir>...\n");
+    std::fprintf(stderr, "usage: lintrix bench [--repeat N] [--json] <file|dir>...\n");
     return 2;
   }
 

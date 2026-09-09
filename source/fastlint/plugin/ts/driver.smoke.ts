@@ -15,7 +15,7 @@ if (!addonPath) throw new Error("usage: driver.smoke.ts <addon path>");
 
 const configPath = fileURLToPath(new URL("./example.config.ts", import.meta.url));
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fastlint-driver-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lintrix-driver-"));
 const sources: Record<string, string> = {
   "a.ts": "function a() {\n  debugger;\n}\n",
   "b.ts": "const b = () => console.log(1);\n",

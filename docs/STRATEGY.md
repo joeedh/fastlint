@@ -1,4 +1,4 @@
-# fastlint — Strategy
+# lintrix — Strategy
 
 A fast TypeScript/JavaScript linter in C++. Own parser, full-fidelity AST,
 AST-level fixers, types from `tsgo` over its API protocol, type facts cached in
@@ -290,7 +290,7 @@ this document depends on.
   with the C++ views generated from the same `nodes.def` the host uses.
   See docs/ast-design.md "Interop" and "Plugins", MASTER.md task 7.
 - ~~ESLint compatibility surface~~ — resolved 2026-09-07: `// eslint-disable*`
-  comments are accepted as aliases of the `fastlint-` spellings (config
+  comments are accepted as aliases of the `lintrix-` spellings (config
   `eslintDirectives`), `@typescript-eslint/`-prefixed names resolve to our
   rules, and directives naming rules we do not have are ignored rather than
   reported. Rule names, messages and test cases follow ESLint and

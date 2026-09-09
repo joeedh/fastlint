@@ -86,7 +86,7 @@ This is the part that decides whether a tree-walking API is fast.
   `VectorGet`, typed `assign` helpers) rather than the generic descriptor
   walk.
 
-The consequence for fastlint is that under N-API a rule reading five fields
+The consequence for lintrix is that under N-API a rule reading five fields
 of a node makes five native calls and allocates up to five wrappers, while
 under WASM it makes zero calls. The bulk fast path only helps for flat
 arrays of scalars, which the AST is not.
@@ -99,9 +99,9 @@ arrays of scalars, which the AST is not.
   contributes the `LSTL_*` symbols through `lt_wasm_add_symbols`.
 - `lt_native_export_symbols` mirrors the same list onto a native shared
   library via a generated `.def` on Windows or `--undefined` elsewhere.
-- The Emscripten SDK is not part of fastlint's toolchain today. CLAUDE.md
+- The Emscripten SDK is not part of lintrix's toolchain today. CLAUDE.md
   lists VS, cmake, ninja and clang-format only; sculptcore installs emsdk
-  through its own `make.mjs install-emsdk` with a pinned commit. fastlint's
+  through its own `make.mjs install-emsdk` with a pinned commit. lintrix's
   `make.ts` would need the same.
 - sculptcore's N-API build uses cmake-js to fetch the runtime headers and
   builds the addon with clang, targeting NW.js by default.

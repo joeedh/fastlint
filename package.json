@@ -1,5 +1,5 @@
 {
-  "name": "fastlint",
+  "name": "lintrix",
   "version": "0.1.0",
   "type": "module",
   "description": "A fast TypeScript/JavaScript linter written in C++",
@@ -24,14 +24,14 @@
     "node": ">=24"
   },
   "bin": {
-    "fastlint": "dist/ts/cli.js"
+    "lintrix": "dist/ts/cli.js"
   },
   "exports": {
     ".": {
       "types": "./dist/ts/index.d.ts",
       "default": "./dist/ts/index.js"
     },
-    "./schema.json": "./schema/fastlint.config.schema.json",
+    "./schema.json": "./schema/lintrix.config.schema.json",
     "./package.json": "./package.json"
   },
   "files": [

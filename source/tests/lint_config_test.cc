@@ -131,7 +131,7 @@ TEST(lint_config, severities_in_every_spelling)
 TEST(lint_config, presets_and_overrides_layer_in_order)
 {
   Fixture f(
-      "{\"extends\": [\"fastlint:recommended\"],"
+      "{\"extends\": [\"lintrix:recommended\"],"
       " \"rules\": {\"optional-rule\": [\"warn\", \"opt\"]},"
       " \"overrides\": ["
       "  {\"files\": [\"**/*.test.ts\"], \"rules\": {\"no-debugger\": \"off\", "
@@ -156,7 +156,7 @@ TEST(lint_config, presets_and_overrides_layer_in_order)
   REQUIRE(optional->setting != nullptr);
   CHECK_EQ(std::string(optional->setting->at(1)->asString()), "opt");
 
-  Fixture all("{\"extends\": \"fastlint:all\"}");
+  Fixture all("{\"extends\": \"lintrix:all\"}");
   REQUIRE(all.ok);
   CHECK_EQ(std::string(all.severityOf("x.ts", kOptional)), "error");
   Fixture unknown("{\"extends\": \"eslint:recommended\"}");
@@ -244,7 +244,7 @@ TEST(lint_config, plugin_rules_are_skipped_and_typos_still_warn)
 
 TEST(lint_config, binary_is_validated_and_left_to_the_npm_cli)
 {
-  Fixture f("{\"binary\": \"./node_modules/.bin/fastlint\", \"rules\": {}}");
+  Fixture f("{\"binary\": \"./node_modules/.bin/lintrix\", \"rules\": {}}");
   CHECK(f.ok);
   Fixture bad("{\"binary\": true}");
   CHECK(!bad.ok);
@@ -252,7 +252,7 @@ TEST(lint_config, binary_is_validated_and_left_to_the_npm_cli)
 
   // A key neither side reads is left alone, so an older binary reads a config
   // written for a newer one.
-  Fixture forward("{\"$schema\": \"./fastlint.config.schema.json\", \"future\": 1}");
+  Fixture forward("{\"$schema\": \"./lintrix.config.schema.json\", \"future\": 1}");
   CHECK(forward.ok);
 }
 

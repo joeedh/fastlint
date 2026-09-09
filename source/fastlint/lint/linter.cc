@@ -426,7 +426,7 @@ void Linter::lintFile(const syntax::GrammarTree &tree,
       d.start = directive.offset;
       d.end = directive.offset + directive.length;
       d.message = copy("Unused ");
-      append(d.message, directive.eslint ? "eslint" : "fastlint");
+      append(d.message, directive.eslint ? string_view("eslint") : kDirectivePrefix);
       append(d.message, "-disable directive (no problems were reported");
       if (!directive.rule.empty()) {
         append(d.message, " from '");

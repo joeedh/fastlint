@@ -2177,7 +2177,7 @@ private:
     case NodeKind::Error:
       break;
     default:
-      put("/* fastlint: cannot print ");
+      put("/* lintrix: cannot print ");
       put(kindName(n->kind));
       put(" */");
       break;

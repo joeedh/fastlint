@@ -12,22 +12,22 @@ interface Args extends PresetArgs {
 
 export const command: CommandModule<object, Args> = {
   command : "run [args..]",
-  describe: "build, then run fastlint with the remaining arguments",
+  describe: "build, then run lintrix with the remaining arguments",
   builder: (yargs) =>
     // Without this, everything after `--` lands in argv["--"] rather than in
-    // the `args` positional, so `run -- --version` would reach fastlint empty.
+    // the `args` positional, so `run -- --version` would reach lintrix empty.
     presetOptions(yargs)
-      // fastlint's own flags are not make.ts's to validate.
+      // lintrix's own flags are not make.ts's to validate.
       .strict(false)
       .parserConfiguration({ "populate--": false, "unknown-options-as-args": true })
       .positional("args", {
         array   : true,
-        describe: "arguments passed through to fastlint",
+        describe: "arguments passed through to lintrix",
       }) as never,
   handler: async (argv) => {
     const preset = resolvePreset(argv);
     await buildPreset(preset, { target: "fastlint" });
-    const exe = path.join(buildDir(preset), "bin", `fastlint${exeSuffix}`);
+    const exe = path.join(buildDir(preset), "bin", `lintrix${exeSuffix}`);
     // With `populate--` off, tokens after `--` land in `_` behind the command
     // name rather than in the positional.
     const extra = (argv._ ?? []).slice(1).map(String);

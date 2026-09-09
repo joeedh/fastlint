@@ -139,8 +139,8 @@ rules on a recovered tree is possible but off until a use case asks for it.
 
 lint/directives.h reads every comment in the grammar tree's trivia.
 
-- `// fastlint-disable-line [rules]`, `// fastlint-disable-next-line
-  [rules]`, `/* fastlint-disable [rules] */`, `/* fastlint-enable [rules]
+- `// lintrix-disable-line [rules]`, `// lintrix-disable-next-line
+  [rules]`, `/* lintrix-disable [rules] */`, `/* lintrix-enable [rules]
   */`. Rules are comma separated; a ` -- justification` tail is ignored.
 - The `eslint-` spellings are accepted as aliases (config
   `eslintDirectives`, default true). This is the answer to the "ESLint
@@ -150,7 +150,7 @@ lint/directives.h reads every comment in the grammar tree's trivia.
 - A directive naming a rule the registry does not know is dropped when
   spelled `eslint-` (it belongs to a plugin we do not implement) and
   reported as "Definition for rule 'x' was not found." when spelled
-  `fastlint-`.
+  `lintrix-`.
 - A line directive in a block comment that spans lines is an error, as in
   ESLint.
 - Block directives replay as a state machine over the diagnostics in source
@@ -163,17 +163,17 @@ lint/directives.h reads every comment in the grammar tree's trivia.
 
 ## Config
 
-`fastlint.config.json` is the on-disk shape both consumers agree on. The native
+`lintrix.config.json` is the on-disk shape both consumers agree on. The native
 binary parses it in C++ (lint/config.cc) and finds it by walking up from the
-working directory (`Config::find`). The npm CLI compiles a `fastlint.config.ts`
+working directory (`Config::find`). The npm CLI compiles a `lintrix.config.ts`
 or `.js` down to the same JSON, because the native binary runs no JavaScript
-(task 8.2). schema/fastlint.config.schema.json validates the shape in an editor.
+(task 8.2). schema/lintrix.config.schema.json validates the shape in an editor.
 
 ```json
 {
-  "$schema": "./node_modules/fastlint/schema/fastlint.config.schema.json",
-  "extends": ["fastlint:recommended"],
-  "plugins": { "acme": "@acme/fastlint-rules" },
+  "$schema": "./node_modules/lintrix/schema/lintrix.config.schema.json",
+  "extends": ["lintrix:recommended"],
+  "plugins": { "acme": "@acme/lintrix-rules" },
   "rules": {
     "no-debugger": "error",
     "eqeqeq": ["error", "always"],
@@ -189,7 +189,7 @@ or `.js` down to the same JSON, because the native binary runs no JavaScript
   ],
   "reportUnusedDisableDirectives": "warn",
   "eslintDirectives": true,
-  "binary": "./node_modules/.bin/fastlint"
+  "binary": "./node_modules/.bin/lintrix"
 }
 ```
 
@@ -212,12 +212,12 @@ or `.js` down to the same JSON, because the native binary runs no JavaScript
   the same config with `plugins`, `binary` and every plugin rule taken out, since
   it runs those itself (`nativeConfig` in plugin/ts/compile.ts). Everything else
   is copied through, including a key this version does not know.
-- That document is generated, named `.fastlint.native.json`, and written next to
+- That document is generated, named `.lintrix.native.json`, and written next to
   the config it came from, because globs and tsconfig paths anchor at the config
   file's directory. Add it to the project's ignore file rather than committing
   it.
 - The native binary skips a plugin rule on its own as well, which is what a
-  hand-written config run through `fastlint lint` needs.
+  hand-written config run through `lintrix lint` needs.
 - `project`, `projects` and the two directive settings are native-only, because
   an embedding has neither a tsgo process nor directive handling
   (docs/embedding.md).
@@ -231,8 +231,8 @@ or `.js` down to the same JSON, because the native binary runs no JavaScript
   an array whose first element is the severity and whose remaining elements
   are the rule's options. A bare severity in a later layer keeps the options
   an earlier layer gave.
-- `extends` names presets: `fastlint:recommended` (every rule with
-  `recommended` set, at error) and `fastlint:all`. Presets fill the base
+- `extends` names presets: `lintrix:recommended` (every rule with
+  `recommended` set, at error) and `lintrix:all`. Presets fill the base
   layer before `rules`, and they name native rules only.
 - `overrides` apply in order to the files their globs match; `files` may be
   one glob or a list. Globs (lint/glob.h) support `*`, `?`, `**` and
@@ -275,7 +275,7 @@ rule without hiding a typo.
 - `acmee/no-foo` names a prefix nothing declares, so it is unknown and warns. A
   misspelled prefix reads exactly like a misspelled rule.
 - `no-debuger` is unknown and warns.
-- `fastlint lint` notes on stderr how many plugin rules it skipped and names
+- `lintrix lint` notes on stderr how many plugin rules it skipped and names
   them, counting only the ones a layer turns on. A rule that ran nothing in
   silence would look like a rule that found nothing.
 
@@ -287,7 +287,7 @@ settings and whether the file is ignored.
 ### Plugins
 
 - `plugins` maps a prefix to a JavaScript module specifier: a package name
-  (`@acme/fastlint-rules`) or a path relative to the config file
+  (`@acme/lintrix-rules`) or a path relative to the config file
   (`./rules/index.ts`).
 - The map holds a specifier rather than a plugin object, as ESLint's flat config
   does. JSON cannot carry an imported object, and both sides read the same file.
@@ -310,7 +310,7 @@ settings and whether the file is ignored.
   is an optimization rather than a requirement (task 8.3).
 - The native binary checks the item's type and otherwise leaves it alone, so one
   config reports the same errors whichever side reads it.
-- The CLI hands it the run's config as `.fastlint.native.json`, written beside
+- The CLI hands it the run's config as `.lintrix.native.json`, written beside
   the config it was compiled from and passed with `--config`. It goes there
   because `overrides` globs, `ignores` and `project` paths all anchor at the
   config file's directory, and a document read from anywhere else would resolve
@@ -322,21 +322,21 @@ settings and whether the file is ignored.
 
 ### Editor validation and typed authoring
 
-- schema/fastlint.config.schema.json is a draft-07 JSON Schema over the shape
-  above. Point at it with a `$schema` member, or map `fastlint.config.json` to
+- schema/lintrix.config.schema.json is a draft-07 JSON Schema over the shape
+  above. Point at it with a `$schema` member, or map `lintrix.config.json` to
   it in the editor's own settings (`json.schemas` in VS Code).
 - `defineConfig` (plugin/ts/schema.ts) is the typed wrapper for a
-  `fastlint.config.ts` or `.js`: an identity helper over `FastlintConfigFile`,
+  `lintrix.config.ts` or `.js`: an identity helper over `LintrixConfigFile`,
   the TypeScript mirror of this shape. A TypeScript config is worth writing for
   the type checking, the comments and the computed values; it is compiled to
   JSON before the native binary sees it.
 - `node make.ts config [file]` prints what a config compiles to.
-  `--out <path>` writes it, so a `.ts` config becomes the `fastlint.config.json`
+  `--out <path>` writes it, so a `.ts` config becomes the `lintrix.config.json`
   the native binary reads, and `--native` emits the handoff document instead. An
   `--out` naming a directory takes the usual filename inside it, so
-  `--native --out .` writes `.fastlint.native.json` here.
+  `--native --out .` writes `.lintrix.native.json` here.
   The config is found by walking up from the working directory, preferring
-  `fastlint.config.ts` over `.mts`, `.js`, `.mjs` and `.json`.
+  `lintrix.config.ts` over `.mts`, `.js`, `.mjs` and `.json`.
 - The loader (plugin/ts/config.ts) reads either form: a `.json` config is parsed
   and validated, and a module config is imported and its default export
   validated the same way. The messages match the native parser's, so a config
@@ -366,7 +366,7 @@ lint/format.h has three formatters over `FileResult`s.
   when the suggestion carries one, so an editor applies a chosen suggestion by
   the range and text without re-running the linter.
 - `formatSarif` writes a SARIF 2.1.0 log for CI and code-scanning tools: one
-  `run` whose `tool.driver` names fastlint, its version and every reported
+  `run` whose `tool.driver` names lintrix, its version and every reported
   rule once (`id`, `helpUri`, `shortDescription`), and whose `results` carry
   each diagnostic's `ruleId`, `ruleIndex` into that list, `level` (error,
   warning or note), `message.text`, and a `physicalLocation` with the file
@@ -377,15 +377,15 @@ lint/format.h has three formatters over `FileResult`s.
 ## Command line
 
 ```
-fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
+lintrix lint [--config <file>] [--no-config] [--rule <name:severity>]...
               [--project <tsconfig>] [--type-stats] [--fix]
               [--format pretty|json|sarif] [--color|--no-color] [--quiet]
               [--no-cache] [--cache-dir <dir>] [--max-warnings N] <file|dir>...
 ```
 
-- `fastlint --init` writes a starter `fastlint.config.json` in the current
-  directory, extending `fastlint:recommended`, and refuses to overwrite an
-  existing one. `fastlint --help` lists the commands; `fastlint lint --help`
+- `lintrix --init` writes a starter `lintrix.config.json` in the current
+  directory, extending `lintrix:recommended`, and refuses to overwrite an
+  existing one. `lintrix --help` lists the commands; `lintrix lint --help`
   lists these options.
 - With no config file and no `--rule`, the recommended preset applies.
 - Type-aware rules need the tsconfig that owns each file. One `tsc --api`
@@ -421,15 +421,15 @@ fastlint lint [--config <file>] [--no-config] [--rule <name:severity>]...
 
 ### The npm CLI
 
-The `fastlint` command the npm package installs (plugin/ts/cli.ts) is the front
+The `lintrix` command the npm package installs (plugin/ts/cli.ts) is the front
 end that runs plugin rules, since the native binary has no JavaScript engine.
 
 ```
-fastlint [--config <file>] [--format pretty|json] [--engine auto|native|wasm]
+lintrix [--config <file>] [--format pretty|json] [--engine auto|native|wasm]
          [--concurrency N] [--max-warnings N] [--quiet] [--color|--no-color]
          <file|dir>...
-fastlint config [--native] [--out <path>]
-fastlint --init
+lintrix config [--native] [--out <path>]
+lintrix --init
 ```
 
 - It resolves the config the way `node make.ts config` does, runs the built-in
@@ -439,8 +439,8 @@ fastlint --init
 - The formatters, the severities and the exit codes match the native CLI's, so a
   script reading either one reads the same thing. `--format json` prints the
   same ESLint-shaped array.
-- `fastlint config` prints the resolved JSON, and `--native` the handoff
-  document. `fastlint --init` writes the starter `fastlint.config.json`, with a
+- `lintrix config` prints the resolved JSON, and `--native` the handoff
+  document. `lintrix --init` writes the starter `lintrix.config.json`, with a
   `$schema` pointing into `node_modules`.
 - Options the native binary has and this one does not (`--fix`, `--rule`,
   `--project`, `sarif`) are not refusals; they are unimplemented here.
@@ -453,23 +453,23 @@ running the rules when nothing that affects the result has changed
 
 - A file is fresh when its content hash, its import-closure hash (the resolved
   relative imports, via `loadClosure`) and an environment hash all match the
-  stored record. The environment hash folds in the fastlint version, the
+  stored record. The environment hash folds in the lintrix version, the
   config, every tsconfig the run resolved and `pnpm-lock.yaml`, so any of them
   changing re-lints every file.
 - One JSON payload per file holds every diagnostic (lint/result_cache.h),
   keyed by a sentinel rule name. A JSON run stores its fix ranges under a
   separate key, so `--format json` and the other formats each cache.
-- The cache is on by default, stored at `node_modules/.cache/fastlint/lint.db`
+- The cache is on by default, stored at `node_modules/.cache/lintrix/lint.db`
   when a `node_modules` directory exists; `--cache-dir <dir>` sets the location
   and `--no-cache` disables it. `--fix` and a file the type server could not
   type are never cached.
-- The `Store` also keys on the fastlint version, so an upgrade rebuilds it.
-  `fastlint cache verify [--cache-dir <dir>]` runs the store's integrity and
+- The `Store` also keys on the lintrix version, so an upgrade rebuilds it.
+  `lintrix cache verify [--cache-dir <dir>]` runs the store's integrity and
   dangling-reference checks.
 
 ## Testing a rule
 
-`testing/rule_tester.h` (library `fastlint_rule_tester`) is shaped like
+`testing/rule_tester.h` (library `lintrix_rule_tester`) is shaped like
 ESLint's `RuleTester`:
 
 ```cpp

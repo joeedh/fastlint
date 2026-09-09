@@ -1,4 +1,4 @@
-# fastlint — Master Task List
+# lintrix — Master Task List
 
 Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 See `docs/STRATEGY.md` for the design each task implements.
@@ -75,7 +75,7 @@ one command.
 - [x] `deps` — submodule init/update; `deps fetch <name>` clones a pinned
   external into `vendor/`. DTL is registered; sqlite and msgpack are added
   with the tasks that need them.
-- [x] `run [args…]` — build then run `fastlint` with args.
+- [x] `run [args…]` — build then run `lintrix` with args.
 - [x] `parse-diff [--corpus …] [--filter x] [--limit N] [--jsx] [--top N]
   [--show N] [--no-build] [--no-report]` — tsgo differential harness
   (task 3.4).
@@ -103,9 +103,9 @@ one command.
 - [x] `make.ts` flags `--asan` / `--preset clang-asan` on `configure`,
   `build`, `test`, `check`; runner exports `ASAN_OPTIONS` defaults; verify
   `clang_rt.asan_dynamic-x86_64.dll` resolves from the cached vcvars env.
-- [x] `source/` layout: `fastlint/` (lib), `cli/` (exe), `tests/`.
+- [x] `source/` layout: `lintrix/` (lib), `cli/` (exe), `tests/`.
 - [x] Warnings-as-errors on our code, not on vendor.
-- [x] Hello-world `fastlint.exe` builds and runs via `node make.ts run`.
+- [x] Hello-world `lintrix.exe` builds and runs via `node make.ts run`.
 
 ### 1.4 CI-ish sanity
 - [x] `node make.ts check [--asan] [--all]` = format --check + build + C++
@@ -136,7 +136,7 @@ one command.
 - [x] Crash handler: unhandled-exception filter prints test name, subcase
   path, `platform::getStackTrace()`; `--isolate` parent records and
   continues.
-- [x] CMake `add_fastlint_test()` macro; per-suite ctest registration from
+- [x] CMake `add_lintrix_test()` macro; per-suite ctest registration from
   `--list`.
 - [x] `make.ts test` aggregates `--json` from every test exe; `--ts` runs
   `node --test`.
@@ -318,7 +318,7 @@ Still open in 3.2:
     an alias, `import type x = require()`, `global { }` augmentations
     inside ambient modules, call/construct signatures in type literals,
     `bigint` as a type keyword and as a name, `accessor` as a name.
-  - [x] Corpus sweep (`fastlint parse <dir>`, see docs/debugging.md) over
+  - [x] Corpus sweep (`lintrix parse <dir>`, see docs/debugging.md) over
     4477 files of a real project incl. node_modules: every non-JSX file
     parses without diagnostics. Found on 2026-09-04: the scanner looped on
     a UTF-8 BOM (any non-ASCII character that cannot start a name produced
@@ -413,12 +413,12 @@ Still open in 3.2:
   plus `source/tests/ts_sources`; `FASTLINT_TYPESCRIPT_REPO` overrides the
   checkout. Full run is about 10 s.
   - [x] tsgo side: tools/parse-diff/tsgo-dump.go, built with
-    `go build -overlay` as a virtual `cmd/fastlint-dump` inside the tsc
+    `go build -overlay` as a virtual `cmd/lintrix-dump` inside the tsc
     module so it can import `internal/parser` without touching that
     checkout; binary cached at `.cache/parse-diff/tsgo-dump.exe`. Reads
     paths on stdin, prints `(Kind start end` per node via `ForEachChild`
     with `SkipTrivia` starts.
-  - [x] Our side: `fastlint dump-tree --spans --batch <list>`; both dumps
+  - [x] Our side: `lintrix dump-tree --spans --batch <list>`; both dumps
     stream through tools/parse-diff/sexp.ts.
   - [x] tools/parse-diff/compare.ts reports one first mismatch per file,
     bucketed by `Parent > Expected != Actual` signature; full list in
@@ -456,7 +456,7 @@ Still open in 3.2:
   - [ ] Error-recovery shape differences in deliberately invalid tests
     (tagged `[invalid input]` in mismatches.txt). Not a goal to match
     exactly; count them but do not chase.
-- [x] Perf benchmark: `node make.ts bench` runs `fastlint bench` (release
+- [x] Perf benchmark: `node make.ts bench` runs `lintrix bench` (release
   preset, files read up front, best of `--repeat`), stores JSON under
   .cache/bench/, `--save <name>` / `--compare <name>` for baselines.
   2026-09-05, tsgo test corpus (12874 files, 8.3 MB): 28 MB/s. The corpus
@@ -510,7 +510,7 @@ before implementation.** Deliverable: `docs/ast-design.md` (signed off
   (2026-09-06; `node make.ts gen-ast`, `--check` runs in `make.ts check`).
   Later the C header and TS views for task 7.
   - [x] Dump format on top of the tables (`ast/dump.cc`, 2026-09-06).
-    - [x] `fastlint dump-ast [--errors] [--bindings] <file>` subcommand
+    - [x] `lintrix dump-ast [--errors] [--bindings] <file>` subcommand
       (2026-09-06).
 - [x] `Node`, `AstFile`, `util::Pool<Node, 256>`, `GrammarRef` (2026-09-06).
 - [x] Lowering pass from the grammar tree (`ast/lower.cc`, 2026-09-06):
@@ -618,7 +618,7 @@ the pieces. Tests: `tsgo_json_test`, `tsgo_msgpack_test`,
   our nodes with tsgo indices by span: same `end`, the largest tsgo `pos` not
   past our `start`, and the k-th of a same-span run. Error and zero-width
   nodes stay unmapped.
-  - [x] Measured with `fastlint cache-bench --unmapped` on visualnovel (541
+  - [x] Measured with `lintrix cache-bench --unmapped` on visualnovel (541
     files, 378k expression nodes): 80% unmapped at first, because tsgo spans
     are UTF-16 code units over BOM-stripped text while ours are UTF-8 bytes.
     `Utf16Offsets` converts; 0.6% remain (`constructor`/`new` keyword
@@ -706,14 +706,14 @@ it. Tests: `types_graph_test` (fast) and `types_facts_test` (`[integration]`).
 - [x] Rule-result replay for unchanged (file, closure):
   `FileCache::ruleResult`/`saveRuleResult` over `rule_results`.
   - [x] Wired `FileCache` into the `lint` command (6.1); the environment hash
-    folds in the fastlint version, config, every resolved tsconfig and the
+    folds in the lintrix version, config, every resolved tsconfig and the
     lockfile so package upgrades invalidate.
 - [ ] v2 per-type provenance (decl file hashes per type row) — after v1 is
   measured on a real monorepo.
 
 ### 5.5 Measurement
 - [x] Cold vs warm run timings on a real project; memory high-water mark;
-  cache size on disk. `fastlint cache-bench` (docs/type-cache.md
+  cache size on disk. `lintrix cache-bench` (docs/type-cache.md
   "Measurement"); visualnovel, 541 files, release: cold 11.5 s, warm 1.3 s,
   peak working set 97 MB, database 31 MB, 377k node types.
   - [x] Found and fixed three quadratic litestl string appends (file read,
@@ -750,14 +750,14 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     a suggestion; an editor applies the range and text.
 - [x] Dispatch: single tree walk, per-kind callback lists — no per-rule
   traversal. One `ast::Dispatcher` over every enabled rule's listeners.
-- [x] Config: `fastlint.config.json`; severity; per-rule options;
-  overrides by glob; `extends` presets (`fastlint:recommended`, `fastlint:all`);
+- [x] Config: `lintrix.config.json`; severity; per-rule options;
+  overrides by glob; `extends` presets (`lintrix:recommended`, `lintrix:all`);
   `ignores`; `--rule name:severity` on the command line.
-  - [ ] `fastlint.config.ts` (needs Node to evaluate; with task 7).
+  - [ ] `lintrix.config.ts` (needs Node to evaluate; with task 7).
   - [x] Glob matching ignores case on Windows (case-sensitive elsewhere), via a
     `caseInsensitive` flag on `globMatch` that `Config::resolve` sets from the
     platform; the path is already normalized to forward slashes before matching.
-- [x] Disable directives: `// fastlint-disable[-next-line] rule`, and
+- [x] Disable directives: `// lintrix-disable[-next-line] rule`, and
   `// eslint-disable*` compatibility (decided: accepted as aliases, see
   docs/STRATEGY.md). Unused directives reported (`reportUnusedDisableDirectives`).
 - [x] Output: pretty terminal (stylish-shaped), `--format json` (ESLint-shaped).
@@ -773,13 +773,13 @@ Goal: enough rules to lint a real project; rule API proven for task 7.
     code point, two for an astral one).
 - [x] Rule test harness: `valid`/`invalid` cases with expected messages and
   fixer output (`testing/rule_tester.h`, `runRuleTests`).
-- [x] `fastlint lint` command: config discovery, `--fix`, `--format`,
+- [x] `lintrix lint` command: config discovery, `--fix`, `--format`,
   `--quiet`, `--max-warnings`; exit codes as ESLint.
   - [x] Wired `FileCache`, `--no-cache`, `--cache-dir` and `cache verify` into
     the command. A file replays its diagnostics from a SQLite store when its
     content, closure and environment hashes match; one JSON payload per file
     (lint/result_cache.cc), keyed so JSON fix ranges cache separately. On by
-    default at `node_modules/.cache/fastlint/lint.db`; `--fix` and untyped
+    default at `node_modules/.cache/lintrix/lint.db`; `--fix` and untyped
     files are not cached.
   - [x] Type server start-up for type-aware rules: one `tsgo` server through
     `types::ProjectTypes`, which serves the linter's text to the server so
@@ -1081,7 +1081,7 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   visitor and an `is`-narrowed member read); `runtime.smoke.ts` runs them
   through the built addon under `build --napi --smoke`.
 - [x] Rule loading from a config (`plugin/ts/config.ts`): `loadConfig` imports
-  a `fastlint.config.ts` (or `.js`/`.mjs`) and reads its `rules`; `defineConfig`
+  a `lintrix.config.ts` (or `.js`/`.mjs`) and reads its `rules`; `defineConfig`
   type-checks the literal. A rule is just a value the config imports, so there
   is no plugin-resolution protocol beyond `import`. `plugin/ts/index.ts` is the
   package surface a host wraps the `.node` addon with; `example.config.ts` is a
@@ -1122,9 +1122,9 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   entry a playground calls.
 
 ### 7.4 Ecosystem
-- [x] `create-fastlint-rule` template, docs, example rules. `node make.ts
+- [x] `create-lintrix-rule` template, docs, example rules. `node make.ts
   new-rule <name> [--selector <NodeKind>] [--out]` scaffolds a `Rule` module
-  from the `fastlint` package surface (`tools/make/new-rule.ts`). Ported
+  from the `lintrix` package surface (`tools/make/new-rule.ts`). Ported
   examples live in `plugin/ts/rules/`: `no-debugger`/`no-console`, `no-var`
   (enum field), `eqeqeq` (enum + `{{data}}`), `no-empty` (list child); they read
   the generated views only, so they run under either embedding. The writing-a-
@@ -1141,8 +1141,8 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
 ## 8. Unified config and the npm package
 
 Goal: one config schema read by the native binary and by a JavaScript loader,
-and a publishable `fastlint` npm package that resolves
-`fastlint.config.{ts,js,json}`, drives the native binary when one is present,
+and a publishable `lintrix` npm package that resolves
+`lintrix.config.{ts,js,json}`, drives the native binary when one is present,
 and falls back to a bundled WASM build when one is not. Format unification only;
 a single command that runs native and plugin rules together
 (execution unification) stays a later decision.
@@ -1164,10 +1164,10 @@ reader (it has no JS engine), and the JS side compiles `.ts`/`.js` down to it.
   namespaced rule it has no registry entry for, rather than reporting it unknown
   (`lint::Config` already gathers `m_unknownRules`; teach it the prefix
   distinction so a typo still warns).
-- [x] Add a `binary` item naming the native fastlint executable the npm CLI
+- [x] Add a `binary` item naming the native lintrix executable the npm CLI
   should drive when present. The WASM fallback (task 8.3) runs when it is absent
   or cannot be resolved, so the item is an optimization, not a requirement.
-- [x] Ship a JSON Schema so an editor validates `fastlint.config.json`
+- [x] Ship a JSON Schema so an editor validates `lintrix.config.json`
   directly. `defineConfig` stays the typed authoring wrapper for `.ts`/`.js`.
 - [x] Document the schema in docs/rules.md "Config", marking which keys are
   native-only (the presets resolve against the C++ registry) and which the
@@ -1175,11 +1175,11 @@ reader (it has no JS engine), and the JS side compiles `.ts`/`.js` down to it.
   compatibility surface" item.
 
 ### 8.2 Config compiler (the JS loader)
-The package's core: read `fastlint.config.{ts,js,json}` and emit schema-valid
+The package's core: read `lintrix.config.{ts,js,json}` and emit schema-valid
 JSON.
 - [x] A loader that imports a `.ts`/`.js` config (reusing the dynamic import in
   `plugin/ts/config.ts`) or reads a `.json` one, resolves it to the 8.1 schema,
-  and writes or streams `fastlint.config.json`. A `.json` input passes through
+  and writes or streams `lintrix.config.json`. A `.json` input passes through
   after validation.
 - [x] Resolve `plugins` specifiers to rule objects at compile time. The JSON the
   native binary receives carries only resolved native rules; plugin rules are
@@ -1188,19 +1188,19 @@ JSON.
   `options`, and `lint()` takes resolved `(rule, severity, options)` tuples
   rather than a bare `Rule[]`. It skips a rule set to `off`, tags each message
   with its severity, and applies `overrides`/`ignores` per file.
-- [x] A `fastlint config` subcommand (or `node make.ts` task) that prints the
+- [x] A `lintrix config` subcommand (or `node make.ts` task) that prints the
   resolved JSON, for debugging and for the `--config` handoff to the native
   binary. Landed as `node make.ts config [file] [--native] [--out <path>]`; the
   npm CLI grows the same command in 8.3.
-  - [x] The native handoff document is `.fastlint.native.json`
+  - [x] The native handoff document is `.lintrix.native.json`
     (`nativeConfigPath`), written beside the config it came from, since globs and
     tsconfig paths anchor at the config file's directory. 8.3 settled on keeping
-    it there rather than adding an anchor flag to `fastlint lint`: the anchor a
+    it there rather than adding an anchor flag to `lintrix lint`: the anchor a
     flag would name is always the config's own directory, so the flag would carry
     no information. .gitignore lists the name.
 
-### 8.3 The npm `fastlint` package
-- [x] A publishable package: a `package.json` with `bin` (the `fastlint` CLI),
+### 8.3 The npm `lintrix` package
+- [x] A publishable package: a `package.json` with `bin` (the `lintrix` CLI),
   `exports` (the rule and config surface `index.ts` already sketches), and
   `files`, with `private` dropped. It needs a build, because the sources import
   `../generated/ts/views.ts` with `.ts` extensions and ship no compiled JS
@@ -1208,7 +1208,7 @@ JSON.
   those specifiers; `node make.ts pack [--wasm] [--smoke]` builds it and
   `prepack` runs it.
 - [x] Bundle the WASM build (`build/wasm/bin/fastlint.js` plus its `.wasm`) in
-  the package as the fallback engine, so `npm i fastlint` lints with no native
+  the package as the fallback engine, so `npm i lintrix` lints with no native
   binary installed. `pack` copies the `wasm-release` module to `dist/wasm/` and
   warns when it falls back to the debug one.
   - [x] `embed::lintTextWithConfig` and `fl_wasm_lint_config`, so the fallback
@@ -1230,8 +1230,8 @@ JSON.
   "Distributing the native binary" records this.
 - [x] A release process. `node make.ts release <major|minor|patch|X.Y.Z>` runs
   the gates, bumps package.json and `source/fastlint/version.cc` together,
-  builds `pack --wasm`, writes `build/release/fastlint-<version>.tgz`, installs
-  that tarball in a throwaway project and lints through the linked `fastlint`
+  builds `pack --wasm`, writes `build/release/lintrix-<version>.tgz`, installs
+  that tarball in a throwaway project and lints through the linked `lintrix`
   command, then tags, pushes and creates the GitHub release. `node make.ts
   publish` sends the same tarball to npm, kept a separate command because it is
   the only irreversible step. `--dry-run` on either stops short of it.
@@ -1250,7 +1250,7 @@ JSON.
   component: `dump-tokens`, `dump-tree`, `dump-ast`, `--trace-parser`,
   `--trace-tsgo`, `--trace-fixes`, `cache inspect/verify`, `--explain`,
   `--timing`, `--trace-json`, `--alloc-stats`).
-- [x] Fuzz harness for the parser (2026-09-05): `fastlint fuzz` mutates
+- [x] Fuzz harness for the parser (2026-09-05): `lintrix fuzz` mutates
   files at token level (delete/duplicate/replace/swap tokens, insert
   fragments, truncate, flip bytes, insert or overwrite with random bytes)
   and, for one case in twelve, feeds random data (arbitrary bytes, NULs,
@@ -1273,7 +1273,7 @@ JSON.
   - [ ] Promote minimized cases to fixtures automatically.
 - [x] `make.ts bench` with JSON baselines and `--compare`.
 - [x] `README.md` — what/why, quickstart, `make.ts` commands (8.3 restructured
-  it to lead with `npm i -D fastlint`).
+  it to lead with `npm i -D lintrix`).
 - [ ] `CLAUDE.md` — repo conventions (build, style, layout), pointing at
   docs/STRATEGY.md and this list.
 - [ ] Bench suite (`node make.ts bench`) tracking parse MB/s, lint files/s,

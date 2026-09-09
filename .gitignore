@@ -11,8 +11,8 @@ vendor/sqlite/
 # The emscripten SDK, installed on demand by `node make.ts deps fetch emsdk`.
 vendor/emsdk/
 
-# The native handoff config, generated beside a fastlint config.
-.fastlint.native.json
+# The native handoff config, generated beside a lintrix config.
+.lintrix.native.json
 
 # The publishable package, built by `node make.ts pack`.
 dist/

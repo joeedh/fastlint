@@ -117,7 +117,7 @@ real monorepo.
 
 ## Measurement
 
-`fastlint cache-bench [--cache <db>] [--limit N] [--keep] [--json] [--unmapped]
+`lintrix cache-bench [--cache <db>] [--limit N] [--keep] [--json] [--unmapped]
 <tsconfig>` (source/cli/cache_bench.cc) runs a cold pass from an empty
 database and a warm pass over the same one. Each pass opens the project in
 tsgo, lists its source files with `getSourceFileNames`, loads their import

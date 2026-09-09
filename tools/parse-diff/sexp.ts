@@ -1,5 +1,5 @@
 // Streams the S-expression dumps both parsers print (see tsgo-dump.go and
-// `fastlint dump-tree --spans --batch`) into trees, one callback per file.
+// `lintrix dump-tree --spans --batch`) into trees, one callback per file.
 
 import readline from "node:readline";
 import type { Readable } from "node:stream";
@@ -8,9 +8,9 @@ export interface TreeNode {
   kind: string;
   start: number;
   end: number;
-  /** Set on fastlint nodes flagged `missing` (a required node that was absent). */
+  /** Set on lintrix nodes flagged `missing` (a required node that was absent). */
   missing?: boolean;
-  /** Set on fastlint nodes flagged `default` (`export default …`). */
+  /** Set on lintrix nodes flagged `default` (`export default …`). */
   isDefault?: boolean;
   children: TreeNode[];
 }
@@ -23,7 +23,7 @@ export interface FileResult {
   diagnostics?: number;
 }
 
-// `(Kind start end` from tsgo, `(Kind@start-end ...` from fastlint.
+// `(Kind start end` from tsgo, `(Kind@start-end ...` from lintrix.
 const openLine = /^\s*\((\S+?)(?:@(\d+)-(\d+)| (\d+) (\d+))?(?:\s|$)/;
 const missingFlag = /^\s*\(\S+ :[^"]* missing(?: |$)/;
 const defaultFlag = /^\s*\(\S+ :[^"]* default(?: |$)/;

@@ -28,22 +28,22 @@ module, the shared `embed::lintText` entry point) are in docs/embedding.md.
   overrides the output path, which is `<name>.ts` in the current directory
   otherwise. The command refuses to overwrite an existing file, and prints the
   `import` line to add to a config.
-- `node make.ts new-rule --init` writes a starter `fastlint.config.ts` instead of
+- `node make.ts new-rule --init` writes a starter `lintrix.config.ts` instead of
   a rule: a `plugins` entry pointing at `./rules/index.ts` and an empty `rules`
   map. It honors `--out` and refuses to overwrite, and `--init` with a `<name>`
   is rejected. `node make.ts new-rule --help` lists every option with an example
   of each.
-- The starters import from the `fastlint` package surface, so they stand on
+- The starters import from the `lintrix` package surface, so they stand on
   their own outside this repository.
 
 ## The rule shape
 
 A rule is the `Rule` interface from `plugin/ts/runtime.ts`, re-exported from the
-`fastlint` package surface.
+`lintrix` package surface.
 
 ```ts
-import { NodeKind } from "fastlint";
-import type { Rule } from "fastlint";
+import { NodeKind } from "lintrix";
+import type { Rule } from "lintrix";
 
 export const noDebugger: Rule = {
   name: "no-debugger",
@@ -131,7 +131,7 @@ reference for which fields a kind has.
 - In-repo rules under `plugin/ts/rules/` import both the runtime and the field
   enums from the generated module. `no-var` reads `VariableKind.Var`, `eqeqeq`
   reads `BinaryOperator.Equal` and `BinaryOperator.NotEqual`.
-- The `fastlint` package surface re-exports `NodeKind`, `kindNames`, `Node`,
+- The `lintrix` package surface re-exports `NodeKind`, `kindNames`, `Node`,
   `Rule`, `RuleContext`, `defineConfig`, the config loader and the driver. A rule that needs a
   field enum an external package does not yet re-export imports it from the
   generated views module directly.
@@ -162,7 +162,7 @@ export default {
 - The key in the map is the name the config spells after the prefix, and the
   rule's own `name` is what the rule tester and the message list use. Keeping
   them the same is the least surprising thing to do.
-- A plugin is an ordinary module, so a package (`@acme/fastlint-rules`) and a
+- A plugin is an ordinary module, so a package (`@acme/lintrix-rules`) and a
   file in the project (`./rules/index.ts`) are named the same way.
 
 ## Config
@@ -172,8 +172,8 @@ module. docs/rules.md "Config" is the schema reference; this is what a plugin
 author needs from it.
 
 ```ts
-// fastlint.config.ts
-import { defineConfig } from "fastlint";
+// lintrix.config.ts
+import { defineConfig } from "lintrix";
 
 export default defineConfig({
   plugins: { acme: "./rules/index.ts" },
@@ -205,7 +205,7 @@ export default defineConfig({
 
 ## Running the rules
 
-Three entry points run a config's rules, all from the `fastlint` surface.
+Three entry points run a config's rules, all from the `lintrix` surface.
 
 - `lint(addon, source, filename, rules)` lints one buffer and returns the flat
   problem list. It parses once, builds the node view over the session, walks the

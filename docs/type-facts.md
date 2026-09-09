@@ -149,7 +149,7 @@ implementation over one tsgo project.
   tsconfig with references or an inferred-project file get the right
   program.
 - `stats()` sums the `FactsStats` over every session; `rpcStats()` is the
-  client's call and byte counts. `fastlint lint --type-stats` prints both.
+  client's call and byte counts. `lintrix lint --type-stats` prints both.
 
 ## Not yet
 

@@ -8,7 +8,7 @@ import { buildDir, exeSuffix, repoRoot } from "./lib/paths.ts";
 import { asanEnv, isAsan } from "./lib/asan.ts";
 import { warn } from "./lib/log.ts";
 
-// Drives `fastlint fuzz` over a corpus in batches. The binary prints
+// Drives `lintrix fuzz` over a corpus in batches. The binary prints
 // `# <file> <seed>` before each mutated parse, so a sanitizer abort, an
 // invariant failure or a hang is pinned to one seed; that seed is replayed to
 // a file under build/<preset>/fuzz-failures/ and shrunk by delta debugging
@@ -54,7 +54,7 @@ export const command: CommandModule<object, Args> = {
       .option("batch", {
         type    : "number",
         default : 50,
-        describe: "files per fastlint process",
+        describe: "files per lintrix process",
       })
       .option("timeout", {
         type    : "number",
@@ -76,7 +76,7 @@ export const command: CommandModule<object, Args> = {
     if (!isAsan(preset))
       warn(`preset ${preset} has no sanitizer; memory errors go unnoticed`);
     if (argv.build) await buildPreset(preset, { target: "fastlint" });
-    const exe = path.join(buildDir(preset), "bin", `fastlint${exeSuffix}`);
+    const exe = path.join(buildDir(preset), "bin", `lintrix${exeSuffix}`);
     const env = asanEnv(preset);
     if (isAsan(preset)) {
       // Freed mutants would otherwise sit in the quarantine (256 MB by
@@ -132,7 +132,7 @@ export const command: CommandModule<object, Args> = {
         path.join(failDir, `${n}.txt`),
         [
           `${failure.kind} on ${failure.file} seed ${failure.seed}`,
-          `replay: fastlint fuzz --replay ${failure.seed} --out <path> ${failure.file}`,
+          `replay: lintrix fuzz --replay ${failure.seed} --out <path> ${failure.file}`,
           "",
           failure.report,
         ].join("\n")

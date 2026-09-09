@@ -57,7 +57,7 @@ export const command: CommandModule<object, Args> = {
       .option("build", {
         type    : "boolean",
         default : true,
-        describe: "build fastlint first",
+        describe: "build lintrix first",
       })
       .option("report", {
         type    : "boolean",
@@ -67,7 +67,7 @@ export const command: CommandModule<object, Args> = {
   handler: async (argv) => {
     const preset = resolvePreset(argv);
     if (argv.build) await buildPreset(preset, { target: "fastlint" });
-    const fastlint = path.join(buildDir(preset), "bin", `fastlint${exeSuffix}`);
+    const lintrix = path.join(buildDir(preset), "bin", `lintrix${exeSuffix}`);
     const dumper = buildDumper();
 
     const files = collectFiles(argv.corpus ?? defaultCorpus, argv);
@@ -85,7 +85,7 @@ export const command: CommandModule<object, Args> = {
     const [theirs, ours] = await Promise.all([
       runDumper(dumper, [], files.join("\n") + "\n", {}),
       runDumper(
-        fastlint,
+        lintrix,
         ["dump-tree", "--spans", "--batch", listFile],
         undefined,
         asanEnv(preset)
@@ -148,12 +148,12 @@ function buildDumper(): string {
     fs.existsSync(exe) && fs.statSync(exe).mtimeMs >= fs.statSync(dumperSource).mtimeMs;
   if (fresh) return exe;
   const overlay = path.join(workDir, "overlay.json");
-  const virtual = path.join(tsgoModule, "cmd/fastlint-dump/main.go");
+  const virtual = path.join(tsgoModule, "cmd/lintrix-dump/main.go");
   fs.writeFileSync(overlay, JSON.stringify({ Replace: { [virtual]: dumperSource } }));
   console.log("parse-diff: building tsgo-dump");
   const result = spawnSyncChecked(
     "go",
-    ["build", "-overlay", overlay, "-o", exe, "./cmd/fastlint-dump"],
+    ["build", "-overlay", overlay, "-o", exe, "./cmd/lintrix-dump"],
     tsgoModule
   );
   if (result !== 0) throw new Error("go build failed; is C:/dev/TypeScript checked out?");
@@ -222,7 +222,7 @@ function diffAll(
     if (!a?.root || !b?.root) {
       missing++;
       lines.push(
-        `${file}: no dump (${a?.error ?? "tsgo missing"} / ${b?.error ?? "fastlint missing"})`
+        `${file}: no dump (${a?.error ?? "tsgo missing"} / ${b?.error ?? "lintrix missing"})`
       );
       continue;
     }

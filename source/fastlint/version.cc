@@ -9,7 +9,7 @@ const char *version()
 
 string buildBanner()
 {
-  string banner("fastlint ");
+  string banner("lintrix ");
   banner += version();
 #if defined(_MSC_VER) && !defined(__clang__)
   banner += " (msvc)";

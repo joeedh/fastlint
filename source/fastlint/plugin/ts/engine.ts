@@ -1,6 +1,6 @@
 // The two engines that run the built-in rules (task 8.3). The native binary is
 // the fast one: the CLI writes it the handoff config and hands it the file list.
-// The WASM build bundled with the package is the fallback, so `npm i fastlint`
+// The WASM build bundled with the package is the fallback, so `npm i lintrix`
 // lints with no native binary installed. Both answer in the ESLint-shaped JSON
 // `--format json` prints, so the CLI merges either one with the plugin results.
 
@@ -78,7 +78,7 @@ export function resolveBinary(compiled: CompiledConfig): string | undefined {
     }
     return onPath(named);
   }
-  return onPath("fastlint");
+  return onPath("lintrix");
 }
 
 /** The bundled WASM module, or undefined when this checkout has not built one.

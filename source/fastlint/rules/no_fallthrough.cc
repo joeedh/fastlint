@@ -97,7 +97,7 @@ void create(RuleContext &ctx)
     options->pattern.compile("falls?\\s?through", "i");
   }
   options->directive.compile("^(eslint(-env|-enable|-disable(-line|-next-line)?)?|"
-                             "fastlint(-enable|-disable(-line|-next-"
+                             "lintrix(-enable|-disable(-line|-next-"
                              "line)?)?|exported|globals?)(\\s|$)");
 
   ctx.on(NodeKind::SwitchStatement, [&ctx, options](Node *node) {

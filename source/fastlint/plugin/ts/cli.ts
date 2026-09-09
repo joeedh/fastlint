@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The `fastlint` command the npm package installs (task 8.3). It resolves the
+// The `lintrix` command the npm package installs (task 8.3). It resolves the
 // config, runs the built-in rules through the native binary when one is around
 // and through the bundled WASM build when there is not, runs the plugin rules
 // itself, and prints the two merged into one report.
@@ -39,9 +39,9 @@ interface Options {
   inputs: string[];
 }
 
-const usage = `usage: fastlint [options] <file|dir>...
-       fastlint config [--native] [--out <path>]
-       fastlint --init
+const usage = `usage: lintrix [options] <file|dir>...
+       lintrix config [--native] [--out <path>]
+       lintrix --init
 
 options:
   --config <file>     the config to use, found by walking up otherwise
@@ -51,7 +51,7 @@ options:
   --max-warnings <n>  exit 1 when more warnings than this remain
   --quiet             drop warnings from the output and the counts
   --color, --no-color force the colouring either way
-  --init              write a starter fastlint.config.json and exit
+  --init              write a starter lintrix.config.json and exit
   --version           print the version and exit
   -h, --help          show this help and exit
 
@@ -139,8 +139,8 @@ function version(): string {
 }
 
 const starterConfig = `{
-  "$schema": "./node_modules/fastlint/schema/fastlint.config.schema.json",
-  "extends": "fastlint:recommended",
+  "$schema": "./node_modules/lintrix/schema/lintrix.config.schema.json",
+  "extends": "lintrix:recommended",
   "rules": {},
   "ignores": ["**/node_modules/**", "**/dist/**"]
 }
@@ -148,7 +148,7 @@ const starterConfig = `{
 
 /** Writes a starter config in the working directory, refusing to overwrite. */
 function init(): number {
-  const out = path.resolve("fastlint.config.json");
+  const out = path.resolve("lintrix.config.json");
   if (fs.existsSync(out)) {
     process.stderr.write(`${path.basename(out)} already exists\n`);
     return 1;
@@ -156,7 +156,7 @@ function init(): number {
   fs.writeFileSync(out, starterConfig);
   process.stdout.write(`wrote ${path.basename(out)}\n`);
   process.stdout.write(
-    'extends fastlint:recommended; set rule severities under "rules".\n'
+    'extends lintrix:recommended; set rule severities under "rules".\n'
   );
   return 0;
 }
@@ -167,13 +167,13 @@ async function load(options: Options): Promise<{ path: string; compiled: Compile
     ? path.resolve(options.configPath)
     : findConfig(process.cwd());
   if (!found) {
-    throw new Error("no fastlint.config.{ts,mts,js,mjs,json} here or above");
+    throw new Error("no lintrix.config.{ts,mts,js,mjs,json} here or above");
   }
   if (!fs.existsSync(found)) throw new Error(`${found} does not exist`);
   return { path: found, compiled: await loadCompiledConfig(found) };
 }
 
-/** `fastlint config`: the resolved JSON, or the native handoff document. */
+/** `lintrix config`: the resolved JSON, or the native handoff document. */
 async function configCommand(options: Options): Promise<number> {
   const { path: configPath, compiled } = await load(options);
   for (const name of compiled.unknownRules) {
@@ -188,7 +188,7 @@ async function configCommand(options: Options): Promise<number> {
   const asked = path.resolve(options.out);
   const intoDir = fs.existsSync(asked) && fs.statSync(asked).isDirectory();
   const out = intoDir
-    ? path.join(asked, options.native ? nativeConfigName : "fastlint.config.json")
+    ? path.join(asked, options.native ? nativeConfigName : "lintrix.config.json")
     : asked;
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, json);
@@ -206,7 +206,7 @@ async function runBuiltins(
   const binary = options.engine === "wasm" ? undefined : resolveBinary(compiled);
   if (binary) return lintWithBinary(binary, configPath, compiled, files);
   if (options.engine === "native") {
-    throw new Error("no native fastlint binary found; drop --engine native to use WASM");
+    throw new Error("no native lintrix binary found; drop --engine native to use WASM");
   }
   const module = findWasmModule();
   if (!module) {
@@ -215,7 +215,7 @@ async function runBuiltins(
   return lintWithWasm(module, compiled, files);
 }
 
-/** `fastlint <files>`: lint, merge and print. */
+/** `lintrix <files>`: lint, merge and print. */
 async function lintCommand(options: Options): Promise<number> {
   const { path: configPath, compiled } = await load(options);
   for (const name of compiled.unknownRules) {

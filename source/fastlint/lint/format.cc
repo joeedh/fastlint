@@ -278,7 +278,7 @@ void formatSarif(span<const FileResult> results, string &out)
   w.beginObject();
   w.key("driver");
   w.beginObject();
-  w.member("name", "fastlint");
+  w.member("name", "lintrix");
   w.member("informationUri", "https://github.com/joeedh/fastlint");
   w.member("version", version());
   w.key("rules");

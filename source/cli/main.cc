@@ -48,7 +48,7 @@ int parseCommand(int argc, char **argv)
   uint32_t limit = 0xffffffffu;
   for (int i = 2; i < argc; i++) {
     if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
-      std::printf("usage: fastlint parse [--summary] [--limit N] <file|dir>...\n");
+      std::printf("usage: lintrix parse [--summary] [--limit N] <file|dir>...\n");
       return 0;
     } else if (std::strcmp(argv[i], "--summary") == 0) {
       summaryOnly = true;
@@ -59,7 +59,7 @@ int parseCommand(int argc, char **argv)
     }
   }
   if (files.isEmpty()) {
-    std::fprintf(stderr, "usage: fastlint parse [--summary] [--limit N] <file|dir>...\n");
+    std::fprintf(stderr, "usage: lintrix parse [--summary] [--limit N] <file|dir>...\n");
     return 2;
   }
 
@@ -148,7 +148,7 @@ int dumpTreeCommand(int argc, char **argv)
   for (int i = 2; i < argc; i++) {
     if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
       std::printf(
-          "usage: fastlint dump-tree [--errors] [--spans] (<file> | --batch <list>)\n");
+          "usage: lintrix dump-tree [--errors] [--spans] (<file> | --batch <list>)\n");
       return 0;
     } else if (std::strcmp(argv[i], "--errors") == 0) {
       errors = true;
@@ -163,7 +163,7 @@ int dumpTreeCommand(int argc, char **argv)
   if (!file && !batch) {
     std::fprintf(
         stderr,
-        "usage: fastlint dump-tree [--errors] [--spans] (<file> | --batch <list>)\n");
+        "usage: lintrix dump-tree [--errors] [--spans] (<file> | --batch <list>)\n");
     return 2;
   }
   if (!batch) {
@@ -210,7 +210,7 @@ int dumpAstCommand(int argc, char **argv)
   bool bindings = false;
   for (int i = 2; i < argc; i++) {
     if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
-      std::printf("usage: fastlint dump-ast [--errors] [--bindings] <file>\n");
+      std::printf("usage: lintrix dump-ast [--errors] [--bindings] <file>\n");
       return 0;
     } else if (std::strcmp(argv[i], "--errors") == 0) {
       errors = true;
@@ -221,7 +221,7 @@ int dumpAstCommand(int argc, char **argv)
     }
   }
   if (!file) {
-    std::fprintf(stderr, "usage: fastlint dump-ast [--errors] [--bindings] <file>\n");
+    std::fprintf(stderr, "usage: lintrix dump-ast [--errors] [--bindings] <file>\n");
     return 2;
   }
   std::string bytes;
@@ -256,14 +256,14 @@ int dumpAstCommand(int argc, char **argv)
 
 /** Prints the top-level help: the banner, the command list with a one-line
  * description each, and the global options. Per-command options come from
- * `fastlint <command> --help`. */
+ * `lintrix <command> --help`. */
 void printHelp()
 {
   std::printf("%s\n", fastlint::buildBanner().c_str());
   std::printf("\n"
               "A fast TypeScript/JavaScript linter.\n"
               "\n"
-              "usage: fastlint <command> [options] <file|dir>...\n"
+              "usage: lintrix <command> [options] <file|dir>...\n"
               "\n"
               "commands:\n"
               "  lint         lint files and report problems\n"
@@ -278,25 +278,25 @@ void printHelp()
               "  cache        inspect or verify the type-fact cache\n"
               "\n"
               "global options:\n"
-              "  --init       write a starter fastlint.config.json and exit\n"
+              "  --init       write a starter lintrix.config.json and exit\n"
               "  --version    print the version and exit\n"
               "  -h, --help   show this help and exit\n"
               "\n"
-              "Run `fastlint <command> --help` for a command's own options.\n");
+              "Run `lintrix <command> --help` for a command's own options.\n");
 }
 
-/** Writes a starter `fastlint.config.json` in the current directory, extending
+/** Writes a starter `lintrix.config.json` in the current directory, extending
  * the recommended preset. Refuses to overwrite an existing config. */
 int initCommand()
 {
-  const char *name = "fastlint.config.json";
+  const char *name = "lintrix.config.json";
   std::error_code ec;
   if (std::filesystem::exists(name, ec)) {
     std::fprintf(stderr, "%s already exists\n", name);
     return 1;
   }
   std::string body = "{\n"
-                     "  \"extends\": \"fastlint:recommended\",\n"
+                     "  \"extends\": \"lintrix:recommended\",\n"
                      "  \"rules\": {},\n"
                      "  \"ignores\": [\"**/node_modules/**\", \"**/dist/**\"]\n"
                      "}\n";
@@ -305,7 +305,7 @@ int initCommand()
     return 2;
   }
   std::printf("wrote %s\n", name);
-  std::printf("extends fastlint:recommended; set rule severities under \"rules\".\n");
+  std::printf("extends lintrix:recommended; set rule severities under \"rules\".\n");
   return 0;
 }
 

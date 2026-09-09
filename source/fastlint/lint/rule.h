@@ -47,7 +47,7 @@ struct RuleMeta {
   const char *name;
   const char *description;
   const char *docsUrl;
-  /** In the `fastlint:recommended` preset. */
+  /** In the `lintrix:recommended` preset. */
   bool recommended = false;
   /** Reports may carry a fix that `--fix` applies. */
   bool fixable = false;

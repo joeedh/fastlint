@@ -20,7 +20,7 @@ is the last comment before the next clause, or the last comment before the
 closing brace when the case body is a single block, and it must match the
 pattern `falls?\s?through` (case-insensitive): `// falls through`,
 `/* fallthrough */`, `// FALL THROUGH`. Directive comments (`eslint-*`,
-`fastlint-*`, `globals`, `exported`) never count.
+`lintrix-*`, `globals`, `exported`) never count.
 
 An empty case that stacks directly on the next one (`case 1: case 2:`) is
 grouping, not fallthrough; a blank line between them makes it fallthrough.

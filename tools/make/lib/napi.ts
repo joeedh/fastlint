@@ -126,7 +126,7 @@ export async function smokeNapi(): Promise<void> {
   // `node -e` runs as CommonJS, so the addon loads through a plain require.
   const script = [
     `const addon = require(${JSON.stringify(addon.replace(/\\/g, "/"))});`,
-    `console.log("fastlint", addon.version());`,
+    `console.log("lintrix", addon.version());`,
     `const out = JSON.parse(addon.lintText("if (a == b) debugger;", "smoke.ts"));`,
     `console.log(out[0].messages.length, "problems from the smoke source");`,
     `if (out[0].messages.length === 0) throw new Error("expected the recommended rules to report");`,
