@@ -141,17 +141,23 @@ export async function runCppTests(preset: string, argv: Args): Promise<boolean> 
   return ok;
 }
 
+/** Where a `*.test.ts` may live. */
+const tsTestRoots = ["tools", "source/fastlint/plugin/ts"];
+
 export async function runTsTests(): Promise<boolean> {
-  // Node's runner treats a directory with no test files as a failure.
-  if (findTsTests(path.join(repoRoot, "tools")).length === 0) {
+  // The files are passed one by one: the runner takes a directory argument as a
+  // module to run rather than a tree to search, so it would fail on the folder.
+  const files = tsTestRoots.flatMap((root) => findTsTests(path.join(repoRoot, root)));
+  if (files.length === 0) {
     info("no TypeScript tests yet");
     return true;
   }
   step("node --test");
-  const result = await run(process.execPath, ["--test", "tools/"], {
-    cwd         : repoRoot,
-    allowFailure: true,
-  });
+  const result = await run(
+    process.execPath,
+    ["--test", ...files.map((file) => path.relative(repoRoot, file))],
+    { cwd: repoRoot, allowFailure: true }
+  );
   return result.code === 0;
 }
 

@@ -4,6 +4,10 @@
 // for its kind. Rules are ESLint-shaped: `create(context)` returns visitors
 // keyed by node-kind name, and `context.report` collects a problem.
 //
+// It runs the tuples a config resolves to (task 8.2), not a bare rule list, so
+// a rule reads its own options and every problem carries the severity the config
+// gave the rule.
+//
 // Only syntactic rules run here: an embedding has no tsgo process, so there is
 // no type information (docs/embedding.md).
 
@@ -45,6 +49,8 @@ export interface ReportDescriptor {
 export interface RuleContext {
   readonly filename: string;
   readonly sourceText: string;
+  /** The elements the config listed after the severity, empty for a bare one. */
+  readonly options: readonly unknown[];
   report(descriptor: ReportDescriptor): void;
 }
 
@@ -61,9 +67,29 @@ export interface Rule {
   create(context: RuleContext): Visitors;
 }
 
+/** A rule as the config resolved it, which is what the runtime runs. */
+export interface ResolvedRule {
+  /** The configured name, `prefix/rule`, reported on every problem. */
+  readonly id: string;
+  readonly rule: Rule;
+  severity: "off" | "warn" | "error";
+  options: readonly unknown[];
+}
+
+/** `rule` under its own name, for a caller that runs a rule without a config. */
+export function resolveRule(
+  rule: Rule,
+  severity: "warn" | "error" = "error",
+  options: readonly unknown[] = []
+): ResolvedRule {
+  return { id: rule.name, rule, severity, options };
+}
+
 /** One problem in the flat list `lint` returns. */
 export interface LintMessage {
   ruleId: string;
+  /** 2 for an error and 1 for a warning, as ESLint's JSON reports it. */
+  severity: 1 | 2;
   message: string;
   line: number;
   column: number;
@@ -114,13 +140,13 @@ function position(source: string, offset: number): { line: number; column: numbe
 /**
  * Lints one buffer with `rules` and returns the flat problem list. The file is
  * parsed once; each node is dispatched to every rule that registered a visitor
- * for its kind, in rule order.
+ * for its kind, in rule order. A rule the config set to `off` is not run.
  */
 export function lint(
   addon: Addon,
   source: string,
   filename: string,
-  rules: readonly Rule[]
+  rules: readonly ResolvedRule[]
 ): LintMessage[] {
   const session = addon.parse(source, filename);
   const host = hostFor(addon, session);
@@ -128,10 +154,14 @@ export function lint(
   // A visitor list per kind value, so dispatch is one array lookup per node.
   const byKind = new Map<number, { rule: Rule; visit: (node: Node) => void }[]>();
 
-  for (const rule of rules) {
+  for (const resolved of rules) {
+    if (resolved.severity === "off") continue;
+    const rule = resolved.rule;
+    const severity: 1 | 2 = resolved.severity === "error" ? 2 : 1;
     const context: RuleContext = {
       filename,
       sourceText: source,
+      options: resolved.options,
       report(descriptor) {
         const template =
           descriptor.message ??
@@ -142,7 +172,8 @@ export function lint(
         const from = position(source, start);
         const to = position(source, end);
         messages.push({
-          ruleId: rule.name,
+          ruleId: resolved.id,
+          severity,
           message: format(template, descriptor.data),
           line: from.line,
           column: from.column,

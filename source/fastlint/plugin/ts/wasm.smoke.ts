@@ -4,7 +4,7 @@
 
 import assert from "node:assert";
 
-import { lint } from "./runtime.ts";
+import { lint, resolveRule } from "./runtime.ts";
 import { noConsole, noDebugger } from "./rules/no-debugger.ts";
 import { loadWasmAddon } from "./wasm_addon.ts";
 
@@ -14,7 +14,9 @@ if (!modulePath) throw new Error("usage: wasm.smoke.ts <fastlint.js path>");
 const addon = await loadWasmAddon(modulePath);
 
 const source = ["function f() {", "  debugger;", "  console.log(1);", "}", ""].join("\n");
-const messages = lint(addon, source, "smoke.ts", [noDebugger, noConsole]);
+const messages = lint(addon, source, "smoke.ts", [noDebugger, noConsole].map((rule) =>
+  resolveRule(rule)
+));
 
 for (const m of messages) {
   console.log(`${m.line}:${m.column} ${m.ruleId} ${m.message} (${m.nodeType})`);

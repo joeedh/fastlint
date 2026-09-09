@@ -28,10 +28,11 @@ module, the shared `embed::lintText` entry point) are in docs/embedding.md.
   overrides the output path, which is `<name>.ts` in the current directory
   otherwise. The command refuses to overwrite an existing file, and prints the
   `import` line to add to a config.
-- `node make.ts new-rule --init` writes a starter `fastlint.config.ts` with an
-  empty rule list instead of a rule. It honors `--out` and refuses to overwrite,
-  and `--init` with a `<name>` is rejected. `node make.ts new-rule --help` lists
-  every option with an example of each.
+- `node make.ts new-rule --init` writes a starter `fastlint.config.ts` instead of
+  a rule: a `plugins` entry pointing at `./rules/index.ts` and an empty `rules`
+  map. It honors `--out` and refuses to overwrite, and `--init` with a `<name>`
+  is rejected. `node make.ts new-rule --help` lists every option with an example
+  of each.
 - The starters import from the `fastlint` package surface, so they stand on
   their own outside this repository.
 
@@ -98,6 +99,8 @@ reports through.
 - `context.sourceText` is the whole source, for a rule that needs the raw text
   between two offsets. `no-empty` reads it to skip a block whose braces hold a
   comment.
+- `context.options` is what the config listed after the severity, and it is
+  empty for a bare severity. A rule reads its own options from there.
 - `context.report({ node, messageId?, message?, data? })` records a problem.
   Pass a `messageId` that keys into `messages`, or a literal `message`; `data`
   fills the template's placeholders. The problem's location comes from the
@@ -129,46 +132,89 @@ reference for which fields a kind has.
   enums from the generated module. `no-var` reads `VariableKind.Var`, `eqeqeq`
   reads `BinaryOperator.Equal` and `BinaryOperator.NotEqual`.
 - The `fastlint` package surface re-exports `NodeKind`, `kindNames`, `Node`,
-  `Rule`, `RuleContext`, `defineConfig`, and the driver. A rule that needs a
+  `Rule`, `RuleContext`, `defineConfig`, the config loader and the driver. A rule that needs a
   field enum an external package does not yet re-export imports it from the
   generated views module directly.
 
+## Packaging rules as a plugin
+
+A config reaches a rule through a plugin: a module whose `rules` maps each
+rule's own name to the rule. The map is what a `plugins` prefix stands for, so a
+config names one rule `prefix/rule`.
+
+```ts
+// rules/index.ts
+import { eqeqeq } from "./eqeqeq.ts";
+import { noConsole, noDebugger } from "./no-debugger.ts";
+
+export default {
+  rules: {
+    eqeqeq,
+    "no-console": noConsole,
+    "no-debugger": noDebugger,
+  },
+};
+```
+
+- The plugin is read from the module's default export, or from a named `plugin`
+  or `rules` export. A value in the map that is not rule-shaped is rejected at
+  load rather than at the first visit.
+- The key in the map is the name the config spells after the prefix, and the
+  rule's own `name` is what the rule tester and the message list use. Keeping
+  them the same is the least surprising thing to do.
+- A plugin is an ordinary module, so a package (`@acme/fastlint-rules`) and a
+  file in the project (`./rules/index.ts`) are named the same way.
+
 ## Config
 
-A config is an ordinary TypeScript module the host imports. A rule is a value
-the config references; there is no plugin-resolution protocol beyond `import`.
+A config is one document, whether it is written as JSON or as a TypeScript
+module. docs/rules.md "Config" is the schema reference; this is what a plugin
+author needs from it.
 
 ```ts
 // fastlint.config.ts
 import { defineConfig } from "fastlint";
-import { noDebugger, noConsole } from "./rules/no-debugger.ts";
-import { noVar } from "./rules/no-var.ts";
 
 export default defineConfig({
-  rules: [noDebugger, noConsole, noVar],
+  plugins: { acme: "./rules/index.ts" },
+  rules: {
+    "acme/no-debugger": "error",
+    "acme/no-console": "warn",
+    "acme/eqeqeq": ["error", "always"],
+  },
+  overrides: [{ files: ["**/*.test.ts"], rules: { "acme/no-debugger": "off" } }],
+  ignores: ["dist/**"],
 });
 ```
 
 - `defineConfig` is an identity helper that type-checks the literal at authoring.
-- `loadConfig` reads the rules from the module's default export, or a named
-  `config` or `rules` export as a fallback, and rejects a config whose rules are
-  not rule-shaped rather than failing at the first visit.
-- `files` is an optional list or globs. The CLI resolves it; an API caller that
-  passes its own file list may ignore it.
-
-The rule list above is what the loader reads today. The shape it moves to is
-settled in docs/rules.md "Config": one JSON document the native binary and the
-npm CLI both read, where `rules` maps a name to a severity and a plugin's rules
-are namespaced under a `plugins` prefix. The loader switches over in task 8.2.
+  A `.json` config takes the same keys and no helper.
+- `plugins` maps a prefix to the module the rules come from. A relative specifier
+  is resolved against the config file's own directory.
+- A rule setting is a severity (`"off"`, `"warn"`, `"error"`, or 0 to 2), or an
+  array of the severity followed by the rule's options. `context.options` is
+  what a rule reads them back from, and it is empty for a bare severity.
+- `overrides` raise or lower a rule for the files their globs match, in order,
+  and `ignores` skips a file outright. A later layer's bare severity keeps the
+  options an earlier layer gave.
+- The rules a plugin owns run on this side; `extends`, `project`, `projects` and
+  the directive settings are read by the native binary, which runs the built-in
+  rules of the same config.
+- `node make.ts config` prints what a config compiles to, which is the way to
+  see the JSON a `.ts` config produces.
 
 ## Running the rules
 
-Two entry points run a config's rules, both from the `fastlint` surface.
+Three entry points run a config's rules, all from the `fastlint` surface.
 
 - `lint(addon, source, filename, rules)` lints one buffer and returns the flat
   problem list. It parses once, builds the node view over the session, walks the
-  tree, and frees the session when it returns. This is the call a playground or
-  an editor integration makes directly.
+  tree, and frees the session when it returns. `rules` is the resolved
+  `{id, rule, severity, options}` tuples, which `resolveRule(rule)` builds for a
+  caller running a rule on its own. This is the call a playground or an editor
+  integration makes directly.
+- `lintOne(addon, compiled, filename)` reads one file and lints it with what the
+  config resolves for it, reporting an `ignored` file rather than reading it.
 - `lintFiles(files, { configPath, addonPath, concurrency? })` lints many files
   and returns one entry per file in input order. With more than one file it
   shards them across a `worker_threads` pool: each worker loads the addon and
@@ -176,6 +222,9 @@ Two entry points run a config's rules, both from the `fastlint` surface.
   returns the last, so a slow file never idles the others. One file, or
   `concurrency: 1`, stays in the calling thread. The worker pool is N-API only;
   a browser runs one file at a time on its single thread through `lint`.
+
+Each problem carries the `ruleId` the config configured (`acme/no-debugger`) and
+its `severity`, 2 for an error and 1 for a warning, as ESLint's JSON reports it.
 
 ## Performance
 

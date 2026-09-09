@@ -1086,7 +1086,9 @@ WASM, and native rule plugins, all over the same AST (docs/ast-design.md
   is no plugin-resolution protocol beyond `import`. `plugin/ts/index.ts` is the
   package surface a host wraps the `.node` addon with; `example.config.ts` is a
   worked config. The decision recorded in this task is taken: the node side
-  hosts the native core rather than the CLI hosting node.
+  hosts the native core rather than the CLI hosting node. (Task 8.2 replaced
+  `loadConfig` with `loadConfigFile`/`loadCompiledConfig` over the unified
+  schema, and a rule now reaches a config through a `plugins` prefix.)
 - [x] Threading model (`plugin/ts/driver.ts`): `lintFiles(files, {configPath,
   addonPath, concurrency})` shards files across a `worker_threads` pool, each
   worker loading the addon and config once and linting whatever file the driver
@@ -1155,8 +1157,8 @@ reader (it has no JS engine), and the JS side compiles `.ts`/`.js` down to it.
   current TS config (a bare `Rule[]` in `plugin/ts/config.ts`) is replaced by
   this shape. `plugin/ts/schema.ts` is the TypeScript mirror: the types plus
   `defineConfig` over them.
-  - [ ] `loadConfig` and the driver still read the `Rule[]` shape, and index.ts
-    still exports its `defineConfig`; both swap over with the loader in 8.2.
+  - [x] `loadConfig` and the driver still read the `Rule[]` shape, and index.ts
+    still exports its `defineConfig`; both swapped over with the loader in 8.2.
 - [x] Add `plugins`: a map from a prefix to a JS module specifier. A plugin
   rule is referenced namespaced as `prefix/rule`. The native binary skips a
   namespaced rule it has no registry entry for, rather than reporting it unknown
@@ -1175,20 +1177,25 @@ reader (it has no JS engine), and the JS side compiles `.ts`/`.js` down to it.
 ### 8.2 Config compiler (the JS loader)
 The package's core: read `fastlint.config.{ts,js,json}` and emit schema-valid
 JSON.
-- [ ] A loader that imports a `.ts`/`.js` config (reusing the dynamic import in
+- [x] A loader that imports a `.ts`/`.js` config (reusing the dynamic import in
   `plugin/ts/config.ts`) or reads a `.json` one, resolves it to the 8.1 schema,
   and writes or streams `fastlint.config.json`. A `.json` input passes through
   after validation.
-- [ ] Resolve `plugins` specifiers to rule objects at compile time. The JSON the
+- [x] Resolve `plugins` specifiers to rule objects at compile time. The JSON the
   native binary receives carries only resolved native rules; plugin rules are
   routed to the embedding instead.
-- [ ] Make TS rules configurable the way native rules are: `RuleContext` gains
+- [x] Make TS rules configurable the way native rules are: `RuleContext` gains
   `options`, and `lint()` takes resolved `(rule, severity, options)` tuples
   rather than a bare `Rule[]`. It skips a rule set to `off`, tags each message
   with its severity, and applies `overrides`/`ignores` per file.
-- [ ] A `fastlint config` subcommand (or `node make.ts` task) that prints the
+- [x] A `fastlint config` subcommand (or `node make.ts` task) that prints the
   resolved JSON, for debugging and for the `--config` handoff to the native
-  binary.
+  binary. Landed as `node make.ts config [file] [--native] [--out <path>]`; the
+  npm CLI grows the same command in 8.3.
+  - [ ] The native handoff document has to be written beside the config it came
+    from, since globs and tsconfig paths anchor at the config file's directory.
+    Either the CLI writes it there, or `fastlint lint` grows a flag naming the
+    directory to anchor at — 8.3 decides.
 
 ### 8.3 The npm `fastlint` package
 - [ ] A publishable package: a `package.json` with `bin` (the `fastlint` CLI),

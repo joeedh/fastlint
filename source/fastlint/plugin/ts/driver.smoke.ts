@@ -20,9 +20,13 @@ const sources: Record<string, string> = {
   "a.ts": "function a() {\n  debugger;\n}\n",
   "b.ts": "const b = () => console.log(1);\n",
   "clean.ts": "export const c = 1;\n",
+  // An override turns `no-debugger` off here, and `ignores` skips the third.
+  "a.test.ts": "function t() {\n  debugger;\n}\n",
+  "generated/g.ts": "function g() {\n  debugger;\n}\n",
 };
 const files = Object.keys(sources).map((name) => {
   const file = path.join(dir, name);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, sources[name]!);
   return file;
 });
@@ -33,17 +37,24 @@ function check(label: string, results: FileMessages[]): void {
   for (const r of results) assert(!r.error, `${label}: ${r.filename} ${r.error ?? ""}`);
 
   const a = byName.get("a.ts")!;
-  assert(
-    a.messages.some((m) => m.ruleId === "no-debugger"),
-    `${label}: a.ts should trip no-debugger`
-  );
+  const debuggerHit = a.messages.find((m) => m.ruleId === "example/no-debugger");
+  assert(debuggerHit, `${label}: a.ts should trip example/no-debugger`);
+  assert.strictEqual(debuggerHit.severity, 2, `${label}: it is configured at error`);
   const b = byName.get("b.ts")!;
-  assert(
-    b.messages.some((m) => m.ruleId === "no-console"),
-    `${label}: b.ts should trip no-console`
-  );
+  const consoleHit = b.messages.find((m) => m.ruleId === "example/no-console");
+  assert(consoleHit, `${label}: b.ts should trip example/no-console`);
+  assert.strictEqual(consoleHit.severity, 1, `${label}: it is configured at warn`);
   const clean = byName.get("clean.ts")!;
   assert.strictEqual(clean.messages.length, 0, `${label}: clean.ts should be clean`);
+
+  const test = byName.get("a.test.ts")!;
+  assert.strictEqual(
+    test.messages.length,
+    0,
+    `${label}: the override turns no-debugger off for a test file`
+  );
+  const generated = byName.get("g.ts")!;
+  assert(generated.ignored, `${label}: an ignored file is not linted`);
 }
 
 try {

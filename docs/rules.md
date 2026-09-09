@@ -208,9 +208,14 @@ or `.js` down to the same JSON, because the native binary runs no JavaScript
 | `binary` | checks the type | resolves the executable |
 | `$schema` | ignored | ignored |
 
-- The npm CLI hands the whole document to the native binary through `--config`,
-  so nothing is stripped in between. The native side skips the rules it cannot
-  run, and the CLI runs those itself.
+- The npm CLI hands the native binary a document of its own through `--config`:
+  the same config with `plugins`, `binary` and every plugin rule taken out, since
+  it runs those itself (`nativeConfig` in plugin/ts/compile.ts). Everything else
+  is copied through, including a key this version does not know. Globs and
+  tsconfig paths anchor at the config file's directory, so that document has to
+  be written beside the config it came from.
+- The native binary skips a plugin rule on its own as well, which is what a
+  hand-written config run through `fastlint lint` needs.
 - `project`, `projects` and the two directive settings are native-only, because
   an embedding has neither a tsgo process nor directive handling
   (docs/embedding.md).
@@ -284,8 +289,16 @@ settings and whether the file is ignored.
   (`./rules/index.ts`).
 - The map holds a specifier rather than a plugin object, as ESLint's flat config
   does. JSON cannot carry an imported object, and both sides read the same file.
+- The module exports a plugin: an object whose `rules` maps each rule's own name
+  to the rule, as its default export or as a named `plugin` or `rules` export. A
+  config then names one of them `prefix/rule`. plugin/ts/rules/index.ts is an
+  example, and docs/plugins.md is the guide for writing one.
 - The npm CLI imports the module the specifier names and runs its rules over the
-  embedding (task 8.2). The native binary runs the C++ rules of the same run.
+  embedding. The native binary runs the C++ rules of the same run.
+- A name under a declared prefix that the plugin does not define is collected
+  rather than thrown, the way an unknown native name is, and reported once.
+- A prefix the C++ registry already strips (`@typescript-eslint`) is refused, so
+  a name resolves to the same rule on both sides.
 
 ### The native binary
 
@@ -306,8 +319,15 @@ settings and whether the file is ignored.
   the TypeScript mirror of this shape. A TypeScript config is worth writing for
   the type checking, the comments and the computed values; it is compiled to
   JSON before the native binary sees it.
-- The package surface still exports the pre-8.1 rule-list `defineConfig` from
-  plugin/ts/config.ts. The loader moves to this shape in task 8.2.
+- `node make.ts config [file]` prints what a config compiles to.
+  `--out <path>` writes it, so a `.ts` config becomes the `fastlint.config.json`
+  the native binary reads, and `--native` emits the handoff document instead.
+  The config is found by walking up from the working directory, preferring
+  `fastlint.config.ts` over `.mts`, `.js`, `.mjs` and `.json`.
+- The loader (plugin/ts/config.ts) reads either form: a `.json` config is parsed
+  and validated, and a module config is imported and its default export
+  validated the same way. The messages match the native parser's, so a config
+  that loads on one side loads on the other.
 
 ## Output
 

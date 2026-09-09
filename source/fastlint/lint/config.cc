@@ -175,7 +175,14 @@ bool Config::parse(string_view text,
         append(error, "\" must name a module specifier string");
         return false;
       }
-      m_pluginPrefixes.append(copy(view(plugins->keys[i])));
+      string_view prefix = view(plugins->keys[i]);
+      if (Registry::isAliasPrefix(prefix)) {
+        error = copy("config: plugin prefix \"");
+        append(error, prefix);
+        append(error, "\" is reserved for the built-in rules");
+        return false;
+      }
+      m_pluginPrefixes.append(copy(prefix));
     }
   }
 

@@ -30,6 +30,9 @@ public:
 
   /** `name` without a plugin prefix this registry recognizes. */
   static string_view canonical(string_view name);
+  /** True when `name` is a prefix `canonical` strips, which a config's
+   * `plugins` may not claim. */
+  static bool isAliasPrefix(string_view name);
 
 private:
   Vector<const RuleDef *> m_rules;

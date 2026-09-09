@@ -66,26 +66,36 @@ TypeScript over the same tree. It has two halves.
   (keyed by node-kind name), collecting each `context.report` into a flat
   message list. `plugin/ts/rules/no-debugger.ts` are two example rules;
   `runtime.smoke.ts` runs them through the built addon under `--smoke`.
+- `rules` is the tuples a config resolved to, `{id, rule, severity, options}`, so
+  a rule set to `off` does not run, a rule reads `context.options`, and each
+  message carries its `ruleId` and `severity`. `resolveRule(rule)` builds one for
+  a caller running a rule without a config.
 - Type-aware rules do not run here either, for the same reason `lintText` skips
-  them: no tsgo process. `context` carries the filename and source text, not a
-  type facts handle.
+  them: no tsgo process. `context` carries the filename, the source text and the
+  rule's options, not a type facts handle.
 
 ## Config and the file driver
 
 The runtime runs a rule list; a project supplies that list from a config, and
 the driver runs it over many files.
 
-- `source/fastlint/plugin/ts/config.ts` loads a `fastlint.config.ts` (or
-  `.js`/`.mjs`): `loadConfig` imports the module and reads its `rules`, and
-  `defineConfig` type-checks the literal at authoring. A rule is a value the
-  config imports; there is no plugin-resolution protocol beyond `import`.
+- `source/fastlint/plugin/ts/config.ts` loads a config in either form: a `.json`
+  one is parsed and validated, and a `.ts`, `.js` or `.mjs` one is imported and
+  its default export validated the same way. `loadCompiledConfig` then hands it
+  to `compile.ts`, which imports the modules `plugins` names and binds each
+  `prefix/rule` to the rule it stands for. docs/rules.md "Config" is the schema.
+- `compile.ts` also resolves a file: `resolveFile` applies the base layer and
+  every override whose globs match, mirroring lint/config.cc, and `nativeConfig`
+  emits the document the native binary is handed. `glob.ts` is the matcher both
+  sides share, ported from lint/glob.cc.
 - `source/fastlint/plugin/ts/driver.ts` is the host: `lintFiles(files,
   {configPath, addonPath, concurrency})` shards the files across a
   `worker_threads` pool. Each worker loads the addon and the config once, and
   the driver hands it the next file as soon as it returns the last, so a slow
   file never idles the rest. The TypeScript rules run on the workers' threads;
   the native parse runs inside each worker. One file, or `concurrency: 1`, stays
-  in the calling thread with no worker.
+  in the calling thread with no worker. A file an `ignores` glob claims is
+  answered without a worker and without being read.
 - The decision this settles (task 7.2): the node side hosts the native core.
   `plugin/ts/index.ts` is the package surface a `fastlint` npm package would
   re-export, wrapping the built `.node` addon.

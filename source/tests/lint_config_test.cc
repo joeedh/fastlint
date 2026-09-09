@@ -235,6 +235,11 @@ TEST(lint_config, plugin_rules_are_skipped_and_typos_still_warn)
   Fixture bad("{\"plugins\": {\"acme\": 1}}");
   CHECK(!bad.ok);
   CHECK(sv(bad.error).find("module specifier") != std::string::npos);
+
+  // A prefix the registry already strips would make one name resolve two ways.
+  Fixture reserved("{\"plugins\": {\"@typescript-eslint\": \"./rules.ts\"}}");
+  CHECK(!reserved.ok);
+  CHECK(sv(reserved.error).find("reserved") != std::string::npos);
 }
 
 TEST(lint_config, binary_is_validated_and_left_to_the_npm_cli)

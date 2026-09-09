@@ -9,7 +9,7 @@
 
 import { createRequire } from "node:module";
 
-import { lint, type Addon } from "./runtime.ts";
+import { lint, resolveRule, type Addon } from "./runtime.ts";
 import { loadWasmAddon } from "./wasm_addon.ts";
 import { eqeqeq } from "./rules/eqeqeq.ts";
 import { noConsole, noDebugger } from "./rules/no-debugger.ts";
@@ -44,7 +44,10 @@ function work(a, b) {
 const source = block.repeat(400);
 const bytes = Buffer.byteLength(source, "utf8");
 
-const rules = [noDebugger, noConsole, noVar, eqeqeq, noEmpty];
+const rules = [noDebugger, noConsole, noVar, eqeqeq, noEmpty].map((rule) =>
+  resolveRule(rule)
+);
+const justDebugger = [resolveRule(noDebugger)];
 
 function countNodes(): number {
   const session = addon.parse(source, "bench.ts");
@@ -85,7 +88,7 @@ const ts = best(() => {
   lint(addon, source, "bench.ts", rules);
 });
 const one = best(() => {
-  lint(addon, source, "bench.ts", [noDebugger]);
+  lint(addon, source, "bench.ts", justDebugger);
 });
 
 // The one-rule run visits almost nothing, so its cost over parse is the bare

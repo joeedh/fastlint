@@ -20,6 +20,16 @@ string_view Registry::canonical(string_view name)
   return name;
 }
 
+bool Registry::isAliasPrefix(string_view name)
+{
+  for (string_view prefix : kPrefixes) {
+    if (name == prefix.substr(0, prefix.size() - 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const RuleDef *Registry::find(string_view name) const
 {
   string_view wanted = canonical(name);

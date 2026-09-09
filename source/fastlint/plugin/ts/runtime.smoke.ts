@@ -5,7 +5,7 @@
 import assert from "node:assert";
 import { createRequire } from "node:module";
 
-import { lint, type Addon } from "./runtime.ts";
+import { lint, resolveRule, type Addon } from "./runtime.ts";
 import { noConsole, noDebugger } from "./rules/no-debugger.ts";
 
 const addonPath = process.argv[2];
@@ -15,7 +15,9 @@ const require = createRequire(import.meta.url);
 const addon = require(addonPath) as Addon;
 
 const source = ["function f() {", "  debugger;", "  console.log(1);", "}", ""].join("\n");
-const messages = lint(addon, source, "smoke.ts", [noDebugger, noConsole]);
+const messages = lint(addon, source, "smoke.ts", [noDebugger, noConsole].map((rule) =>
+  resolveRule(rule)
+));
 
 for (const m of messages) {
   console.log(`${m.line}:${m.column} ${m.ruleId} ${m.message} (${m.nodeType})`);
