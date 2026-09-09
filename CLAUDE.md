@@ -31,6 +31,9 @@ built both as an N-API addon and as WASM.
 - docs/embedding.md — the N-API addon and the WASM module: the shared
   `embed::lintText` entry point, the cmake-js configure step, the pinned
   emsdk and how its environment is captured.
+- docs/plugins.md — the guide for writing rules in TypeScript: the rule
+  shape, the node view, config and the file driver, and the performance cost
+  of the host boundary.
 - docs/debugging.md — debugging aids per subsystem (dump commands, trace
   flags, ASAN, leak tracker).
 - vendor/litestl/CLAUDE.md — conventions for the vendored litestl library.
