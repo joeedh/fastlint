@@ -1228,6 +1228,16 @@ JSON.
   during `npm i`; per-platform optional dependencies are the right next step but
   need a release pipeline that does not exist yet. docs/embedding.md
   "Distributing the native binary" records this.
+- [x] A release process. `node make.ts release <major|minor|patch|X.Y.Z>` runs
+  the gates, bumps package.json and `source/fastlint/version.cc` together,
+  builds `pack --wasm`, writes `build/release/fastlint-<version>.tgz`, installs
+  that tarball in a throwaway project and lints through the linked `fastlint`
+  command, then tags, pushes and creates the GitHub release. `node make.ts
+  publish` sends the same tarball to npm, kept a separate command because it is
+  the only irreversible step. `--dry-run` on either stops short of it.
+  - [ ] Run the release from CI rather than a developer's machine, once there
+    is a workflow that can build the WASM engine. That is also what the
+    per-platform native packages above need.
 
 ---
 

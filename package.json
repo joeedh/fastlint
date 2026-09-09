@@ -4,6 +4,21 @@
   "type": "module",
   "description": "A fast TypeScript/JavaScript linter written in C++",
   "license": "MIT",
+  "author": "Joe Eagar",
+  "keywords": [
+    "lint",
+    "linter",
+    "typescript",
+    "javascript",
+    "eslint",
+    "wasm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joeedh/fastlint.git"
+  },
+  "homepage": "https://github.com/joeedh/fastlint#readme",
+  "bugs": "https://github.com/joeedh/fastlint/issues",
   "packageManager": "pnpm@10.0.0",
   "engines": {
     "node": ">=24"
@@ -22,6 +37,7 @@
   "files": [
     "dist",
     "schema",
+    "LICENSE",
     "docs/rules.md",
     "docs/plugins.md"
   ],

@@ -212,6 +212,45 @@ reported.
   one is built and over the WASM module otherwise. The CLI merges the two lists
   per file (plugin/ts/report.ts) and prints them as one listing.
 
+### Releasing
+
+Two commands, split at the one step that cannot be undone. Everything up to the
+tag is reversible, so `release` does all of it; `publish` is separate because a
+published version cannot be replaced, only deprecated.
+
+```sh
+node make.ts release patch --dry-run   # build and check what it would ship
+node make.ts release patch             # bump, build, check, tag, push, gh release
+node make.ts publish                   # send that tarball to the registry
+```
+
+- `release <major|minor|patch|X.Y.Z>` refuses first and builds second: a dirty
+  working tree, a version the two files disagree on, an existing tag, a
+  published version and an unauthenticated `gh` are all reported before anything
+  is written.
+- The version lives in package.json and in source/fastlint/version.cc, because
+  the native binary cannot read a manifest and npm cannot read a C++ source.
+  `release` writes both, so `fastlint --version` and the installed package never
+  drift. It puts both back if any later step fails.
+- The bump lands before the build, so the tarball, the tag and what the CLI
+  prints are one number. `--dry-run` restores the files and stops before git.
+- The build is `pack --wasm`, and a run that would bundle the debug engine is
+  refused rather than warned about, since a published package is not a place to
+  find that out.
+- `npm pack` writes build/release/fastlint-`<version>`.tgz. That exact file is
+  what the install test runs, what `gh release create` uploads and what
+  `publish` sends, so nothing is rebuilt between being checked and being shipped.
+- `pack --install` is the install test on its own: it installs the tarball into a
+  throwaway project under its own HOME and npm cache, then lints through the
+  `fastlint` command npm links. Running the shim rather than the file it points
+  at is the point, since that covers `bin`, the `files` list and the shim npm
+  generates. `--smoke` (which `release` always runs) is the weaker check that
+  runs `dist/ts/cli.js` in place.
+- `publish` sends the tarball matching package.json's version and refuses when
+  there is none, when that version is already published, or when npm has no
+  logged-in account. `npm login` stays a thing the user runs: it is interactive
+  and it writes credentials.
+
 ### Distributing the native binary
 
 WASM-only is what the package installs, and the native binary is found rather

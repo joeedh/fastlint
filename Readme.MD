@@ -67,7 +67,9 @@ node make.ts run -- --version
 | `deps` | Updates submodules and fetches the externals: `deps fetch dtl` clones a pinned git external, `deps fetch sqlite` downloads the checksummed amalgamation zip into `vendor/`. |
 | `run` | Builds `fastlint` and runs it with the remaining arguments. |
 | `config` | Prints what a config compiles to; `--native` emits the handoff document, `--out` writes it. |
-| `pack` | Builds the publishable npm package into `dist/`; `--wasm` builds the engine it bundles, `--smoke` lints through the result. |
+| `pack` | Builds the publishable npm package into `dist/`; `--wasm` builds the engine it bundles, `--smoke` lints through the result, `--install` checks the tarball the way a user installs it. |
+| `release` | Bumps the version, builds and checks the package, tags and pushes, and creates the GitHub release. `--dry-run` stops before git. |
+| `publish` | Sends the tarball `release` built to the npm registry. |
 | `clean` | Removes `build/<preset>`, or everything under `--all`. |
 
 ## Layout

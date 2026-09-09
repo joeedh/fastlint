@@ -9,6 +9,11 @@ export interface RunOptions {
   /** Return the exit code rather than exiting the process on failure. */
   allowFailure?: boolean;
   quiet?: boolean;
+  /** Run through the platform shell. Needed only for a Windows `.cmd`, which
+   * Node refuses to spawn directly. The command and its arguments are joined
+   * into one line for the shell to split again, so every path passed under it
+   * has to be free of spaces. */
+  shell?: boolean;
 }
 
 export interface RunResult {
@@ -32,8 +37,13 @@ export async function run(
     cwd  : options.cwd,
     env  : options.env ?? process.env,
     stdio: options.capture ? ["ignore", "pipe", "inherit"] : "inherit",
+    shell: options.shell ?? false,
   };
-  const child = spawn(command, [...args], spawnOptions);
+  // Under a shell the whole line goes as the command: Node deprecates an
+  // argument array there, since it concatenates it without escaping anyway.
+  const child = options.shell
+    ? spawn([command, ...args].join(" "), [], spawnOptions)
+    : spawn(command, [...args], spawnOptions);
 
   let stdout = "";
   if (options.capture && child.stdout) {

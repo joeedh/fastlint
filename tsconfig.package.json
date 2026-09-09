@@ -5,11 +5,14 @@
 {
   "extends"        : "./tsconfig.json",
   "compilerOptions": {
-    "noEmit"     : false,
-    "declaration": true,
-    "sourceMap"  : true,
-    "outDir"     : "dist",
-    "rootDir"    : "source/fastlint/plugin"
+    "noEmit"       : false,
+    "declaration"  : true,
+    // The `.ts` sources are not shipped, so a map that only named them would
+    // point at nothing on the consumer's disk. Inlining puts the text in.
+    "sourceMap"    : true,
+    "inlineSources": true,
+    "outDir"       : "dist",
+    "rootDir"      : "source/fastlint/plugin"
   },
   "include"        : ["source/fastlint/plugin/**/*.ts"],
   "exclude": [
