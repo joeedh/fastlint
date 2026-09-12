@@ -175,7 +175,7 @@ async function resolveRun(document: TextDocument): Promise<Run | string> {
   }
   const cwd =
     lookup.compiled?.baseDir ?? (onDisk ? path.dirname(filePath) : process.cwd());
-  const client = natives.clientFor(binary, cwd);
+  const client = natives.clientFor(binary, cwd, current.tsgoPath ?? undefined);
   const handoff =
     lookup.compiled !== undefined && lookup.configPath !== undefined
       ? await natives.handoffFor(lookup.configPath, lookup.compiled)

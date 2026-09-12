@@ -416,7 +416,11 @@ TypeId TypeFacts::targetOf(TypeId type)
     return 0;
   }
   const TypeRow &row = m_graph.type(type);
-  if (!(row.objectFlags & tsgo::ObjectFlags::Reference) || !row.sessionId) {
+  // `Target` panics in the server on anything but an object type, and the
+  // object flags of other kinds mean other things.
+  if (!(row.flags & tsgo::TypeFlags::Object) ||
+      !(row.objectFlags & tsgo::ObjectFlags::Reference) || !row.sessionId)
+  {
     return 0;
   }
   if (TypeId *cached = m_target.lookup_ptr(int(type))) {
@@ -446,7 +450,9 @@ bool TypeFacts::isTuple(TypeId type)
   if (row.isTuple) {
     return true;
   }
-  if (!(row.objectFlags & tsgo::ObjectFlags::Reference) || !row.sessionId) {
+  if (!(row.flags & tsgo::TypeFlags::Object) ||
+      !(row.objectFlags & tsgo::ObjectFlags::Reference) || !row.sessionId)
+  {
     return false;
   }
   if (bool *cached = m_tuple.lookup_ptr(int(type))) {

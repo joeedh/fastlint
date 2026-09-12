@@ -70,8 +70,8 @@ publisher to release under; the VSIX installs locally regardless.
 - Settings are `lintrix.*`, declared in package.json with `scope: resource`
   so a folder can override them: `enable`, `run` (`onType` or `onSave`),
   `validate` (language ids), `engine` (`auto`, `native`, `wasm`),
-  `binaryPath`, `codeActionsOnSave.mode` (`all` or `problems`) and
-  `trace.server`. `shared/protocol.ts` names their shape and defaults once for
+  `binaryPath`, `tsgoPath`, `codeActionsOnSave.mode` (`all` or `problems`)
+  and `trace.server`. `shared/protocol.ts` names their shape and defaults once for
   both sides. `engine` and `binaryPath` choose between the native serve mode
   and WASM ("The native serve mode" below).
 - `run`, `validate` and `enable` act on the client, in the diagnostic pull
@@ -181,7 +181,9 @@ server drives over stdio (task 9.5).
   stays on WASM; otherwise `binaryPath`, then the config's `binary`, then
   `lintrix` on PATH names the binary. `engine: native` with no binary is an
   error; `auto` with none falls back to WASM and the status bar tooltip says
-  the type-aware rules are off. The plugin rules run in the server through
+  the type-aware rules are off. `tsgoPath` names the `tsc` the binary types
+  with, passed as `FASTLINT_TSGO`, for a TypeScript build the binary would
+  not find or would refuse by version. The plugin rules run in the server through
   the WASM runtime either way, so the module is still required.
 - The status after a native lint names the engine and, when the type-aware
   rules did not run, why: a file with no tsconfig is ordinary and stays `ok`;

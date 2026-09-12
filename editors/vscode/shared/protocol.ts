@@ -12,6 +12,9 @@ export interface Settings {
   /** A native `lintrix` for the serve mode (task 9.5); null leaves it to the
    * config's `binary` item and PATH. */
   binaryPath: string | null;
+  /** The native `tsc` the native engine types with; null resolves it from the
+   * project, as the CLI does. */
+  tsgoPath: string | null;
   codeActionsOnSave: {
     mode: "all" | "problems";
   };
@@ -23,6 +26,7 @@ export const defaultSettings: Settings = {
   validate         : ["javascript", "javascriptreact", "typescript", "typescriptreact"],
   engine           : "auto",
   binaryPath       : null,
+  tsgoPath         : null,
   codeActionsOnSave: { mode: "all" },
 };
 

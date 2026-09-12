@@ -1418,6 +1418,17 @@ time and cannot see an unsaved buffer, so the editor gets a resident server.
   plugin/ts/serve.test.ts covers `ServeClient` against a built binary; the
   VS Code smoke test runs through the native engine when a preset has built
   `lintrix`, expecting a type-aware diagnostic and its fix.
+- [x] Dogfood on a monorepo (2026-09-12) found two type-server faults, both
+  in the CLI as well: a run over two tsconfigs handed one project's type
+  handles to the other (`type handle N not found in project registry`), since
+  handles are scoped to a project's registry within a snapshot and only a new
+  snapshot cleared them; binding a project now clears them too
+  (`types_facts.switching_projects_drops_the_session_ids`). And a
+  `getTargetOfType` on a non-object type panics the server, so `targetOf` and
+  `isTuple` check the `Object` type flag before the `Reference` object flag.
+  `lintrix.tsgoPath` names the `tsc` the native engine types with (passed as
+  `FASTLINT_TSGO`), and a `tsc` named that way runs with a note instead of a
+  refusal when its version is not in the probed list, for a master build.
 
 ### 9.6 Tests
 Landed 2026-09-12; docs/vscode-extension.md "Tests" describes them.

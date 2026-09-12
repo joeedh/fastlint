@@ -1,6 +1,7 @@
 #include "fastlint/tsgo/client.h"
 
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -217,7 +218,17 @@ bool Client::start(const ClientOptions &options, string &error)
     error += output;
     return false;
   }
-  if (!options.skipVersionCheck && !versionSupported(std::string_view(m_version.c_str())))
+  // A `tsc` named by `FASTLINT_TSGO` is a deliberate choice (a master build,
+  // say), so an unknown version there is noted rather than refused.
+  const char *named = getenv("FASTLINT_TSGO");
+  bool explicitExe = named && std::string_view(named) == std::string_view(m_exe.c_str());
+  if (explicitExe && !versionSupported(std::string_view(m_version.c_str()))) {
+    std::fprintf(
+        stderr,
+        "tsc %s from FASTLINT_TSGO is not a version lintrix was probed against\n",
+        m_version.c_str());
+  } else if (!options.skipVersionCheck &&
+             !versionSupported(std::string_view(m_version.c_str())))
   {
     error = string("unsupported tsc version ");
     error += m_version;

@@ -243,6 +243,9 @@ void ProjectTypes::bindSession(const Project &project)
   if (m_session) {
     litestl::alloc::Delete(m_session);
   }
+  // Handles are scoped to one project's registry within a snapshot, so a handle
+  // minted under the previous project is stale, or names another type, here.
+  m_graph.clearSessionIds();
   // `alloc::New` takes its arguments by value, which would copy the client.
   m_session = new (litestl::alloc::alloc("tsgo session", sizeof(tsgo::Session)))
       tsgo::Session(m_client, m_snapshot.id, view(project.id));

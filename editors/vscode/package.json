@@ -92,7 +92,7 @@
             "The bundled WASM engine only. Type-aware rules do not run."
           ],
           "default": "auto",
-          "description": "Which engine runs the built-in rules. The native engine is not available in this version; 'auto' and 'wasm' both lint through the bundled WASM engine."
+          "description": "Which engine runs the built-in rules. 'auto' uses a native lintrix when one is found (lintrix.binaryPath, the config's 'binary' item, then PATH), which is where the type-aware rules run, and the bundled WASM engine otherwise."
         },
         "lintrix.binaryPath": {
           "scope": "resource",
@@ -102,6 +102,15 @@
           ],
           "default": null,
           "description": "A native lintrix executable for the native engine. Null leaves it to the config's 'binary' item, then PATH."
+        },
+        "lintrix.tsgoPath": {
+          "scope": "resource",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "The native tsc (TypeScript 7) the native engine types with, for a build lintrix does not find on its own. Null resolves it from the project's node_modules, then PATH."
         },
         "lintrix.codeActionsOnSave.mode": {
           "scope": "resource",

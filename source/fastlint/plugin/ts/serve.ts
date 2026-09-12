@@ -19,6 +19,8 @@ export interface ServeOptions {
   cwd?: string;
   cacheDir?: string;
   noCache?: boolean;
+  /** The native `tsc` to type with, as `FASTLINT_TSGO` names it for the CLI. */
+  tsgoPath?: string;
   /** Receives the binary's stderr, line by line. */
   onStderr?: (line: string) => void;
 }
@@ -61,8 +63,11 @@ export class ServeClient {
     const args = ["serve"];
     if (options.noCache) args.push("--no-cache");
     if (options.cacheDir !== undefined) args.push("--cache-dir", options.cacheDir);
+    const env = { ...process.env };
+    if (options.tsgoPath !== undefined) env["FASTLINT_TSGO"] = options.tsgoPath;
     this.child = spawn(binary, args, {
       cwd  : options.cwd,
+      env,
       stdio: ["pipe", "pipe", "pipe"],
     });
     this.child.stdout!.on("data", (chunk: Buffer) => this.receive(chunk));

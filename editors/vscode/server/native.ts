@@ -27,17 +27,25 @@ export class NativeEngines {
     this.log = log;
   }
 
-  /** The client for `binary`, spawned on first use and after an exit. `cwd` is
-   * where the first spawn resolves `tsc` from when a project has none. */
-  clientFor(binary: string, cwd: string): ServeClient {
-    let client = this.clients.get(binary);
+  /** The client for `binary` typing with `tsgoPath` (or the `tsc` it finds),
+   * spawned on first use and after an exit. `cwd` is where the first spawn
+   * resolves `tsc` from when a project has none. */
+  clientFor(binary: string, cwd: string, tsgoPath?: string): ServeClient {
+    const key = `${binary}\0${tsgoPath ?? ""}`;
+    let client = this.clients.get(key);
     if (client === undefined || !client.alive) {
-      client = new ServeClient(binary, { cwd, onStderr: this.log });
-      this.log(`lintrix serve: ${binary}`);
+      const options = { cwd, onStderr: this.log };
+      client = new ServeClient(
+        binary,
+        tsgoPath === undefined ? options : { ...options, tsgoPath }
+      );
+      this.log(
+        `lintrix serve: ${binary}${tsgoPath === undefined ? "" : ` (tsc: ${tsgoPath})`}`
+      );
       void client.exited.then((code) => {
         if (code !== 0) this.log(`lintrix serve exited with ${code}`);
       });
-      this.clients.set(binary, client);
+      this.clients.set(key, client);
     }
     return client;
   }

@@ -6,6 +6,7 @@
 #include "fastlint/tsgo/client.h"
 #include "fastlint/tsgo/queries.h"
 #include "fastlint/types/type_facts.h"
+#include "fastlint/types/type_source.h"
 #include "testing/test.h"
 
 #include <filesystem>
@@ -256,4 +257,62 @@ TEST_TAGGED(types_facts, prefetch_batches_a_file, "integration")
   CHECK_EQ(facts.stats().nodeHits, int(identifiers.size()));
   CHECK(typed > 10);
   CHECK(session.release(error));
+}
+
+// Type handles are scoped to one project's registry within a snapshot, so a
+// row interned under one project must lose its handle when the source moves
+// to another (seen as "type handle N not found in project registry" on the
+// second project of a monorepo).
+TEST_TAGGED(types_facts, switching_projects_drops_the_session_ids, "integration")
+{
+  if (!haveTsgo()) {
+    SKIP("no native tsc found");
+  }
+  std::string root = fs::path(projectDir()).parent_path().generic_string() + "/";
+  Vector<string> tsconfigs;
+  tsconfigs.append(string((root + "basic/tsconfig.json").c_str()));
+  tsconfigs.append(string((root + "loose/tsconfig.json").c_str()));
+  ProjectTypes types;
+  string error;
+  REQUIRE(types.open(tsconfigs, error));
+
+  std::string mainPath = root + "basic/src/main.ts";
+  std::string mainText = readText(mainPath);
+  syntax::Diagnostics diagnostics;
+  syntax::GrammarTree tree;
+  ast::AstFile file(&tree);
+  syntax::Parser parser(mainText, {}, diagnostics);
+  parser.parseFile(tree);
+  ast::lower(tree, file);
+  types.setFileProject(mainPath, root + "basic/tsconfig.json");
+  TypeFacts *facts = types.beginFile(file, mainPath, mainText, error);
+  REQUIRE(facts != nullptr);
+  const ast::Node *param = nullptr;
+  for (const ast::PreorderEntry &entry : file.preorder()) {
+    if (entry.node->kind == ast::NodeKind::Identifier &&
+        entry.node->start == uint32_t(mainText.find("id: string")))
+    {
+      param = entry.node;
+    }
+  }
+  REQUIRE(param != nullptr);
+  TypeId stringType = facts->typeOf(param);
+  REQUIRE_NE(stringType, 0u);
+  CHECK_NE(types.graph().type(stringType).sessionId, 0);
+  types.endFile();
+
+  std::string otherPath = root + "loose/src/case.ts";
+  // The text on disk, so no snapshot update clears the ids by itself.
+  std::string otherText = readText(otherPath);
+  syntax::Diagnostics otherDiagnostics;
+  syntax::GrammarTree otherTree;
+  ast::AstFile other(&otherTree);
+  syntax::Parser otherParser(otherText, {}, otherDiagnostics);
+  otherParser.parseFile(otherTree);
+  ast::lower(otherTree, other);
+  types.setFileProject(otherPath, root + "loose/tsconfig.json");
+  facts = types.beginFile(other, otherPath, otherText, error);
+  REQUIRE(facts != nullptr);
+  CHECK_EQ(types.graph().type(stringType).sessionId, 0);
+  types.endFile();
 }

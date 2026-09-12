@@ -147,7 +147,10 @@ implementation over one tsgo project.
   change closes it with the change and reopens it in a second update.
 - `defaultProjectForFile` picks the project each file is queried in, so a
   tsconfig with references or an inferred-project file get the right
-  program.
+  program. Handles are scoped to one project's registry within a snapshot, so
+  binding a different project clears the graph's live ids as a new snapshot
+  does; a run over two tsconfigs otherwise hands one project's handles to the
+  other.
 - A resident run (`lintrix serve`) learns its projects as files arrive:
   `addProject` opens one more tsconfig in a new snapshot and registers it
   like the ones `open` was given. `forgetFile` drops the text held for a

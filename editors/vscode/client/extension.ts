@@ -45,6 +45,7 @@ function settingsFor(document: vscode.TextDocument): Settings {
     validate         : config.get("validate", defaultSettings.validate),
     engine           : config.get("engine", defaultSettings.engine),
     binaryPath       : config.get("binaryPath", defaultSettings.binaryPath),
+    tsgoPath         : config.get("tsgoPath", defaultSettings.tsgoPath),
     codeActionsOnSave: {
       mode: config.get("codeActionsOnSave.mode", defaultSettings.codeActionsOnSave.mode),
     },

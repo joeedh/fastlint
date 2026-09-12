@@ -22,7 +22,9 @@ docs/tasklists/MASTER.md.
 
 - `Client::start` resolves the binary, runs `tsc --version`, refuses anything
   not in `kSupportedVersions`, then spawns `tsc --api --cwd=<dir>` with
-  `--callbacks=readFile,fileExists` when a `FileProvider` is given.
+  `--callbacks=readFile,fileExists` when a `FileProvider` is given. A binary
+  named by `FASTLINT_TSGO` is taken as deliberate (a master build, say): an
+  unknown version there is noted on stderr and run anyway.
 - Resolution order: `FASTLINT_TSGO`, then `@typescript/typescript-<platform>-<arch>/lib/tsc`
   under a `node_modules` at or above the working directory (including pnpm's
   `.pnpm` store), then `tsc` on PATH. Only a real executable counts, so
