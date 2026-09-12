@@ -4,6 +4,7 @@
 #include "fastlint/lint/linter.h"
 #include "fastlint/lint/registry.h"
 #include "fastlint/rules/rules.h"
+#include "fastlint/version.h"
 #include "testing/snapshot.h"
 #include "testing/test.h"
 
@@ -346,7 +347,15 @@ TEST(lint_linter, sarif_output)
   results.append(h.lint("let ok = 1;\n", "src/b.ts"));
   string sarif;
   formatSarif(span<const FileResult>(results.data(), results.size()), sarif);
-  SNAPSHOT(sarif);
+
+  // The driver version tracks the release, so it is masked before snapshotting;
+  // otherwise this snapshot would go stale on every version bump.
+  std::string masked(sarif.c_str(), sarif.size());
+  std::string needle = std::string("\"version\":\"") + version() + "\"";
+  size_t pos = masked.find(needle);
+  REQUIRE(pos != std::string::npos);
+  masked.replace(pos, needle.size(), "\"version\":\"X.Y.Z\"");
+  SNAPSHOT(string(masked));
 }
 
 TEST(lint_linter, builtin_registry_resolves_plugin_prefixes)
