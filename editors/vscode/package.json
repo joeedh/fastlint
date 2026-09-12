@@ -2,7 +2,7 @@
   "name": "lintrix-vscode",
   "displayName": "lintrix",
   "description": "Integrates the lintrix TypeScript/JavaScript linter into VS Code.",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "publisher": "joeedh",
   "license": "MIT",
   "private": true,
