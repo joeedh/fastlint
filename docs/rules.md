@@ -44,7 +44,11 @@ What a rule gets for one file.
   (docs/type-facts.md "Type sources"), which the linter asks for the facts of
   each file, and of each fixpoint pass, since a pass lints text the server
   has not seen. A file the source cannot type is linted by the syntactic
-  rules alone and `FileResult::typeError` says why.
+  rules alone, with `FileResult::typed` false and `typeError` saying why. A
+  query that fails mid-file (a server crash on one type, which tsc recovers
+  from) leaves `typed` true and the rules walking; the type reads as unknown
+  past it and `typeError` names the failure. `lintrix lint` prints the first
+  case as "no types" and the second as "type query failed".
 - `on(kind, fn)`, `onExit(kind, fn)`, `on<View>(fn)`, `onExit<View>(fn)`
   register listeners. `fn` is an owning `function<void(Node *)>`; the
   context keeps it alive for the file. A view form registers on every kind

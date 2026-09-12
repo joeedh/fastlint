@@ -1429,6 +1429,22 @@ time and cannot see an unsaved buffer, so the editor gets a resident server.
   `lintrix.tsgoPath` names the `tsc` the native engine types with (passed as
   `FASTLINT_TSGO`), and a `tsc` named that way runs with a note instead of a
   refusal when its version is not in the probed list, for a master build.
+- [x] The same dogfood hit a tsc 7.0.2 crash serializing an empty tuple
+  literal's type (`checker.TypeData is *checker.TypeReference, not
+  *checker.TupleType`, fixed upstream in microsoft/typescript-go#64080). The
+  server recovers and only that query fails, but the run reported the file as
+  "no types" and the whole file's type-aware results looked lost. Now
+  `FileResult::typed` separates a file the source could not type from one
+  query that failed mid-walk: the CLI prints "type query failed", the serve
+  response keeps `typed` true with the failure in `typeError`, and the status
+  bar words it as a query failure. A `panic:` payload loses its goroutine
+  stack and gains a note naming the tsc version and `FASTLINT_TSGO`
+  (`tsgo_client.a_server_panic_loses_its_stack_and_names_the_fix`,
+  `types_facts.a_query_that_crashes_the_server_fails_alone`). Also fixed on
+  the way: a `beginFile` failure's message was wiped by `lintFile` clearing
+  the result, so the CLI never printed it. The smoke test retries a code
+  action request VS Code cancels while the built-in TypeScript extension
+  registers its providers.
 
 ### 9.6 Tests
 Landed 2026-09-12; docs/vscode-extension.md "Tests" describes them.

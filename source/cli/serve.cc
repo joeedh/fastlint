@@ -326,7 +326,8 @@ bool Server::lint(std::string_view file,
     }
   }
 
-  out.typed = !proj.empty() && session->types.isOpen() && result.typeError.size() == 0;
+  // A failed query mid-walk leaves the file typed; the message says what was lost.
+  out.typed = !proj.empty() && session->types.isOpen() && (hit || result.typed);
   if (!session->typeError.empty()) {
     out.typeError = session->typeError;
   } else if (result.typeError.size() > 0) {

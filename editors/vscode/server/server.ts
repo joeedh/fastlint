@@ -193,7 +193,16 @@ function statusFor(uri: string, run: Run, result: LintResult): StatusParams {
       ? { uri, state: "ok", engine }
       : { uri, state: "ok", engine, message: run.note };
   }
-  if (result.typed || result.typeError === undefined) return { uri, state: "ok", engine };
+  if (result.typeError === undefined) return { uri, state: "ok", engine };
+  // A query that failed mid-file leaves the rest of the file's answers intact.
+  if (result.typed) {
+    return {
+      uri,
+      state: "warning",
+      engine,
+      message: `a type query failed: ${result.typeError}`,
+    };
+  }
   // A file no tsconfig claims is ordinary; a type server that failed is not.
   const state = result.typeError === "no tsconfig resolved" ? "ok" : "warning";
   return { uri, state, engine, message: `type-aware rules are off: ${result.typeError}` };

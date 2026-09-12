@@ -367,8 +367,11 @@ int lintCommand(int argc, char **argv)
         continue;
       }
       if (result.typeError.size() > 0) {
-        std::fprintf(
-            stderr, "%s: no types: %s\n", name.c_str(), result.typeError.c_str());
+        std::fprintf(stderr,
+                     "%s: %s: %s\n",
+                     name.c_str(),
+                     result.typed ? "type query failed" : "no types",
+                     result.typeError.c_str());
       }
       if (fix && result.changed) {
         std::string output(result.output.c_str(), result.output.size());

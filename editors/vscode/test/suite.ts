@@ -36,7 +36,43 @@ function lintrixDiagnostics(uri: vscode.Uri): vscode.Diagnostic[] {
   return vscode.languages.getDiagnostics(uri).filter((d) => d.source === "lintrix");
 }
 
+/** The code actions at `range`. VS Code cancels a request in flight when the
+ * set of providers for the document changes, which the built-in TypeScript
+ * extension does as it activates on the first .ts document, so a cancelled
+ * request is retried. */
+async function codeActionsAt(
+  uri: vscode.Uri,
+  range: vscode.Range
+): Promise<vscode.CodeAction[]> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await vscode.commands.executeCommand<vscode.CodeAction[]>(
+        "vscode.executeCodeActionProvider",
+        uri,
+        range
+      );
+    } catch (error) {
+      const cancelled = error instanceof Error && error.message === "Canceled";
+      if (!cancelled || attempt >= 5) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
+}
+
+/** The extension host's exit code is all test-electron reports, so the failed
+ * assertion is written to its console as well. */
 export async function run(): Promise<void> {
+  try {
+    await smoke();
+  } catch (error) {
+    console.error(
+      `lintrix smoke test: ${error instanceof Error ? error.stack : String(error)}`
+    );
+    throw error;
+  }
+}
+
+async function smoke(): Promise<void> {
   const extension = vscode.extensions.getExtension(extensionId);
   assert.ok(extension, `extension ${extensionId} is not loaded`);
   await extension.activate();
@@ -61,11 +97,7 @@ export async function run(): Promise<void> {
   assert.equal(debuggerProblem.severity, vscode.DiagnosticSeverity.Error);
   assert.equal(debuggerProblem.range.start.line, 3);
 
-  const actions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
-    "vscode.executeCodeActionProvider",
-    uri,
-    debuggerProblem.range
-  );
+  const actions = await codeActionsAt(uri, debuggerProblem.range);
   const titles = actions.map((action) => action.title);
   assert.ok(
     titles.includes("Fix this no-debugger problem"),

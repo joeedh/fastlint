@@ -74,6 +74,11 @@ public:
   {
     return m_client.stats();
   }
+  /** The running server's `tsc --version`. */
+  const string &tscVersion() const
+  {
+    return m_client.version();
+  }
 
 private:
   struct Served {

@@ -156,6 +156,25 @@ bool parseVersionOutput(std::string_view output, string &version)
   return true;
 }
 
+void formatServerError(std::string_view payload, std::string_view version, string &error)
+{
+  bool panicked = payload.starts_with("panic:");
+  if (panicked) {
+    payload = payload.substr(0, payload.find('\n'));
+  }
+  error = string();
+  for (char c : payload) {
+    error += c;
+  }
+  if (panicked) {
+    error += " (a crash inside tsc ";
+    for (char c : version) {
+      error += c;
+    }
+    error += "; a newer tsc named by FASTLINT_TSGO may have the fix)";
+  }
+}
+
 bool resolveTsgoExe(std::string_view startDir, string &exe)
 {
   if (const char *env = getenv("FASTLINT_TSGO")) {
@@ -388,10 +407,9 @@ bool Client::callRaw(std::string_view method,
     return false;
   }
   if (frame.type == MessageType::Error || frame.type == MessageType::CallError) {
-    error = string();
-    for (char c : frame.payloadText()) {
-      error += c;
-    }
+    formatServerError(frame.payloadText(),
+                      std::string_view(m_version.c_str(), m_version.size()),
+                      error);
     return false;
   }
   if (frame.type != MessageType::Response) {

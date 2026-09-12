@@ -147,6 +147,7 @@ void FileResult::clear()
   output = string();
   ignored = false;
   typeError = string();
+  typed = false;
 }
 
 syntax::Parser::Options parserOptionsFor(string_view filename)
@@ -468,13 +469,11 @@ void Linter::lintSource(string_view source,
                       ast::Bindings &bindings,
                       Vector<ast::Fix> *fixes) {
     types::TypeFacts *facts = nullptr;
+    string error;
     if (options.types) {
-      string error;
       facts = options.types->beginFile(file, filename, tree.source(), error);
-      if (!facts) {
-        out.typeError = std::move(error);
-      }
     }
+    // `lintFile` clears `out`, so the type fields are set after it.
     lintFile(tree,
              diagnostics,
              file,
@@ -485,7 +484,10 @@ void Linter::lintSource(string_view source,
              fixes,
              out,
              options.ruleStats);
-    if (facts && facts->lastError().size() > 0) {
+    out.typed = facts != nullptr;
+    if (!facts) {
+      out.typeError = std::move(error);
+    } else if (facts->lastError().size() > 0) {
       out.typeError = facts->lastError();
     }
     if (options.types) {

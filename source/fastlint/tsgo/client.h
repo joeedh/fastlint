@@ -78,6 +78,10 @@ bool parseVersionOutput(std::string_view output, string &version);
 /** Finds the native `tsc`: `FASTLINT_TSGO`, then the platform package under a
  * `node_modules` at or above `startDir`, then PATH. */
 bool resolveTsgoExe(std::string_view startDir, string &exe);
+/** Turns a server error payload into the message a query reports. A request
+ * that crashed inside the server arrives as `panic: <what>` over the goroutine
+ * stack; the stack is dropped and a note names `version` and `FASTLINT_TSGO`. */
+void formatServerError(std::string_view payload, std::string_view version, string &error);
 
 /** One `tsc --api` server over the msgpack envelope on stdio. Calls are synchronous and
  * strictly sequential; FS callbacks are answered while waiting for a response. */

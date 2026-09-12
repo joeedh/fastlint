@@ -7,7 +7,9 @@ import { spawn, type ChildProcess } from "node:child_process";
 import type { FileReport } from "./engine.ts";
 
 /** What `lint` answers: the `--format json` array for the one file (empty when
- * the config ignores it), whether type-aware rules ran, and why not. */
+ * the config ignores it), whether type-aware rules ran, and the type source's
+ * failure. With `typed` false the file could not be typed; with it true one
+ * query failed mid-file and the answers past it read as unknown. */
 export interface ServeLintResult {
   results: FileReport[];
   typed: boolean;

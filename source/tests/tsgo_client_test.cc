@@ -102,6 +102,23 @@ TEST(tsgo_client, version_gate)
   CHECK(!versionSupported("7.0.2-dev"));
 }
 
+TEST(tsgo_client, a_server_panic_loses_its_stack_and_names_the_fix)
+{
+  string error;
+  formatServerError(
+      "panic: interface conversion: checker.TypeData is *checker.TypeReference, "
+      "not *checker.TupleType\ngoroutine 7 [running]:\nruntime/debug.Stack()\n",
+      "7.0.2",
+      error);
+  CHECK_EQ(
+      str(error),
+      std::string("panic: interface conversion: checker.TypeData is "
+                  "*checker.TypeReference, not *checker.TupleType (a crash inside tsc "
+                  "7.0.2; a newer tsc named by FASTLINT_TSGO may have the fix)"));
+  formatServerError("type handle 13 not found in project registry", "7.0.2", error);
+  CHECK_EQ(str(error), std::string("type handle 13 not found in project registry"));
+}
+
 TEST(tsgo_client, parameter_spellings_come_from_the_probe_table)
 {
   CHECK_EQ(std::string(typeIdParam("getTypesOfType")), std::string("objectId"));

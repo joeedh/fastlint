@@ -4,6 +4,7 @@
 #include "fastlint/syntax/diagnostics.h"
 #include "fastlint/syntax/parser.h"
 #include "fastlint/tsgo/client.h"
+#include "fastlint/tsgo/generated/enums.h"
 #include "fastlint/tsgo/queries.h"
 #include "fastlint/types/type_facts.h"
 #include "fastlint/types/type_source.h"
@@ -314,5 +315,64 @@ TEST_TAGGED(types_facts, switching_projects_drops_the_session_ids, "integration"
   facts = types.beginFile(other, otherPath, otherText, error);
   REQUIRE(facts != nullptr);
   CHECK_EQ(types.graph().type(stringType).sessionId, 0);
+  types.endFile();
+}
+
+// tsc 7.0.2 crashes serializing an empty tuple literal's type (a reference
+// carrying the tuple flag, microsoft/typescript-go#64080); the server recovers,
+// and the file's other questions keep their answers. A fixed tsc answers the
+// tuple as well.
+TEST_TAGGED(types_facts, a_query_that_crashes_the_server_fails_alone, "integration")
+{
+  if (!haveTsgo()) {
+    SKIP("no native tsc found");
+  }
+  Vector<string> tsconfigs;
+  tsconfigs.append(string((projectDir() + "/tsconfig.json").c_str()));
+  ProjectTypes types;
+  string error;
+  REQUIRE(types.open(tsconfigs, error));
+
+  // Served over the on-disk case.ts, the way the typed rule tester lints a case.
+  std::string path = projectDir() + "/src/case.ts";
+  std::string text = "export const empty = [] as const;\n"
+                     "export const pair = Math.random() > 0.5 ? empty : undefined;\n"
+                     "export const name = 'x';\n";
+  syntax::Diagnostics diagnostics;
+  syntax::GrammarTree tree;
+  ast::AstFile file(&tree);
+  syntax::Parser parser(text, {}, diagnostics);
+  parser.parseFile(tree);
+  ast::lower(tree, file);
+  types.setFileProject(path, projectDir() + "/tsconfig.json");
+  TypeFacts *facts = types.beginFile(file, path, text, error);
+  REQUIRE(facts != nullptr);
+  const ast::Node *literal = nullptr;
+  const ast::Node *name = nullptr;
+  for (const ast::PreorderEntry &entry : file.preorder()) {
+    if (entry.node->kind == ast::NodeKind::ArrayExpression) {
+      literal = entry.node;
+    } else if (entry.node->kind == ast::NodeKind::Identifier &&
+               entry.node->start == uint32_t(text.find("name =")))
+    {
+      name = entry.node;
+    }
+  }
+  REQUIRE(literal != nullptr);
+  REQUIRE(name != nullptr);
+  facts->typeOf(literal);
+  std::string failure = str(facts->lastError());
+  if (str(types.tscVersion()) == "7.0.2") {
+    CHECK(!failure.empty());
+  }
+  if (!failure.empty()) {
+    INFO("{}", failure);
+    CHECK(failure.starts_with("panic:"));
+    CHECK_NE(failure.find("FASTLINT_TSGO"), std::string::npos);
+    CHECK_EQ(failure.find("goroutine"), std::string::npos);
+  }
+  TypeId nameType = facts->typeOf(name);
+  REQUIRE_NE(nameType, 0u);
+  CHECK((facts->flags(nameType) & tsgo::TypeFlags::StringLiteral) != 0u);
   types.endFile();
 }

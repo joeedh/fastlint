@@ -36,7 +36,12 @@ docs/tasklists/MASTER.md.
   request is in flight at a time. Server-to-client `Call` frames (FS
   callbacks) arrive while a response is awaited and are answered inline.
 - Error frames carry a bare message, which `call` returns as `error`. The
-  connection stays usable; the server recovers its own panics.
+  connection stays usable; the server recovers its own panics into an error
+  reading `panic: <what>` over the goroutine stack. `formatServerError`
+  keeps the first line of one and appends the tsc version and a pointer at
+  `FASTLINT_TSGO`, since such a crash is a server bug a newer build may
+  have fixed (7.0.2 crashes serializing an empty tuple literal's type,
+  microsoft/typescript-go#64080).
 - EOF or a write failure sets `m_broken`; every later call fails fast.
   `stop()` closes stdin, waits up to a second for a clean exit and then kills.
 

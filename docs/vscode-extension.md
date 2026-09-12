@@ -147,8 +147,9 @@ server drives over stdio (task 9.5).
   `Content-Length` framing over stdin and stdout. `lint {file, text?,
   config?}` answers `{results, typed, typeError?}`, where `results` is the
   `--format json` array for the file (empty when the config ignores it),
-  `typed` says the type-aware rules ran, and `typeError` says why they did
-  not. `text` overlays the file on disk, so an unsaved buffer is what the
+  `typed` says the type-aware rules ran, and `typeError` is the type source's
+  failure: why the rules did not run when `typed` is false, or the one query
+  that failed mid-file when it is true. `text` overlays the file on disk, so an unsaved buffer is what the
   rules and the type server see. `close {file}` drops the overlay, `changed
   {files}` reports disk changes, `configChanged {path?}` reloads the config or
   tsconfig at `path` (everything without one), and `shutdown` answers and
@@ -188,7 +189,8 @@ server drives over stdio (task 9.5).
 - The status after a native lint names the engine and, when the type-aware
   rules did not run, why: a file with no tsconfig is ordinary and stays `ok`;
   a type server that failed to start is a warning, with the reason in the
-  tooltip and the output channel.
+  tooltip and the output channel. A query that failed mid-file is a warning
+  too, worded "a type query failed"; the rest of the file's answers stand.
 - Startup costs one tsgo launch per config, a second or so; a lint after that
   is a few milliseconds, and a saved file replays from the cache in one.
 

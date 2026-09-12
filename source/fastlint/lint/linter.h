@@ -84,8 +84,11 @@ struct FileResult {
   string output;
   /** Matched an `ignores` glob; nothing ran. */
   bool ignored = false;
-  /** Why the type source could not type the file; type-aware rules did not run. */
+  /** The type source's failure. With `typed` false the file could not be typed
+   * and type-aware rules did not run; with it true one query failed during the
+   * walk, and the rules asking past it read the type as unknown. */
   string typeError;
+  bool typed = false;
 
   void clear();
 };
