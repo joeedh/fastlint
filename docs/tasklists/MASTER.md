@@ -1241,6 +1241,142 @@ JSON.
 
 ---
 
+## 9. VS Code extension
+
+Goal: a `lintrix` extension shaped like vscode-eslint (C:/dev/vscode-eslint).
+A thin client starts an LSP server. The server lints open documents, publishes
+diagnostics, and serves quick fixes, suggestions, disable directives and
+fix-all on save. The phases are split by engine. The first runs the syntactic
+rules in-process through the embedding (8.3) and ships as one universal VSIX.
+The second adds a long-lived native `lintrix serve` so the type-aware rules run
+in the editor too.
+
+What already lines up (surveyed 2026-09-12):
+- The `--format json` shape (docs/rules.md "Output") is the wire format an
+  editor wants: 1-based UTF-16 `line/column/endLine/endColumn`, `fix` as a
+  UTF-16 `range` plus `text`, `suggestions` with their own fixes. Each maps to an
+  LSP `Diagnostic` or `TextEdit` through `TextDocument.positionAt`.
+- `plugin/ts/{config,compile,engine,report}.ts` resolve a config per file, pick
+  native or WASM, and merge native and plugin messages. The server imports them.
+- The disable directives exist (`lintrix-disable-line`, `-next-line`, the block
+  pair), so the disable actions are text insertion.
+- tsgo's `updateSnapshot` takes `openFiles`/`closeFiles`/`fileChanges`
+  (docs/tsgo-api.md), mirroring LSP `didOpen`/`didChange`, which is what a serve
+  mode needs for unsaved buffers.
+- vscode-eslint's `diff.ts` (1k lines) and its eslintrc/flat/CLIEngine probing
+  have no counterpart here and are not ported.
+
+### 9.1 Layout and packaging
+- [ ] `editors/vscode/` with its own `package.json`, `client/` and `server/`,
+  bundled by esbuild into `client/out` and `server/out`. The server imports
+  `source/fastlint/plugin/ts` by path rather than copying it, so the config
+  loader has one home; `pack` learns to emit the published `lintrix` package
+  instead once the extension depends on a released version.
+- [ ] `node make.ts vsix [--install]` builds the VSIX with `vsce` and
+  optionally installs it into the running VS Code. Phase 1 bundles
+  `dist/wasm/` only, so one VSIX serves every platform.
+- [ ] Manifest: `activationEvents: onStartupFinished`, `contributes.languages`
+  for javascript, javascriptreact, typescript, typescriptreact,
+  `jsonValidation` mapping `lintrix.config.json` to
+  schema/lintrix.config.schema.json, `capabilities.untrustedWorkspaces:
+  supported: false` (a `.ts` config is executed).
+
+### 9.2 Client
+- [ ] Settings under `lintrix.*`: `enable`, `run` (`onType` | `onSave`),
+  `validate` (language ids), `binaryPath` (a native `lintrix` for 9.5;
+  otherwise the config's `binary` item, then PATH), `engine` (`auto` |
+  `native` | `wasm`), `codeActionsOnSave.mode` (`all` | `problems`),
+  `trace.server`. Each is `scope: resource`.
+- [ ] Commands: `lintrix.executeAutofix`, `lintrix.restart`,
+  `lintrix.revalidate`, `lintrix.showOutputChannel`.
+- [ ] Start the server through `vscode-languageclient` on stdio, with the file
+  watchers for `lintrix.config.*` and `tsconfig.json` registered by the client,
+  and `lintrix.*` settings synchronized to it.
+- [ ] Status bar item showing the engine in use and an error state when the
+  server failed to start or the config did not load; the output channel carries
+  the reason.
+
+### 9.3 Server: diagnostics
+- [ ] `vscode-languageserver` over stdio with `TextDocuments`. Capabilities:
+  `diagnosticProvider` (pull model), `codeActionProvider` with kinds
+  `quickfix` and `source.fixAll.lintrix`, `executeCommandProvider`.
+- [ ] Per-document settings resolved and cached, keyed by URI: the
+  workspace folder, the nearest `lintrix.config.*` walking up from the file, and
+  the compiled config from `compile.ts`. A file an `ignores` glob claims is
+  answered empty without a lint. The cache is dropped on
+  `didChangeWatchedFiles` for a config or tsconfig, and every open document is
+  revalidated.
+- [ ] Lint on open and change (`run: onType`, debounced) or on save, through
+  `engine.ts` with the document's current text rather than the file on disk.
+  Messages from the built-in rules and the plugin rules merge through
+  `report.ts` as in the CLI.
+- [ ] Map each message to a `Diagnostic`: `severity` 2 to Error, 1 to
+  Warning, `ruleId` to `code` with `codeDescription.href` from the rule's docs
+  URL, `fatal` (a syntax error) to Error with source `lintrix`. A directive
+  reported unused gets `DiagnosticTag.Unnecessary`, as vscode-eslint does.
+- [ ] Keep the message beside its diagnostic (keyed by range and rule) so a
+  later code action request finds its `fix` and `suggestions` without a second
+  lint.
+- [ ] Emit the rule's docs URL in the JSON messages. `RuleMeta::docsUrl`
+  exists and SARIF prints it as `helpUri`; the JSON formatter and both
+  embeddings do not. (C++, lint/format.cc and embed/lint_text.cc.)
+
+### 9.4 Server: code actions and fixes
+- [ ] Quick fix per fixable problem: the `fix` range and text become one
+  `TextEdit`. A message's `suggestions` become one action each, titled by
+  `desc`, marked `isPreferred: false`.
+- [ ] Disable actions: `lintrix-disable-next-line <rule>` inserted on the
+  line above with the line's indentation, or appended to an existing directive
+  on that line; `lintrix-disable <rule>` at the top of the file. Both respect
+  `eslintDirectives` when the config sets it, inserting the `eslint-` spelling.
+- [ ] Open the rule documentation, through the same URL 9.3 surfaces.
+- [ ] Fix all (`source.fixAll.lintrix`, the `lintrix.executeAutofix` command,
+  and `codeActionsOnSave`): apply the non-overlapping fixes of one pass,
+  re-lint the result, repeat up to a fixed pass cap, then diff the final text
+  against the document as one `WorkspaceEdit`. This reuses the single-shot
+  `fix` edits the embedding already returns, so no fixpoint API is added to the
+  embed surface and vscode-eslint's `diff.ts` stays unported.
+  - [ ] Decide whether `lintText` should return `output` instead (the native
+    `--fix` fixpoint), which would make the server loop unnecessary. Deferred
+    until the loop's cost on a large file is measured.
+- [ ] `codeActionsOnSave.mode: problems` limits the on-save fix to the
+  diagnostics currently shown, as vscode-eslint's does.
+
+### 9.5 Native serve mode (type-aware rules in the editor)
+The embedding runs no type-aware rules; they need tsgo and a resolved
+tsconfig. A per-save `lintrix lint --format json` spawn pays tsgo startup every
+time and cannot see an unsaved buffer, so the editor gets a resident server.
+- [ ] `lintrix serve`: JSON-RPC over stdio (the framing docs/tsgo-client.md
+  already parses on the other side) around the per-run setup of
+  source/cli/lint.cc: one tsgo process, one open `Store`, the config loaded
+  once. Requests: `lint {file, text?, config}` answering the JSON messages,
+  `configChanged`, `shutdown`. `text` overlays the file on disk.
+- [ ] Open documents flow to tsgo as `openFiles`/`fileChanges` on the next
+  `updateSnapshot`, so type-aware rules see the buffer, not the saved file. One
+  snapshot per lint request, released after it, as the CLI does.
+- [ ] Watched-file changes to a tsconfig or a config invalidate through the
+  same request, mapping to `fileChanges` or `invalidateAll`.
+- [ ] The result cache stays on: a lint of an unsaved buffer is not cached
+  (its hash matches no file), a lint of a saved file is, so a reopen replays.
+- [ ] `engine.ts` grows a third engine that keeps the child alive across
+  calls; the server picks it when `binaryPath`, the config's `binary` or PATH
+  yields a native binary, and falls back to the addon or WASM for the syntactic
+  rules with a status bar note that type-aware rules are off.
+- [ ] Tests: a `[integration]` C++ test driving `lintrix serve` over a pipe
+  with a buffer overlay and a config change; a `node --test` for the engine
+  wrapper.
+
+### 9.6 Tests
+- [ ] `node --test` over the server's mapping code: fixture source in, expected
+  `Diagnostic`s, quick-fix edits, disable insertions and fix-all output out,
+  with no VS Code process.
+- [ ] `@vscode/test-electron` smoke: install the VSIX, open a fixture
+  workspace, assert diagnostics appear for a file and vanish after
+  `lintrix.executeAutofix`.
+- [ ] `node make.ts test` runs the first tier; the smoke is `[slow]`.
+
+---
+
 ## Cross-cutting
 
 - [x] `docs/tests.md` — testing strategy + framework spec (written
