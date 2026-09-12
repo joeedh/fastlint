@@ -16,8 +16,12 @@ built both as an N-API addon and as WASM.
   elsewhere.
 - docs/parser.md — the scanner, the parser and the grammar tree as built:
   node and flag conventions, recovery, speculation, JSX, the dump format.
+  docs/parser-conformance.md tracks the tsgo differential pass rate.
+- docs/ast-design.md — the two trees: flat arena grammar nodes versus the
+  mutable `Node`/`util::Pool` AST, and how one maps to the other.
 - docs/tsgo-client.md — the C++ client for `tsc --api`: process, framing,
   JSON, version gate, snapshots, node handles and the typed queries.
+  docs/tsgo-api.md documents the API surface itself.
 - docs/type-facts.md — the interned type graph and the `TypeFacts` questions
   rules ask; how nodes become tsgo handles and what one hop means.
 - docs/type-cache.md — the SQLite store and its invalidation: vendoring,
@@ -30,7 +34,8 @@ built both as an N-API addon and as WASM.
   format, and per-component test strategy.
 - docs/embedding.md — the N-API addon and the WASM module: the shared
   `embed::lintText` entry point, the cmake-js configure step, the pinned
-  emsdk and how its environment is captured.
+  emsdk and how its environment is captured; also the npm package, its
+  release/publish pipeline, and native-binary distribution.
 - docs/plugins.md — the guide for writing rules in TypeScript: the rule
   shape, the node view, config and the file driver, and the performance cost
   of the host boundary.
@@ -57,8 +62,9 @@ file in `tools/make/`). The build is CMake + Ninja with presets `debug`,
 `release`, `relwithdebinfo`, `asan`, `clang-asan`. Commands: `env`, `vcvars`,
 `configure`, `build`, `test`, `format`, `lint`, `deps`, `run`, `check`,
 `clean`. Parser gates: `parse-diff` (tsgo differential), `fuzz` (ASAN
-mutation fuzz), `bench` (parse MB/s). MASTER.md task 1 lists the options of
-each.
+mutation fuzz), `bench` (parse MB/s). Codegen: `gen-ast`, `gen-tsgo-enums`,
+`new-rule`. Packaging and release: `pack`, `release <bump>`, `publish`
+(docs/embedding.md). MASTER.md task 1 lists the options of each.
 - The embedding builds sit outside the presets (docs/embedding.md).
   `build --napi` produces `build/napi/fastlint.node` through cmake-js;
   `build --wasm` produces `build/wasm/bin/fastlint.js` and needs the pinned
