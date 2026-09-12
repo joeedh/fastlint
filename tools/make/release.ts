@@ -192,7 +192,7 @@ export const command: CommandModule<object, Args> = {
     // Past the commit nothing is unwound here. Undoing a tag or a push takes a
     // git command the reader should choose, rather than one this task guesses at.
     await run("git", ["tag", `v${version}`], { cwd: repoRoot });
-    await run("git", ["push", "origin", "HEAD", "--follow-tags"], { cwd: repoRoot });
+    await run("git", ["push", "origin", "--tags"], { cwd: repoRoot });
 
     step("gh release create");
     await run(
