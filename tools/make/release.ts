@@ -132,18 +132,10 @@ export const command: CommandModule<object, Args> = {
     checkUnreleased(name, version);
     info(`${current} -> ${color.bold(version)}`);
 
-    if (argv.check) {
-      step("check");
-      const checked = await run(process.execPath, ["make.ts", "check"], {
-        cwd         : repoRoot,
-        allowFailure: true,
-      });
-      if (checked.code !== 0) fail("check failed; nothing was changed");
-    }
-
-    // The version goes in before the build so the tarball, the tag and what
-    // `lintrix --version` prints are all the same number. Both files go back
-    // as they were if anything after this fails.
+    // The version goes in before the build and before `check`, so the tarball,
+    // the tag, what `lintrix --version` prints, and anything `check` runs
+    // (e.g. a snapshot test that embeds the version) all see the same number.
+    // Both files go back as they were if anything after this fails.
     const saved = versionFiles();
     const undo = (message: string): never => {
       restore(saved);
@@ -151,6 +143,15 @@ export const command: CommandModule<object, Args> = {
     };
     writeVersion(version);
     step(`wrote ${version} to package.json and source/fastlint/version.cc`);
+
+    if (argv.check) {
+      step("check");
+      const checked = await run(process.execPath, ["make.ts", "check"], {
+        cwd         : repoRoot,
+        allowFailure: true,
+      });
+      if (checked.code !== 0) undo("check failed");
+    }
 
     let tarball: string;
     try {
