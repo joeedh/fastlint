@@ -17,7 +17,8 @@ build; the server's protocol surface is documented as it lands.
   the engines have one home (docs/embedding.md) and a change there reaches the
   extension without a publish.
 - `esbuild.mts` bundles each into `out/client.js` and `out/server.js`, as
-  CommonJS, which is what the extension host loads. `node esbuild.mts --watch`
+  CommonJS, which is what the extension host loads, and the smoke test's
+  suite into `out/test/suite.js`. `node esbuild.mts --watch`
   rebuilds on change for a debug session.
 - `tsconfig.json` extends the root one but switches to `module: esnext` and
   `moduleResolution: bundler`. The root's `nodenext` would read the missing
@@ -26,8 +27,8 @@ build; the server's protocol surface is documented as it lands.
   `node make.ts check` typechecks it when the directory has been installed and
   says so when it has not.
 - `.vscodeignore` is an allow-list: the two bundles, `wasm/`, `schema/`,
-  package.json, README.md and LICENSE. Everything else, the sources and
-  node_modules included, stays out of the VSIX.
+  package.json, README.md and LICENSE. Everything else, the sources, the test
+  bundle and node_modules included, stays out of the VSIX.
 
 ## The bundles and `import.meta.url`
 
@@ -38,7 +39,7 @@ define it as the bundle's own `file:` URL (a banner computes it from
 is where the build stages the engine. A bundle therefore needs no path passed
 in to find its engine.
 
-## `node make.ts vsix [--wasm] [--install]`
+## `node make.ts vsix [--wasm] [--smoke] [--install]`
 
 The one command that builds the extension. In order:
 
@@ -51,10 +52,12 @@ The one command that builds the extension. In order:
    `wasm/`, schema/lintrix.config.schema.json into `schema/` (the manifest's
    `jsonValidation` points at it), and the LICENSE. All three are gitignored.
 4. Runs `esbuild.mts`.
-5. `vsce package --no-dependencies` into build/vsix/`<name>-<version>.vsix`.
+5. `--smoke` runs the smoke test in a downloaded VS Code ("Tests" below)
+   before anything is packaged, so a broken build never becomes a VSIX.
+6. `vsce package --no-dependencies` into build/vsix/`<name>-<version>.vsix`.
    The dependencies are already inside the bundles, and vsce cannot walk
    pnpm's node_modules layout anyway.
-6. `--install` runs `code --install-extension … --force`, replacing the
+7. `--install` runs `code --install-extension … --force`, replacing the
    installed copy.
 
 The manifest's `publisher` is a placeholder until there is a Marketplace
@@ -194,7 +197,23 @@ flag if a later version drops it.
 `node --test` covers the mapping in `server/diagnostics.test.ts`, the actions
 and directive edits in `server/actions.test.ts`, and the diff in
 `server/diff.test.ts`; `node make.ts test` runs them when the extension's
-dependencies are installed.
+dependencies are installed. None of them start VS Code.
+
+`node make.ts vsix --smoke` does. `test/run.mts` has `@vscode/test-electron`
+download a stable VS Code into editors/vscode/.vscode-test/ on first use (a
+one-time download of a few hundred megabytes), writes a fixture workspace
+with a config and one file, and launches that VS Code over it with the
+extension loaded from this directory (`--extensionDevelopmentPath`), other
+extensions off and workspace trust off. Inside it, `test/suite.ts` (bundled
+to `out/test/suite.js` beside the client) drives the real API: activate the
+extension, open the file, wait for `lintrix` diagnostics with the expected
+codes, ask for code actions at one of them and check the quick fix is
+offered, run `lintrix.executeAutofix`, then wait for the text to change and
+the diagnostics to clear. `run()` rejects on the first failed assertion,
+which test-electron turns into a non-zero exit, and the fixture is removed
+afterwards. It is the only check that exercises the extension host rather
+than the protocol, so it is what to run after a change to the client or the
+manifest.
 
 ## Checking the server without VS Code
 

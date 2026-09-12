@@ -23,3 +23,5 @@ editors/vscode/wasm/
 editors/vscode/schema/
 editors/vscode/LICENSE
 editors/vscode/*.vsix
+# VS Code downloaded by the extension smoke test.
+editors/vscode/.vscode-test/

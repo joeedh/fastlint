@@ -34,8 +34,20 @@ const server: BuildOptions = {
   outfile    : "out/server.js",
 };
 
+/** The smoke test's suite, loaded by the extension host like the client. */
+const suite: BuildOptions = {
+  ...shared,
+  entryPoints: ["test/suite.ts"],
+  outfile    : "out/test/suite.js",
+  external   : ["vscode"],
+};
+
 const watch = process.argv.includes("--watch");
-const contexts = await Promise.all([esbuild.context(client), esbuild.context(server)]);
+const contexts = await Promise.all([
+  esbuild.context(client),
+  esbuild.context(server),
+  esbuild.context(suite),
+]);
 if (watch) {
   await Promise.all(contexts.map((context) => context.watch()));
 } else {

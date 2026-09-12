@@ -8,6 +8,7 @@ import { bundleWasm, wasmPresetToBundle } from "./pack.ts";
 
 interface Args {
   wasm: boolean;
+  smoke: boolean;
   install: boolean;
 }
 
@@ -76,6 +77,19 @@ async function packageVsix(): Promise<string> {
   return out;
 }
 
+/** Runs test/suite.ts inside a VS Code that test-electron downloads into
+ * editors/vscode/.vscode-test on first use, over a fixture workspace. The
+ * only check that exercises the real extension host. */
+async function smoke(): Promise<void> {
+  step("smoke test in VS Code");
+  const result = await run(process.execPath, [path.join("test", "run.mts")], {
+    cwd         : extensionDir,
+    allowFailure: true,
+  });
+  if (result.code !== 0) fail("the extension smoke test failed");
+  info("ok: the extension linted, offered fixes and fixed all in VS Code");
+}
+
 /** Installs the VSIX into the `code` on PATH, replacing the installed one. */
 async function install(vsix: string): Promise<void> {
   step("code --install-extension");
@@ -93,12 +107,18 @@ export const command: CommandModule<object, Args> = {
         default : false,
         describe: "build the WASM engine first instead of using the built one",
       })
+      .option("smoke", {
+        type    : "boolean",
+        default : false,
+        describe: "run the extension's smoke test in a downloaded VS Code",
+      })
       .option("install", {
         type    : "boolean",
         default : false,
         describe: "install the result into the `code` on PATH",
       })
       .example("$0 vsix --wasm --install", "build everything and try it in VS Code")
+      .example("$0 vsix --smoke", "build and run the smoke test in a downloaded VS Code")
       .epilogue(
         `See ${color.cyan("docs/vscode-extension.md")} for the extension's layout.`
       ) as never,
@@ -107,6 +127,7 @@ export const command: CommandModule<object, Args> = {
     await installDeps();
     stage(preset);
     await bundle();
+    if (argv.smoke) await smoke();
     const vsix = await packageVsix();
     if (argv.install) await install(vsix);
   },

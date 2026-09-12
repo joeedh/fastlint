@@ -1406,13 +1406,23 @@ time and cannot see an unsaved buffer, so the editor gets a resident server.
   wrapper.
 
 ### 9.6 Tests
-- [ ] `node --test` over the server's mapping code: fixture source in, expected
-  `Diagnostic`s, quick-fix edits, disable insertions and fix-all output out,
-  with no VS Code process.
-- [ ] `@vscode/test-electron` smoke: install the VSIX, open a fixture
-  workspace, assert diagnostics appear for a file and vanish after
-  `lintrix.executeAutofix`.
-- [ ] `node make.ts test` runs the first tier; the smoke is `[slow]`.
+Landed 2026-09-12; docs/vscode-extension.md "Tests" describes them.
+- [x] `node --test` over the server's mapping code, with no VS Code process:
+  `server/diagnostics.test.ts` (message to `Diagnostic`),
+  `server/actions.test.ts` (quick fixes, suggestions, disable insertions in
+  both spellings and comment forms, stale-version refusal) and
+  `server/diff.test.ts` (fix-all edits round-trip, including past the
+  distance cap). Landed with 9.3 and 9.4.
+- [x] `@vscode/test-electron` smoke: `test/run.mts` downloads a stable VS
+  Code into editors/vscode/.vscode-test/, writes a fixture workspace and
+  launches the extension from its directory over it (other extensions and
+  workspace trust off); `test/suite.ts` runs inside, waits for the `curly`
+  and `no-debugger` diagnostics, checks the quick fix is offered, runs
+  `lintrix.executeAutofix` and waits for the text to change and the
+  diagnostics to clear. Verified that a failing assertion fails the run.
+- [x] `node make.ts test` runs the `node --test` files when the extension is
+  installed; the smoke is `node make.ts vsix --smoke`, which runs it before
+  packaging. It is not in `check`, since it downloads VS Code.
 
 ---
 
