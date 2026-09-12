@@ -1308,29 +1308,36 @@ Landed 2026-09-12; docs/vscode-extension.md describes it.
   the reason.
 
 ### 9.3 Server: diagnostics
-- [ ] `vscode-languageserver` over stdio with `TextDocuments`. Capabilities:
-  `diagnosticProvider` (pull model), `codeActionProvider` with kinds
-  `quickfix` and `source.fixAll.lintrix`, `executeCommandProvider`.
-- [ ] Per-document settings resolved and cached, keyed by URI: the
-  workspace folder, the nearest `lintrix.config.*` walking up from the file, and
-  the compiled config from `compile.ts`. A file an `ignores` glob claims is
-  answered empty without a lint. The cache is dropped on
-  `didChangeWatchedFiles` for a config or tsconfig, and every open document is
-  revalidated.
-- [ ] Lint on open and change (`run: onType`, debounced) or on save, through
-  `engine.ts` with the document's current text rather than the file on disk.
-  Messages from the built-in rules and the plugin rules merge through
-  `report.ts` as in the CLI.
-- [ ] Map each message to a `Diagnostic`: `severity` 2 to Error, 1 to
-  Warning, `ruleId` to `code` with `codeDescription.href` from the rule's docs
-  URL, `fatal` (a syntax error) to Error with source `lintrix`. A directive
-  reported unused gets `DiagnosticTag.Unnecessary`, as vscode-eslint does.
-- [ ] Keep the message beside its diagnostic (keyed by range and rule) so a
-  later code action request finds its `fix` and `suggestions` without a second
-  lint.
-- [ ] Emit the rule's docs URL in the JSON messages. `RuleMeta::docsUrl`
-  exists and SARIF prints it as `helpUri`; the JSON formatter and both
-  embeddings do not. (C++, lint/format.cc and embed/lint_text.cc.)
+Landed 2026-09-12; docs/vscode-extension.md "The server" describes it.
+- [x] `vscode-languageserver` over IPC with `TextDocuments`, and
+  `diagnosticProvider` (pull model). `codeActionProvider` and
+  `executeCommandProvider` come with 9.4.
+- [x] `server/configs.ts`: the nearest `lintrix.config.*` walking up from the
+  file, memoized per directory, compiled once per config path. A file an
+  `ignores` glob claims is answered empty without a parse. The cache is dropped
+  on `didChangeWatchedFiles` for a config or tsconfig and the client is asked
+  to refresh, which re-pulls every open document. Module configs load with a
+  new `fresh` option on `loadConfigFile`, since the server outlives edits to
+  them. A config that fails to load shows its error as one diagnostic at the
+  top of each file under it, until the status bar (9.2) can carry it.
+- [x] Lint on the client's pull, with the document's current text. The client
+  decides when to pull (on type, on save, on focus), which is where the `run`
+  setting acts in 9.2. `server/engine.ts` runs the built-in rules through the
+  WASM `lintText` and the plugin rules through the TypeScript runtime over the
+  same addon, merged through `report.ts` as in the CLI. An untitled buffer
+  lints under the recommended preset as a name with its language's extension.
+- [x] `server/diagnostics.ts` maps each message: `severity` 2 to Error, 1 to
+  Warning, `ruleId` to `code` with `codeDescription.href` from the rule's
+  `url`, source `lintrix`, ranges clamped to the document. An unused directive
+  gets `DiagnosticTag.Unnecessary`. Covered by `server/diagnostics.test.ts`,
+  which `node make.ts test` runs when the extension is installed.
+- [x] The report is kept per open document and each diagnostic's `data`
+  holds its message's index, so a code action finds the `fix` and
+  `suggestions` without a second lint.
+- [x] The JSON messages carry `url`, the rule's docs page, when the rule has
+  one (lint/format.cc; both embeddings print through it). `EslintMessage`
+  gained `url` and typed `fix`/`suggestions`. docs/rules.md "Output" notes it
+  as an addition over ESLint's shape.
 
 ### 9.4 Server: code actions and fixes
 - [ ] Quick fix per fixable problem: the `fix` range and text become one

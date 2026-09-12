@@ -31,6 +31,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       { scheme: "file", language: "typescriptreact" },
     ],
     outputChannelName: "lintrix",
+    synchronize: {
+      // A config or tsconfig change can alter what any open document lints
+      // with; the server drops its config cache and re-pulls on either.
+      fileEvents: [
+        vscode.workspace.createFileSystemWatcher(
+          "**/lintrix.config.{ts,mts,js,mjs,json}"
+        ),
+        vscode.workspace.createFileSystemWatcher("**/tsconfig.json"),
+      ],
+    },
   };
 
   client = new LanguageClient("lintrix", "lintrix", serverOptions, clientOptions);

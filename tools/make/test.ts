@@ -141,13 +141,20 @@ export async function runCppTests(preset: string, argv: Args): Promise<boolean> 
   return ok;
 }
 
-/** Where a `*.test.ts` may live. */
+/** Where a `*.test.ts` may live. The extension's tests need its own
+ * node_modules, so that root counts only once `vsix` has installed them. */
 const tsTestRoots = ["tools", "source/fastlint/plugin/ts"];
+const extensionTestRoot = "editors/vscode/server";
 
 export async function runTsTests(): Promise<boolean> {
   // The files are passed one by one: the runner takes a directory argument as a
   // module to run rather than a tree to search, so it would fail on the folder.
   const files = tsTestRoots.flatMap((root) => findTsTests(path.join(repoRoot, root)));
+  if (fs.existsSync(path.join(repoRoot, "editors", "vscode", "node_modules"))) {
+    files.push(...findTsTests(path.join(repoRoot, extensionTestRoot)));
+  } else {
+    info("editors/vscode has no node_modules; run `node make.ts vsix` to test it");
+  }
   if (files.length === 0) {
     info("no TypeScript tests yet");
     return true;

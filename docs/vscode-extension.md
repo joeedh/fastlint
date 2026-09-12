@@ -60,9 +60,50 @@ The one command that builds the extension. In order:
 The manifest's `publisher` is a placeholder until there is a Marketplace
 publisher to release under; the VSIX installs locally regardless.
 
+## The server
+
+`server/server.ts` wires the protocol; the work is in three modules beside it.
+
+- Diagnostics are pulled, not pushed: the server advertises
+  `diagnosticProvider` and answers `textDocument/diagnostic` with a full report
+  each time. The client decides when to ask (on type, on save, on focus), which
+  is where the `run` setting acts, so the server has one path and no timers.
+- `engine.ts` loads the bundled WASM module once and lints a buffer: the
+  built-in rules through `lintText` with the config's native handoff document,
+  and the plugin rules through the TypeScript runtime over the same addon; the
+  two lists merge through plugin/ts/report.ts as the CLI merges them. A file
+  the config ignores gets an empty report without a parse. Without a config the
+  recommended preset applies and no plugin rule runs.
+- `configs.ts` resolves a document's config: the nearest `lintrix.config.*`
+  walking up from its directory, memoized per directory, loaded and compiled
+  once per config path. Module configs load with `fresh: true`
+  (plugin/ts/config.ts), because the server outlives edits to them and Node's
+  import cache would otherwise serve the first version forever. A config that
+  fails to load is remembered as its error, and every document under it shows
+  that error as one diagnostic at the top of the file.
+- `diagnostics.ts` maps a message to an LSP `Diagnostic`. The JSON already
+  counts lines from 1 and columns in UTF-16 units, so the range is an offset of
+  one, clamped to the document. `ruleId` becomes `code`, the rule's `url`
+  becomes `codeDescription.href` (the link on the code in the Problems view),
+  and an unused disable directive carries `DiagnosticTag.Unnecessary`. Each
+  diagnostic's `data` holds the index of its message in the report, and the
+  report is kept per open document, so a code action request finds the
+  message's fix and suggestions without linting again.
+- The client watches `lintrix.config.*` and `tsconfig.json`. On a change the
+  server drops the whole config cache and asks the client to refresh, which
+  re-pulls every open document.
+- A document that is not a `file:` (an untitled buffer) has no directory to
+  search, so it lints under the recommended preset as a name with the
+  extension its language id implies.
+
+The mapping has `node --test` coverage in `server/diagnostics.test.ts`, run by
+`node make.ts test` when the extension's dependencies are installed.
+
 ## Checking the server without VS Code
 
 The server takes its transport from argv, so `node editors/vscode/out/server.js
 --stdio` speaks LSP over stdin and stdout. An `initialize` request answers with
-the capabilities, and `initialized` logs which engine the server found, which is
-enough to tell a broken bundle from a broken extension.
+the capabilities, `initialized` logs which engine the server found, and a
+`textDocument/didOpen` followed by `textDocument/diagnostic` returns the
+diagnostics for the buffer, which is enough to tell a broken bundle from a
+broken extension.

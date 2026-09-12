@@ -168,6 +168,10 @@ void formatJson(span<const FileResult> results, string &out)
       } else {
         w.null();
       }
+      // An editor opens the rule's page from its diagnostic (task 9.3).
+      if (d.rule && d.rule->meta.docsUrl && d.rule->meta.docsUrl[0]) {
+        w.member("url", d.rule->meta.docsUrl);
+      }
       w.member("severity", d.severity == Severity::Error ? 2 : 1);
       w.member("message", view(d.message));
       w.member("line", d.line);

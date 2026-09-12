@@ -30,7 +30,11 @@ async function installDeps(): Promise<void> {
 /** Copies in what the VSIX ships from outside its directory: the WASM engine,
  * the config schema `jsonValidation` points at, and the license. */
 function stage(preset: "wasm" | "wasm-release"): void {
-  bundleWasm(preset, path.join(extensionDir, "wasm"));
+  const wasmDir = path.join(extensionDir, "wasm");
+  bundleWasm(preset, wasmDir);
+  // The Emscripten module is ESM. The extension's own package.json declares no
+  // type, so without this Node reparses the file and warns on every start.
+  fs.writeFileSync(path.join(wasmDir, "package.json"), '{ "type": "module" }\n');
   const schema = "lintrix.config.schema.json";
   fs.mkdirSync(path.join(extensionDir, "schema"), { recursive: true });
   fs.copyFileSync(

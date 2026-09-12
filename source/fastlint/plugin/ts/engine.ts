@@ -13,9 +13,24 @@ import { nativeConfig, nativeConfigPath, type CompiledConfig } from "./compile.t
 import type { Addon } from "./runtime.ts";
 import { loadWasmAddon } from "./wasm_addon.ts";
 
+/** A text replacement: `range` is UTF-16 offsets into the source. */
+export interface EslintFix {
+  range: [number, number];
+  text: string;
+}
+
+/** One suggestion a message offers, applied by its `fix` when it has one. */
+export interface EslintSuggestion {
+  messageId?: string;
+  desc: string;
+  fix?: EslintFix;
+}
+
 /** One problem, in ESLint's JSON shape (docs/rules.md "Output"). */
 export interface EslintMessage {
   ruleId: string | null;
+  /** The rule's documentation page; absent on a syntax error. */
+  url?: string;
   severity: 1 | 2;
   message: string;
   line: number;
@@ -25,8 +40,8 @@ export interface EslintMessage {
   messageId?: string;
   fatal?: boolean;
   fixable?: boolean;
-  fix?: { range: [number, number]; text: string };
-  suggestions?: unknown[];
+  fix?: EslintFix;
+  suggestions?: EslintSuggestion[];
 }
 
 /** One file's problems, in ESLint's JSON shape. */

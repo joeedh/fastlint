@@ -355,7 +355,9 @@ lint/format.h has three formatters over `FileResult`s.
   fixableWarningCount}` with `output` when `--fix` changed the text. Each
   message has `ruleId`, `severity` (2 error, 1 warning), `message`, `line`,
   `column`, `endLine`, `endColumn`, `messageId`, and `fatal`, `fixable` and
-  `suggestions` when set. A fixable message also carries a `fix` object,
+  `suggestions` when set. A message with a rule also carries `url`, the
+  rule's documentation page, which an editor links from the diagnostic; ESLint's
+  JSON has no such field. A fixable message also carries a `fix` object,
   `{range: [start, end], text}`, in ESLint's shape: `start` and `end` are
   UTF-16 offsets into the source and `text` replaces that span. Our fixes are
   tree edits, so each one is applied alone to the original and the printed

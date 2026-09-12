@@ -34,12 +34,24 @@ export function findConfig(dir: string): string | undefined {
   }
 }
 
+export interface LoadOptions {
+  /** Re-read a module config that Node has already imported. A long-lived host
+   * (the language server) passes this when the file changed on disk, since
+   * Node's import cache never sees the change. Each fresh load is a new module
+   * instance, so a host that loads often is holding every earlier one. */
+  fresh?: boolean;
+}
+
 /**
  * Reads and validates the config at `configPath`. A module config is imported,
  * and its rules are read from the default export or from a named `config`
- * export; the import is cached by Node, so re-reading one file is free.
+ * export; the import is cached by Node, so re-reading one file is free unless
+ * `fresh` is set.
  */
-export async function loadConfigFile(configPath: string): Promise<FastlintConfigFile> {
+export async function loadConfigFile(
+  configPath: string,
+  options: LoadOptions = {}
+): Promise<FastlintConfigFile> {
   if (configPath.endsWith(".json")) {
     const text = fs.readFileSync(configPath, "utf8");
     let parsed: unknown;
@@ -52,10 +64,9 @@ export async function loadConfigFile(configPath: string): Promise<FastlintConfig
     return assertConfigFile(parsed, configPath);
   }
 
-  const module = (await import(pathToFileURL(configPath).href)) as Record<
-    string,
-    unknown
-  >;
+  const url = pathToFileURL(configPath);
+  if (options.fresh) url.searchParams.set("t", String(Date.now()));
+  const module = (await import(url.href)) as Record<string, unknown>;
   const candidate = module["default"] ?? module["config"];
   if (candidate === undefined) {
     throw new Error(`${configPath}: config has no default export`);
@@ -65,7 +76,10 @@ export async function loadConfigFile(configPath: string): Promise<FastlintConfig
 
 /** Loads `configPath` and imports the plugins it declares. Globs and tsconfig
  * paths anchor at the config file's own directory. */
-export async function loadCompiledConfig(configPath: string): Promise<CompiledConfig> {
-  const file = await loadConfigFile(configPath);
+export async function loadCompiledConfig(
+  configPath: string,
+  options: LoadOptions = {}
+): Promise<CompiledConfig> {
+  const file = await loadConfigFile(configPath, options);
   return compileConfig(file, path.dirname(path.resolve(configPath)));
 }
