@@ -111,9 +111,9 @@ bool isSourceFile(const std::filesystem::path &path)
 }
 
 void collectFiles(const char *arg,
-                   Vector<std::filesystem::path> &files,
-                   PathFilter skip,
-                   void *context)
+                  Vector<std::filesystem::path> &files,
+                  PathFilter skip,
+                  void *context)
 {
   std::error_code error;
   std::filesystem::path path(arg);

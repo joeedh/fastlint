@@ -1304,7 +1304,7 @@ Landed 2026-09-12; docs/vscode-extension.md "The client" describes it.
   `workspace/configuration` (`server/settings.ts`) and drops the cache on
   `didChangeConfiguration`. `engine: native` reports an error until 9.5.
 - [x] Commands: `lintrix.executeAutofix` (routed to the server's
-  `lintrix.applyAllFixes`, which 9.4 provides), `lintrix.restart`,
+  `lintrix.applyAllFixes`), `lintrix.restart`,
   `lintrix.revalidate` (a `lintrix/revalidate` notification; the server drops
   every cache and re-pulls), `lintrix.showOutputChannel`.
 - [x] The server runs over Node IPC (the extension host's own transport for a
@@ -1348,25 +1348,38 @@ Landed 2026-09-12; docs/vscode-extension.md "The server" describes it.
   as an addition over ESLint's shape.
 
 ### 9.4 Server: code actions and fixes
-- [ ] Quick fix per fixable problem: the `fix` range and text become one
-  `TextEdit`. A message's `suggestions` become one action each, titled by
-  `desc`, marked `isPreferred: false`.
-- [ ] Disable actions: `lintrix-disable-next-line <rule>` inserted on the
-  line above with the line's indentation, or appended to an existing directive
-  on that line; `lintrix-disable <rule>` at the top of the file. Both respect
-  `eslintDirectives` when the config sets it, inserting the `eslint-` spelling.
-- [ ] Open the rule documentation, through the same URL 9.3 surfaces.
-- [ ] Fix all (`source.fixAll.lintrix`, the `lintrix.executeAutofix` command,
-  and `codeActionsOnSave`): apply the non-overlapping fixes of one pass,
-  re-lint the result, repeat up to a fixed pass cap, then diff the final text
-  against the document as one `WorkspaceEdit`. This reuses the single-shot
-  `fix` edits the embedding already returns, so no fixpoint API is added to the
-  embed surface and vscode-eslint's `diff.ts` stays unported.
+Landed 2026-09-12; docs/vscode-extension.md "Code actions and fixes"
+describes it. `server/actions.ts` and `server/diff.ts`, with tests.
+- [x] Quick fix per fixable problem: the `fix` range and text become one
+  `TextEdit`, inline in a versioned `WorkspaceEdit`, marked preferred. A
+  message's `suggestions` become one action each, titled by `desc`. "Fix all
+  `<rule>` problems" when the rule has more than one non-overlapping fix.
+- [x] Disable actions: `// lintrix-disable-next-line <rule>` inserted above
+  with the line's indentation, or appended after a comma to a
+  `disable-next-line` directive already there (either spelling, either comment
+  form, before a ` -- justification` tail); `/* lintrix-disable <rule> */` at
+  the top of the file, below a shebang. The `lintrix-` spelling is always the
+  one written: `eslintDirectives` defaults on, so the `eslint-` spelling is an
+  alias, not the preferred form.
+- [x] "Show documentation" runs `lintrix.openRuleDoc` with the message's
+  `url`; the client registers it.
+- [x] Fix all (`source.fixAll.lintrix`, the `lintrix.applyAllFixes` command
+  behind `lintrix.executeAutofix` and the closing quick fix): apply the
+  non-overlapping fixes of one pass, re-lint the result, repeat up to ten
+  passes, then diff the final text against the document. `diff.ts` is Myers
+  over lines with each hunk trimmed to the differing characters, ~150 lines
+  rather than vscode-eslint's thousand. The embedding keeps returning
+  single-shot edits.
   - [ ] Decide whether `lintText` should return `output` instead (the native
     `--fix` fixpoint), which would make the server loop unnecessary. Deferred
     until the loop's cost on a large file is measured.
-- [ ] `codeActionsOnSave.mode: problems` limits the on-save fix to the
-  diagnostics currently shown, as vscode-eslint's does.
+- [x] `codeActionsOnSave.mode: problems` applies the fixes already shown in
+  one pass without linting again.
+- [x] Found and worked around on the way: V8's background WASM tier-up makes
+  `process.exit()` trip a libuv assertion on Windows (Node 24.14) after a few
+  lints, and `vscode-languageserver` exits that way. `Engine.load` sets
+  `--no-wasm-dynamic-tiering` at runtime; docs/vscode-extension.md "The exit
+  crash" has the measurements. The npm CLI exits naturally and is unaffected.
 
 ### 9.5 Native serve mode (type-aware rules in the editor)
 The embedding runs no type-aware rules; they need tsgo and a resolved

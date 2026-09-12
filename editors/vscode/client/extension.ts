@@ -28,9 +28,11 @@ const commands = {
   restart          : "lintrix.restart",
   revalidate       : "lintrix.revalidate",
   showOutputChannel: "lintrix.showOutputChannel",
+  /** Run by the "Show documentation" code action; not in the palette. */
+  openRuleDoc      : "lintrix.openRuleDoc",
 } as const;
 
-/** The server command fix-all is routed to (task 9.4 provides it). */
+/** The server command fix-all is routed to. */
 const applyAllFixes = "lintrix.applyAllFixes";
 
 let client: LanguageClient | undefined;
@@ -114,6 +116,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand(commands.revalidate, () => {
       void client?.sendNotification(revalidateNotification);
+    }),
+    vscode.commands.registerCommand(commands.openRuleDoc, (url: string) => {
+      void vscode.env.openExternal(vscode.Uri.parse(url));
     }),
     vscode.commands.registerCommand(commands.executeAutofix, async () => {
       const editor = vscode.window.activeTextEditor;

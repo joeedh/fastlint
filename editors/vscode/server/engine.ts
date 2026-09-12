@@ -3,6 +3,8 @@
 // through the TypeScript runtime over the same parse. A native serve mode
 // joins in task 9.5.
 
+import v8 from "node:v8";
+
 import type { CompiledConfig } from "../../../source/fastlint/plugin/ts/compile.ts";
 import { nativeConfig, resolveFile } from "../../../source/fastlint/plugin/ts/compile.ts";
 import type { FileReport } from "../../../source/fastlint/plugin/ts/engine.ts";
@@ -40,6 +42,13 @@ export class Engine {
   static async load(): Promise<Engine | undefined> {
     const modulePath = findWasmModule();
     if (modulePath === undefined) return undefined;
+    // V8 tiers up hot WASM functions on background threads, and on Windows a
+    // process.exit() while one of those jobs is posting back trips a libuv
+    // assertion (Node 24.14, seen after a handful of lints). The language
+    // server library ends every run with process.exit, so the tiering is
+    // turned off here: functions compile optimized on first call instead,
+    // which costs nothing measurable. An unknown flag is ignored by V8.
+    v8.setFlagsFromString("--no-wasm-dynamic-tiering");
     const addon = await loadWasmAddon(modulePath);
     if (!addon.lintText) {
       throw new Error(`${modulePath}: the module exports no lintText`);

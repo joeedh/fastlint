@@ -81,9 +81,11 @@ publisher to release under; the VSIX installs locally regardless.
   and caches them (`server/settings.ts`); the client's
   `workspace/didChangeConfiguration` drops that cache and re-pulls.
 - Commands, all under the `lintrix` category: `lintrix.executeAutofix` (runs
-  the server's `lintrix.applyAllFixes` on the active document, which task 9.4
-  provides), `lintrix.restart`, `lintrix.revalidate` (the server drops every
-  cache and re-pulls) and `lintrix.showOutputChannel`.
+  the server's `lintrix.applyAllFixes` on the active document),
+  `lintrix.restart`, `lintrix.revalidate` (the server drops every cache and
+  re-pulls) and `lintrix.showOutputChannel`. `lintrix.openRuleDoc` is
+  registered too, for the "Show documentation" code action, and is not in the
+  palette.
 - The status bar item (`client/status.ts`) follows the active editor. The
   server sends `lintrix/status` after each lint, naming the document, the
   engine and the state, and once for itself when the engine loads. The item
@@ -130,8 +132,69 @@ publisher to release under; the VSIX installs locally regardless.
   search, so it lints under the recommended preset as a name with the
   extension its language id implies.
 
-The mapping has `node --test` coverage in `server/diagnostics.test.ts`, run by
-`node make.ts test` when the extension's dependencies are installed.
+## Code actions and fixes
+
+`server/actions.ts` builds the actions; `server/diff.ts` turns a fixed text
+back into edits.
+
+- Every action carries its edit inline, versioned to the document it was
+  computed for, so VS Code applies it with no round trip and refuses it once
+  the document has moved on. A message's `fix` is a UTF-16 range over the
+  linted source, which is the document's own coordinate space, so
+  `positionAt` is the whole mapping.
+- For each diagnostic VS Code asks about, the quick fixes are the message's
+  own fix (marked preferred), one action per suggestion, "Fix all `<rule>`
+  problems" when the rule has more than one non-overlapping fix in the file,
+  "Disable `<rule>` for this line", "Disable `<rule>` for the entire file",
+  and "Show documentation" when the rule has a page. A message without a rule
+  (a syntax error, an unused directive) gets none. "Fix all auto-fixable
+  problems" closes the list when anything in the file is fixable.
+- The line directive is `// lintrix-disable-next-line <rule>` above the line
+  with the line's indentation. If a `disable-next-line` directive is already
+  there, in either spelling and either comment form, the rule is appended to
+  it after a comma, before a ` -- justification` tail or the block comment's
+  close. The file directive is `/* lintrix-disable <rule> */` at the top,
+  below a shebang. `eslintDirectives` is on by default, so the `lintrix-`
+  spelling is always the one written.
+- "Show documentation" runs `lintrix.openRuleDoc` with the rule's `url`; the
+  client registers that command, since only it can open a browser.
+- Fix-all has three entry points: the `source.fixAll.lintrix` code action
+  (which `editor.codeActionsOnSave` names, and a bare `source.fixAll` reaches
+  too), the `lintrix.applyAllFixes` server command behind the palette's
+  `lintrix.executeAutofix` and the closing quick fix, and both go through
+  `computeAllFixes`. In `all` mode the text is linted and its non-overlapping
+  fixes applied until a pass finds nothing fixable, at most ten passes, then
+  the result is diffed against the document. In `problems` mode
+  (`codeActionsOnSave.mode`) the fixes already shown are applied in one pass
+  and nothing is linted again. The embedding keeps returning single-shot
+  edits; no fixpoint API was added to it.
+- `diff.ts` is Myers' algorithm over lines, each changed run of lines trimmed
+  to the characters that differ, so the cursor and the undo stack see small
+  edits rather than a whole-file replace. Past a thousand differing lines it
+  gives up and replaces the changed region whole.
+
+## The exit crash under V8's WASM tiering
+
+V8 compiles WASM with Liftoff first and tiers hot functions up to TurboFan on
+background threads. On Windows (Node 24.14), a `process.exit()` while one of
+those jobs is posting back to the main thread trips libuv's
+`!(handle->flags & UV_HANDLE_CLOSING)` assertion in async.c and the process
+dies with 0xC0000409. A handful of lints is enough to start the jobs, and
+`vscode-languageserver` ends every run with `process.exit`, so the server hit
+it on every shutdown after a fix-all. A natural exit tears the platform down
+in order and is fine, which is why the npm CLI (`process.exitCode`) never
+sees it. `Engine.load` sets `--no-wasm-dynamic-tiering` through
+`v8.setFlagsFromString` before instantiating the module; functions then
+compile optimized on first call, which costs nothing measurable (first lint
+~20 ms instead of ~15, later ones 0.5–1 ms either way), and V8 ignores the
+flag if a later version drops it.
+
+## Tests
+
+`node --test` covers the mapping in `server/diagnostics.test.ts`, the actions
+and directive edits in `server/actions.test.ts`, and the diff in
+`server/diff.test.ts`; `node make.ts test` runs them when the extension's
+dependencies are installed.
 
 ## Checking the server without VS Code
 

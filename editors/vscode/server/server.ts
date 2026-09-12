@@ -1,31 +1,45 @@
-// The language server (tasks 9.2, 9.3). It lints the open documents on the
+// The language server (tasks 9.2 to 9.4). It lints the open documents on the
 // client's pull requests, maps each report to diagnostics, reports a status
 // per document for the client's status bar, and drops its caches when a
-// watched config, a tsconfig or a setting changes. Code actions land in task
-// 9.4. The plugin surface is imported by path, so the config loader and the
-// engines have one home (docs/embedding.md).
+// watched config, a tsconfig or a setting changes, and serves the code actions
+// and fix-all. The plugin surface is imported by path, so the config loader and
+// the engines have one home (docs/embedding.md).
 
 import path from "node:path";
 import {
+  CodeActionKind,
   DidChangeConfigurationNotification,
   DocumentDiagnosticReportKind,
   ProposedFeatures,
   TextDocumentSyncKind,
   TextDocuments,
   createConnection,
+  type CodeAction,
   type DocumentDiagnosticReport,
   type InitializeResult,
+  type TextEdit,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 
+import type { CompiledConfig } from "../../../source/fastlint/plugin/ts/compile.ts";
 import {
   revalidateNotification,
   statusNotification,
+  type Settings,
   type StatusParams,
 } from "../shared/protocol.ts";
+import {
+  applyAllFixesCommand,
+  applyFixes,
+  fixAllKind,
+  fixEdit,
+  nonOverlapping,
+  quickFixes,
+} from "./actions.ts";
 import { ConfigCache } from "./configs.ts";
-import { runDiagnostic, toState, type DocumentState } from "./diagnostics.ts";
+import { runDiagnostic, source, toState, type DocumentState } from "./diagnostics.ts";
+import { editsBetween } from "./diff.ts";
 import { Engine } from "./engine.ts";
 import { SettingsCache } from "./settings.ts";
 
@@ -87,46 +101,173 @@ function emptyState(document: TextDocument, problem: string): DocumentState {
   };
 }
 
-/** Lints `document` and reports its status. A problem with the run itself (an
- * engine or config that did not load) is both the status and one diagnostic at
- * the top of the file, so it shows in the Problems view as well. */
-async function lintDocument(document: TextDocument): Promise<DocumentState> {
+/** Everything a lint of `document` needs, resolved once per request. */
+interface Run {
+  engine: Engine;
+  filePath: string;
+  compiled: CompiledConfig | undefined;
+  settings: Settings;
+}
+
+/** Resolves the engine, settings and config for `document`, or the reason it
+ * cannot be linted. Reports the failure as the document's status. */
+async function resolveRun(document: TextDocument): Promise<Run | string> {
   const uri = document.uri;
   const loaded = await engine;
   if (typeof loaded === "string") {
     status({ uri, state: "error", message: loaded });
-    return emptyState(document, loaded);
+    return loaded;
   }
   const current = await settings.forDocument(uri);
   if (current.engine === "native") {
     const message = "lintrix.engine is 'native', which this version does not offer yet";
     status({ uri, state: "error", message });
-    return emptyState(document, message);
+    return message;
   }
-
   const { filePath, onDisk } = filePathFor(document);
   const lookup = onDisk ? await configs.forFile(filePath) : {};
   if (lookup.error !== undefined) {
     const message = `${lookup.configPath} did not load: ${lookup.error}`;
     status({ uri, state: "error", engine: "wasm", message });
-    return emptyState(document, message);
+    return message;
   }
-  const report = loaded.lint(document.getText(), filePath, lookup.compiled);
-  status({ uri, state: "ok", engine: "wasm" });
+  return { engine: loaded, filePath, compiled: lookup.compiled, settings: current };
+}
+
+/** Lints `document` and reports its status. A problem with the run itself (an
+ * engine or config that did not load) is both the status and one diagnostic at
+ * the top of the file, so it shows in the Problems view as well. */
+async function lintDocument(document: TextDocument): Promise<DocumentState> {
+  const run = await resolveRun(document);
+  if (typeof run === "string") return emptyState(document, run);
+  const report = run.engine.lint(document.getText(), run.filePath, run.compiled);
+  status({ uri: document.uri, state: "ok", engine: "wasm" });
   return toState(document, report);
+}
+
+/** Passes fix-all makes before giving up on a text whose fixes keep producing
+ * new problems. ESLint stops at ten as well. */
+const maxFixPasses = 10;
+
+/**
+ * The edits that fix everything fixable in `document`. In `problems` mode the
+ * fixes already shown are applied in one pass, which is what an on-save run
+ * asks for when it must not lint again. Otherwise the text is linted and
+ * fixed until a pass finds nothing fixable, and the result is diffed back to
+ * edits on the document. Empty when nothing is fixable or the state is stale.
+ */
+async function computeAllFixes(
+  document: TextDocument,
+  mode: Settings["codeActionsOnSave"]["mode"]
+): Promise<TextEdit[]> {
+  if (mode === "problems") {
+    const state = states.get(document.uri);
+    if (state === undefined || state.version !== document.version) return [];
+    return nonOverlapping(state.report.messages).map((fix) => fixEdit(document, fix));
+  }
+  const run = await resolveRun(document);
+  if (typeof run === "string") return [];
+  const original = document.getText();
+  let text = original;
+  for (let pass = 0; pass < maxFixPasses; pass++) {
+    const report = run.engine.lint(text, run.filePath, run.compiled);
+    const fixes = nonOverlapping(report.messages);
+    if (fixes.length === 0) break;
+    text = applyFixes(text, fixes);
+  }
+  return editsBetween(document, original, text);
+}
+
+/** True when a code action request's `only` asks for fix-all: the kind
+ * itself or a parent of it. */
+function wantsFixAll(only: readonly string[] | undefined): boolean {
+  return (only ?? []).some(
+    (kind) => kind === fixAllKind || fixAllKind.startsWith(`${kind}.`)
+  );
 }
 
 connection.onInitialize((): InitializeResult => {
   return {
     capabilities: {
-      textDocumentSync  : TextDocumentSyncKind.Incremental,
+      textDocumentSync      : TextDocumentSyncKind.Incremental,
       diagnosticProvider: {
         identifier           : "lintrix",
         interFileDependencies: false,
         workspaceDiagnostics : false,
       },
+      codeActionProvider: {
+        codeActionKinds: [CodeActionKind.QuickFix, fixAllKind],
+      },
+      executeCommandProvider: {
+        commands: [applyAllFixesCommand],
+      },
     },
   };
+});
+
+connection.onCodeAction(async (params): Promise<CodeAction[]> => {
+  const document = documents.get(params.textDocument.uri);
+  if (document === undefined) return [];
+  const only = params.context.only;
+
+  if (wantsFixAll(only)) {
+    const mode = (await settings.forDocument(document.uri)).codeActionsOnSave.mode;
+    const edits = await computeAllFixes(document, mode);
+    if (edits.length === 0) return [];
+    return [
+      {
+        title: "Fix all auto-fixable lintrix problems",
+        kind : fixAllKind,
+        edit: {
+          documentChanges: [
+            { textDocument: { uri: document.uri, version: document.version }, edits },
+          ],
+        },
+      },
+    ];
+  }
+  // A request for another source kind (organize imports, say) is not ours.
+  if (only !== undefined && only.length > 0 && !only.includes(CodeActionKind.QuickFix)) {
+    return [];
+  }
+
+  const state = states.get(document.uri);
+  if (state === undefined) return [];
+  const ours = params.context.diagnostics.filter((d) => d.source === source);
+  const actions = quickFixes(document, state, ours);
+  if (actions.length > 0 && state.report.messages.some((m) => m.fix !== undefined)) {
+    actions.push({
+      title  : "Fix all auto-fixable problems",
+      kind   : CodeActionKind.QuickFix,
+      command: {
+        title    : "Fix all",
+        command  : applyAllFixesCommand,
+        arguments: [{ uri: document.uri, version: document.version }],
+      },
+    });
+  }
+  return actions;
+});
+
+connection.onExecuteCommand(async (params) => {
+  if (params.command !== applyAllFixesCommand) return null;
+  const target = params.arguments?.[0] as { uri: string; version?: number } | undefined;
+  const document = target === undefined ? undefined : documents.get(target.uri);
+  if (document === undefined) return null;
+  if (target?.version !== undefined && target.version !== document.version) return null;
+  const edits = await computeAllFixes(document, "all");
+  if (edits.length === 0) return null;
+  const response = await connection.workspace.applyEdit({
+    documentChanges: [
+      { textDocument: { uri: document.uri, version: document.version }, edits },
+    ],
+  });
+  if (!response.applied) {
+    connection.console.error(
+      `fix all was not applied: ${response.failureReason ?? "unknown"}`
+    );
+  }
+  return null;
 });
 
 connection.onInitialized(() => {
