@@ -1302,7 +1302,8 @@ Landed 2026-09-12; docs/vscode-extension.md "The client" describes it.
   shape and defaults for both sides. `run`, `validate` and `enable` act in the
   client's diagnostic pull filter; the server reads the rest through
   `workspace/configuration` (`server/settings.ts`) and drops the cache on
-  `didChangeConfiguration`. `engine: native` reports an error until 9.5.
+  `didChangeConfiguration`. `engine` and `binaryPath` choose the serve mode
+  (9.5).
 - [x] Commands: `lintrix.executeAutofix` (routed to the server's
   `lintrix.applyAllFixes`), `lintrix.restart`,
   `lintrix.revalidate` (a `lintrix/revalidate` notification; the server drops
@@ -1382,28 +1383,41 @@ describes it. `server/actions.ts` and `server/diff.ts`, with tests.
   crash" has the measurements. The npm CLI exits naturally and is unaffected.
 
 ### 9.5 Native serve mode (type-aware rules in the editor)
-The embedding runs no type-aware rules; they need tsgo and a resolved
+Landed 2026-09-12; docs/vscode-extension.md "The native serve mode" describes
+it. The embedding runs no type-aware rules; they need tsgo and a resolved
 tsconfig. A per-save `lintrix lint --format json` spawn pays tsgo startup every
 time and cannot see an unsaved buffer, so the editor gets a resident server.
-- [ ] `lintrix serve`: JSON-RPC over stdio (the framing docs/tsgo-client.md
-  already parses on the other side) around the per-run setup of
-  source/cli/lint.cc: one tsgo process, one open `Store`, the config loaded
-  once. Requests: `lint {file, text?, config}` answering the JSON messages,
-  `configChanged`, `shutdown`. `text` overlays the file on disk.
-- [ ] Open documents flow to tsgo as `openFiles`/`fileChanges` on the next
-  `updateSnapshot`, so type-aware rules see the buffer, not the saved file. One
-  snapshot per lint request, released after it, as the CLI does.
-- [ ] Watched-file changes to a tsconfig or a config invalidate through the
-  same request, mapping to `fileChanges` or `invalidateAll`.
-- [ ] The result cache stays on: a lint of an unsaved buffer is not cached
-  (its hash matches no file), a lint of a saved file is, so a reopen replays.
-- [ ] `engine.ts` grows a third engine that keeps the child alive across
-  calls; the server picks it when `binaryPath`, the config's `binary` or PATH
-  yields a native binary, and falls back to the addon or WASM for the syntactic
-  rules with a status bar note that type-aware rules are off.
-- [ ] Tests: a `[integration]` C++ test driving `lintrix serve` over a pipe
-  with a buffer overlay and a config change; a `node --test` for the engine
-  wrapper.
+- [x] `lintrix serve` (source/cli/serve.cc): JSON-RPC 2.0 over stdio in LSP's
+  `Content-Length` framing (rather than the tsgo msgpack envelope, which no
+  editor-side library speaks) around the per-run setup of source/cli/lint.cc,
+  whose helpers moved to source/cli/run.h. One session per config: one tsgo
+  process, one open `Store`, the config loaded once. Requests: `lint {file,
+  text?, config?}` answering `{results, typed, typeError?}` with the JSON
+  messages, `close {file}`, `changed {files}`, `configChanged {path?}`,
+  `shutdown`. `text` overlays the file on disk.
+- [x] Open documents reach tsgo through `ProjectTypes`, which already serves
+  the text it was handed and sends `changed`/`openFiles` when it differs from
+  the disk; `addProject` opens a file's tsconfig on first sight in the running
+  server, `forgetFile` and `filesChanged` drop held text so the disk is read
+  again. A snapshot is replaced only when something changed, as the CLI does.
+- [x] Watched-file changes: the client also watches the source files; every
+  change is forwarded as `changed` (a tsconfig or config among them drops the
+  session, which reloads on the next lint), and only a config or tsconfig
+  change re-pulls the open documents.
+- [x] The result cache stays on: a `text` equal to the disk is cached and
+  replayed, a differing one is neither. The tsconfig hash keys each file's
+  result rather than the store's environment hash, since the projects are not
+  known when the store opens.
+- [x] `plugin/ts/serve.ts` is the `ServeClient`; `server/native.ts` keeps
+  one per binary, restarting after an exit, and writes the handoff config.
+  `resolveRun` picks it when `binaryPath`, the config's `binary` or PATH
+  yields a binary, and falls back to WASM with a status bar note that the
+  type-aware rules are off; `engine: native` with no binary is an error.
+- [x] Tests: `cli_serve` (`[integration]`) spawns the built binary and drives
+  a saved file, an overlay, a config change and a shutdown;
+  plugin/ts/serve.test.ts covers `ServeClient` against a built binary; the
+  VS Code smoke test runs through the native engine when a preset has built
+  `lintrix`, expecting a type-aware diagnostic and its fix.
 
 ### 9.6 Tests
 Landed 2026-09-12; docs/vscode-extension.md "Tests" describes them.

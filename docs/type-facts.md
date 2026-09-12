@@ -148,6 +148,12 @@ implementation over one tsgo project.
 - `defaultProjectForFile` picks the project each file is queried in, so a
   tsconfig with references or an inferred-project file get the right
   program.
+- A resident run (`lintrix serve`) learns its projects as files arrive:
+  `addProject` opens one more tsconfig in a new snapshot and registers it
+  like the ones `open` was given. `forgetFile` drops the text held for a
+  closed editor buffer and `filesChanged` drops it for files changed on disk,
+  each telling the server so it re-reads them through the provider, which
+  now falls through to the disk.
 - `stats()` sums the `FactsStats` over every session; `rpcStats()` is the
   client's call and byte counts. `lintrix lint --type-stats` prints both.
 

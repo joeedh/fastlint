@@ -61,7 +61,7 @@ export type EngineKind = "native" | "wasm";
 const exeSuffix = process.platform === "win32" ? ".exe" : "";
 
 /** `name` found on PATH, or undefined. Windows tries each PATHEXT suffix. */
-function onPath(name: string): string | undefined {
+export function onPath(name: string): string | undefined {
   const suffixes =
     process.platform === "win32"
       ? (process.env["PATHEXT"] ?? ".EXE;.CMD;.BAT").split(";")

@@ -104,8 +104,20 @@ bool ProjectTypes::open(const Vector<string> &tsconfigs, string &error)
     m_client.stop();
     return false;
   }
+  registerProjects();
+  m_open = true;
+  return true;
+}
+
+void ProjectTypes::registerProjects()
+{
   bool caseSensitive = m_client.caseSensitiveFileNames();
   for (const tsgo::ProjectInfo &info : m_snapshot.projects) {
+    string canonical = tsgo::canonicalPath(view(info.id), caseSensitive);
+    uint64_t key = hashOf(view(canonical));
+    if (m_projects.contains(key)) {
+      continue;
+    }
     Project project;
     project.id = info.id;
     // Rules only consult the options for strictness; an unreadable config reads strict.
@@ -115,11 +127,71 @@ bool ProjectTypes::open(const Vector<string> &tsconfigs, string &error)
       doc->clear();
     }
     project.config = doc;
-    string canonical = tsgo::canonicalPath(view(info.id), caseSensitive);
-    m_projects.add_overwrite(hashOf(view(canonical)), std::move(project));
+    m_projects.add_overwrite(key, std::move(project));
   }
-  m_open = true;
+}
+
+bool ProjectTypes::addProject(std::string_view tsconfig, string &error)
+{
+  if (!m_open) {
+    error = string("type server is not open");
+    return false;
+  }
+  tsgo::SnapshotUpdate update;
+  update.openProjects.append(absolutePath(tsconfig));
+  if (!newSnapshot(update, error)) {
+    return false;
+  }
+  registerProjects();
   return true;
+}
+
+bool ProjectTypes::hasProject(std::string_view tsconfig)
+{
+  string key = tsgo::canonicalPath(view(absolutePath(tsconfig)),
+                                   m_client.caseSensitiveFileNames());
+  return m_projects.contains(hashOf(view(key)));
+}
+
+void ProjectTypes::dropServed(std::string_view file, tsgo::SnapshotUpdate &update)
+{
+  string absolute = absolutePath(file);
+  string canonical =
+      tsgo::canonicalPath(view(absolute), m_client.caseSensitiveFileNames());
+  uint64_t key = hashOf(view(canonical));
+  Served *served = m_served.lookup_ptr(key);
+  if (served && served->opened) {
+    update.closeFiles.append(absolute);
+  }
+  std::error_code ec;
+  if (fs::is_regular_file(fs::path(std::string(view(absolute))), ec)) {
+    update.changed.append(absolute);
+  } else {
+    update.deleted.append(absolute);
+  }
+  m_served.remove(key);
+}
+
+bool ProjectTypes::forgetFile(std::string_view file, string &error)
+{
+  if (!m_open) {
+    return true;
+  }
+  tsgo::SnapshotUpdate update;
+  dropServed(file, update);
+  return newSnapshot(update, error);
+}
+
+bool ProjectTypes::filesChanged(const Vector<string> &files, string &error)
+{
+  if (!m_open || files.isEmpty()) {
+    return true;
+  }
+  tsgo::SnapshotUpdate update;
+  for (const string &file : files) {
+    dropServed(view(file), update);
+  }
+  return newSnapshot(update, error);
 }
 
 void ProjectTypes::setFileProject(std::string_view file, std::string_view tsconfig)

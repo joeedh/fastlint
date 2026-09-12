@@ -11,6 +11,7 @@ add_fastlint_test(fastlint
     ast_test.cc
     cache_closure_test.cc
     cache_store_test.cc
+    cli_serve_test.cc
     fixture_test.cc
     lint_config_test.cc
     lint_directives_test.cc
@@ -75,6 +76,7 @@ target_include_directories(sample_plugin PRIVATE ${CMAKE_SOURCE_DIR}/source)
 target_compile_definitions(sample_plugin PRIVATE FASTLINT_PLUGIN)
 target_link_libraries(sample_plugin PRIVATE fastlint_warnings)
 
-add_dependencies(fastlint_tests sample_plugin)
+add_dependencies(fastlint_tests sample_plugin fastlint)
 target_compile_definitions(fastlint_tests
-  PRIVATE SAMPLE_PLUGIN_PATH="$<TARGET_FILE:sample_plugin>")
+  PRIVATE SAMPLE_PLUGIN_PATH="$<TARGET_FILE:sample_plugin>"
+  PRIVATE LINTRIX_EXE_PATH="$<TARGET_FILE:fastlint>")

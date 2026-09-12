@@ -42,6 +42,16 @@ public:
   /** Routes `file` to `tsconfig` (which `open` must have loaded) for the queries run on
    * it. Both are made canonical. A file with no route is typed syntactically only. */
   void setFileProject(std::string_view file, std::string_view tsconfig);
+  /** Opens one more tsconfig in a new snapshot, for a file whose project `open` was
+   * not given. */
+  bool addProject(std::string_view tsconfig, string &error);
+  bool hasProject(std::string_view tsconfig);
+  /** Drops the text held for `file` (an editor buffer that closed), so the server
+   * reads the disk again for it. */
+  bool forgetFile(std::string_view file, string &error);
+  /** Tells the server `files` changed on disk. Text held for any of them is dropped
+   * first, since the server re-reads through this provider. */
+  bool filesChanged(const Vector<string> &files, string &error);
   void close();
   bool isOpen() const
   {
@@ -86,6 +96,11 @@ private:
   bool readFile(std::string_view path, string &content) override;
   int fileExists(std::string_view path) override;
   bool newSnapshot(const tsgo::SnapshotUpdate &update, string &error);
+  /** Registers every project of the current snapshot not seen before. */
+  void registerProjects();
+  /** Removes `file` from the served texts, adding the close and the change the
+   * server needs to `update`. */
+  void dropServed(std::string_view file, tsgo::SnapshotUpdate &update);
   void bindSession(const Project &project);
 
   tsgo::Client m_client;

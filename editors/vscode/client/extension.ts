@@ -75,12 +75,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannelName    : "lintrix",
     synchronize: {
       // A config or tsconfig change can alter what any open document lints
-      // with; the server drops its config cache and re-pulls on either.
+      // with; the server drops its config cache and re-pulls on either. A
+      // source change goes to the native binary's type server, which does not
+      // watch the disk itself.
       fileEvents: [
         vscode.workspace.createFileSystemWatcher(
           "**/lintrix.config.{ts,mts,js,mjs,json}"
         ),
         vscode.workspace.createFileSystemWatcher("**/tsconfig.json"),
+        vscode.workspace.createFileSystemWatcher("**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"),
       ],
     },
     diagnosticPullOptions: {

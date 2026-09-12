@@ -72,9 +72,8 @@ publisher to release under; the VSIX installs locally regardless.
   `validate` (language ids), `engine` (`auto`, `native`, `wasm`),
   `binaryPath`, `codeActionsOnSave.mode` (`all` or `problems`) and
   `trace.server`. `shared/protocol.ts` names their shape and defaults once for
-  both sides. `engine: native` and `binaryPath` are declared ahead of the serve
-  mode (task 9.5); until then `native` reports an error and `auto` lints
-  through WASM.
+  both sides. `engine` and `binaryPath` choose between the native serve mode
+  and WASM ("The native serve mode" below).
 - `run`, `validate` and `enable` act on the client, in the diagnostic pull
   filter: a pull the settings exclude is never sent, so the server has one
   path and no notion of modes. `enable` is also read on the server, which
@@ -128,12 +127,68 @@ publisher to release under; the VSIX installs locally regardless.
   diagnostic's `data` holds the index of its message in the report, and the
   report is kept per open document, so a code action request finds the
   message's fix and suggestions without linting again.
-- The client watches `lintrix.config.*` and `tsconfig.json`. On a change the
-  server drops the whole config cache and asks the client to refresh, which
-  re-pulls every open document.
+- The client watches `lintrix.config.*`, `tsconfig.json` and the source
+  files. On a config or tsconfig change the server drops the whole config
+  cache and asks the client to refresh, which re-pulls every open document.
+  Every change is also forwarded to the native binaries, whose type server
+  does not watch the disk; a source change causes no re-pull, so the next pull
+  of a dependent file sees it.
 - A document that is not a `file:` (an untitled buffer) has no directory to
   search, so it lints under the recommended preset as a name with the
   extension its language id implies.
+
+## The native serve mode
+
+The WASM engine runs no type-aware rules: they need tsgo and a tsconfig. A
+native `lintrix` runs them through `lintrix serve`, a resident process the
+server drives over stdio (task 9.5).
+
+- `lintrix serve` (source/cli/serve.cc) speaks JSON-RPC 2.0 in LSP's
+  `Content-Length` framing over stdin and stdout. `lint {file, text?,
+  config?}` answers `{results, typed, typeError?}`, where `results` is the
+  `--format json` array for the file (empty when the config ignores it),
+  `typed` says the type-aware rules ran, and `typeError` says why they did
+  not. `text` overlays the file on disk, so an unsaved buffer is what the
+  rules and the type server see. `close {file}` drops the overlay, `changed
+  {files}` reports disk changes, `configChanged {path?}` reloads the config or
+  tsconfig at `path` (everything without one), and `shutdown` answers and
+  exits; end of input exits too. `--no-cache` and `--cache-dir` mean what they
+  do for `lint`.
+- A session is one loaded config (the `config` given, or the nearest
+  `lintrix.config.*` above the file, or the recommended preset) with one tsgo
+  process and one result-cache store. Each file's tsconfig is resolved as
+  `lint` resolves it and opened in the type server on first sight
+  (`ProjectTypes::addProject`), so one process serves every project under a
+  config. `ProjectTypes` already hands the type server the text it was given
+  rather than the disk, which is what makes the overlay reach tsgo; `close`
+  and `changed` drop that held text (`forgetFile`, `filesChanged`) so the
+  server reads the disk again.
+- The result cache stays on. A `text` that matches the disk is cached and
+  replayed like a `lint` run; a text that differs is neither, so an edit
+  never poisons the saved file's record. The tsconfigs are not known when the
+  store opens, so a file's tsconfig hash goes into its result key instead of
+  the environment hash; a tsconfig edit misses rather than replays.
+- `plugin/ts/serve.ts` is the client: `ServeClient` spawns the binary,
+  frames the requests, matches the responses by id and rejects everything in
+  flight when the process exits. The npm CLI does not use it; it is the
+  extension's.
+- `server/native.ts` keeps one `ServeClient` per binary path, started on
+  first use and again after an exit, and writes each config's handoff
+  document (`.lintrix.native.json`, as the CLI does) the first time the
+  config is seen, telling every running binary to reload it. A config that
+  the server loads again is a new object, so an edit rewrites the handoff.
+- The server picks the engine per document in `resolveRun`: `engine: wasm`
+  stays on WASM; otherwise `binaryPath`, then the config's `binary`, then
+  `lintrix` on PATH names the binary. `engine: native` with no binary is an
+  error; `auto` with none falls back to WASM and the status bar tooltip says
+  the type-aware rules are off. The plugin rules run in the server through
+  the WASM runtime either way, so the module is still required.
+- The status after a native lint names the engine and, when the type-aware
+  rules did not run, why: a file with no tsconfig is ordinary and stays `ok`;
+  a type server that failed to start is a warning, with the reason in the
+  tooltip and the output channel.
+- Startup costs one tsgo launch per config, a second or so; a lint after that
+  is a few milliseconds, and a saved file replays from the cache in one.
 
 ## Code actions and fixes
 
@@ -197,15 +252,25 @@ flag if a later version drops it.
 `node --test` covers the mapping in `server/diagnostics.test.ts`, the actions
 and directive edits in `server/actions.test.ts`, and the diff in
 `server/diff.test.ts`; `node make.ts test` runs them when the extension's
-dependencies are installed. None of them start VS Code.
+dependencies are installed. None of them start VS Code. The serve mode has
+two tests of its own: `cli_serve` in source/tests/cli_serve_test.cc, an
+`[integration]` test that spawns the built `lintrix serve` and drives it
+through a saved file, an overlay, a config change and a shutdown, and
+plugin/ts/serve.test.ts, which runs `ServeClient` against a built binary and
+skips when none is built.
 
 `node make.ts vsix --smoke` does. `test/run.mts` has `@vscode/test-electron`
 download a stable VS Code into editors/vscode/.vscode-test/ on first use (a
 one-time download of a few hundred megabytes), writes a fixture workspace
-with a config and one file, and launches that VS Code over it with the
-extension loaded from this directory (`--extensionDevelopmentPath`), other
-extensions off and workspace trust off. Inside it, `test/suite.ts` (bundled
-to `out/test/suite.js` beside the client) drives the real API: activate the
+under build/vsix-smoke/ with a config, a tsconfig and one file, and launches
+that VS Code over it with the extension loaded from this directory
+(`--extensionDevelopmentPath`), other extensions off and workspace trust
+off. When a preset has built `lintrix`, the fixture's workspace settings
+point `lintrix.binaryPath` at it, so the run goes through the native serve
+mode and the expected diagnostics include a type-aware rule; the fixture
+sits under the repository so that binary's type server finds `tsc` in the
+repository's node_modules. Inside VS Code, `test/suite.ts` (bundled to
+`out/test/suite.js` beside the client) drives the real API: activate the
 extension, open the file, wait for `lintrix` diagnostics with the expected
 codes, ask for code actions at one of them and check the quick fix is
 offered, run `lintrix.executeAutofix`, then wait for the text to change and

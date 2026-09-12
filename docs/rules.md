@@ -421,6 +421,11 @@ lintrix lint [--config <file>] [--no-config] [--rule <name:severity>]...
 - Exit code 1 when any error remains (or warnings exceed `--max-warnings`),
   2 on a usage or I/O failure, 0 otherwise.
 
+`lintrix serve [--no-cache] [--cache-dir <dir>]` is the same linter kept
+resident for an editor: JSON-RPC over stdio, one type server and one result
+cache per config, and a `text` overlay for unsaved buffers.
+docs/vscode-extension.md "The native serve mode" documents the requests.
+
 ### The npm CLI
 
 The `lintrix` command the npm package installs (plugin/ts/cli.ts) is the front

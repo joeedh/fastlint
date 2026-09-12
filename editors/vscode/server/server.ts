@@ -1,10 +1,13 @@
-// The language server (tasks 9.2 to 9.4). It lints the open documents on the
+// The language server (tasks 9.2 to 9.5). It lints the open documents on the
 // client's pull requests, maps each report to diagnostics, reports a status
 // per document for the client's status bar, and drops its caches when a
 // watched config, a tsconfig or a setting changes, and serves the code actions
-// and fix-all. The plugin surface is imported by path, so the config loader and
-// the engines have one home (docs/embedding.md).
+// and fix-all. A native `lintrix` on the machine lints through a resident
+// `lintrix serve`; otherwise the bundled WASM module does. The plugin surface
+// is imported by path, so the config loader and the engines have one home
+// (docs/embedding.md).
 
+import fs from "node:fs";
 import path from "node:path";
 import {
   CodeActionKind,
@@ -23,6 +26,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 
 import type { CompiledConfig } from "../../../source/fastlint/plugin/ts/compile.ts";
+import { onPath, resolveBinary } from "../../../source/fastlint/plugin/ts/engine.ts";
 import {
   revalidateNotification,
   statusNotification,
@@ -40,7 +44,8 @@ import {
 import { ConfigCache } from "./configs.ts";
 import { runDiagnostic, source, toState, type DocumentState } from "./diagnostics.ts";
 import { editsBetween } from "./diff.ts";
-import { Engine } from "./engine.ts";
+import { Engine, type LintResult } from "./engine.ts";
+import { NativeEngines, type NativeRun } from "./native.ts";
 import { SettingsCache } from "./settings.ts";
 
 const connection = createConnection(ProposedFeatures.all);
@@ -48,6 +53,7 @@ const documents = new TextDocuments(TextDocument);
 const configs = new ConfigCache();
 const settings = new SettingsCache(connection);
 const states = new Map<string, DocumentState>();
+const natives = new NativeEngines((line) => connection.console.info(line));
 
 /** Resolves once the bundled engine is loaded, or to the reason it was not. */
 let engine: Promise<Engine | string>;
@@ -107,6 +113,23 @@ interface Run {
   filePath: string;
   compiled: CompiledConfig | undefined;
   settings: Settings;
+  /** The resident binary to lint through; undefined lints through WASM. */
+  native?: NativeRun;
+  /** Why the run is on WASM although the settings allowed a native binary. */
+  note?: string;
+}
+
+/** The native `lintrix` the settings and config point at, or undefined; a
+ * `binaryPath` that does not exist is an error. */
+function binaryFor(
+  current: Settings,
+  compiled: CompiledConfig | undefined
+): string | undefined | Error {
+  if (current.binaryPath !== null) {
+    if (fs.existsSync(current.binaryPath)) return current.binaryPath;
+    return new Error(`lintrix.binaryPath does not exist: ${current.binaryPath}`);
+  }
+  return compiled === undefined ? onPath("lintrix") : resolveBinary(compiled);
 }
 
 /** Resolves the engine, settings and config for `document`, or the reason it
@@ -119,19 +142,61 @@ async function resolveRun(document: TextDocument): Promise<Run | string> {
     return loaded;
   }
   const current = await settings.forDocument(uri);
-  if (current.engine === "native") {
-    const message = "lintrix.engine is 'native', which this version does not offer yet";
-    status({ uri, state: "error", message });
-    return message;
-  }
   const { filePath, onDisk } = filePathFor(document);
   const lookup = onDisk ? await configs.forFile(filePath) : {};
   if (lookup.error !== undefined) {
     const message = `${lookup.configPath} did not load: ${lookup.error}`;
-    status({ uri, state: "error", engine: "wasm", message });
+    status({ uri, state: "error", message });
     return message;
   }
-  return { engine: loaded, filePath, compiled: lookup.compiled, settings: current };
+  const run: Run = {
+    engine: loaded,
+    filePath,
+    compiled: lookup.compiled,
+    settings: current,
+  };
+  if (current.engine === "wasm") return run;
+
+  const binary = binaryFor(current, lookup.compiled);
+  if (binary instanceof Error) {
+    status({ uri, state: "error", message: binary.message });
+    return binary.message;
+  }
+  if (binary === undefined) {
+    if (current.engine === "native") {
+      const message =
+        "lintrix.engine is 'native' but no lintrix binary was found; set lintrix.binaryPath";
+      status({ uri, state: "error", message });
+      return message;
+    }
+    run.note =
+      "type-aware rules are off: no native lintrix was found (set lintrix.binaryPath)";
+    return run;
+  }
+  const cwd =
+    lookup.compiled?.baseDir ?? (onDisk ? path.dirname(filePath) : process.cwd());
+  const client = natives.clientFor(binary, cwd);
+  const handoff =
+    lookup.compiled !== undefined && lookup.configPath !== undefined
+      ? await natives.handoffFor(lookup.configPath, lookup.compiled)
+      : undefined;
+  run.native = handoff === undefined ? { client } : { client, handoff };
+  return run;
+}
+
+/** The status a finished lint reports: the engine, and why the type-aware
+ * rules did not run when they did not. */
+function statusFor(uri: string, run: Run, result: LintResult): StatusParams {
+  const engine = result.engine;
+  if (engine === "wasm") {
+    return run.note === undefined
+      ? { uri, state: "ok", engine }
+      : { uri, state: "ok", engine, message: run.note };
+  }
+  if (result.typed || result.typeError === undefined) return { uri, state: "ok", engine };
+  // A file no tsconfig claims is ordinary; a type server that failed is not.
+  const state = result.typeError === "no tsconfig resolved" ? "ok" : "warning";
+  return { uri, state, engine, message: `type-aware rules are off: ${result.typeError}` };
 }
 
 /** Lints `document` and reports its status. A problem with the run itself (an
@@ -140,9 +205,14 @@ async function resolveRun(document: TextDocument): Promise<Run | string> {
 async function lintDocument(document: TextDocument): Promise<DocumentState> {
   const run = await resolveRun(document);
   if (typeof run === "string") return emptyState(document, run);
-  const report = run.engine.lint(document.getText(), run.filePath, run.compiled);
-  status({ uri: document.uri, state: "ok", engine: "wasm" });
-  return toState(document, report);
+  const result = await run.engine.lint(
+    document.getText(),
+    run.filePath,
+    run.compiled,
+    run.native
+  );
+  status(statusFor(document.uri, run, result));
+  return toState(document, result.report);
 }
 
 /** Passes fix-all makes before giving up on a text whose fixes keep producing
@@ -170,7 +240,12 @@ async function computeAllFixes(
   const original = document.getText();
   let text = original;
   for (let pass = 0; pass < maxFixPasses; pass++) {
-    const report = run.engine.lint(text, run.filePath, run.compiled);
+    const { report } = await run.engine.lint(
+      text,
+      run.filePath,
+      run.compiled,
+      run.native
+    );
     const fixes = nonOverlapping(report.messages);
     if (fixes.length === 0) break;
     text = applyFixes(text, fixes);
@@ -319,11 +394,26 @@ function refresh(): void {
   });
 }
 
-// The client watches lintrix.config.* and tsconfig.json. A change to either can
-// alter what any open document lints with, so everything is re-resolved.
-connection.onDidChangeWatchedFiles(() => {
-  configs.clear();
-  refresh();
+/** A config or a tsconfig, whose change alters what other files lint with. */
+function isConfigFile(filePath: string): boolean {
+  const name = path.basename(filePath);
+  return name === "tsconfig.json" || name.startsWith("lintrix.config.");
+}
+
+// The client watches lintrix.config.*, tsconfig.json and the source files. A
+// config change can alter what any open document lints with, so everything is
+// re-resolved; a source change only reaches the native binaries, whose type
+// server would otherwise keep the old file, and the next pull sees it.
+connection.onDidChangeWatchedFiles((params) => {
+  const changed = params.changes
+    .map((change) => URI.parse(change.uri))
+    .filter((uri) => uri.scheme === "file")
+    .map((uri) => uri.fsPath);
+  void natives.changed(changed);
+  if (changed.some(isConfigFile)) {
+    configs.clear();
+    refresh();
+  }
 });
 
 connection.onDidChangeConfiguration(() => {
@@ -334,12 +424,19 @@ connection.onDidChangeConfiguration(() => {
 connection.onNotification(revalidateNotification, () => {
   configs.clear();
   settings.clear();
+  void natives.configChanged();
   refresh();
 });
 
 documents.onDidClose((event) => {
   states.delete(event.document.uri);
   settings.forget(event.document.uri);
+  const { filePath, onDisk } = filePathFor(event.document);
+  if (onDisk) void natives.close(filePath);
+});
+
+connection.onShutdown(() => {
+  natives.dispose();
 });
 
 documents.listen(connection);

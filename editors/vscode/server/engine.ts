@@ -1,20 +1,35 @@
 // The engine the server lints with (task 9.3): the bundled WASM module, loaded
 // once, running the built-in rules through `lintText` and the plugin rules
-// through the TypeScript runtime over the same parse. A native serve mode
-// joins in task 9.5.
+// through the TypeScript runtime over the same parse. Given a native run
+// (task 9.5) the built-in rules go to the resident binary instead, which is
+// where the type-aware ones run; the plugin rules stay here either way.
 
 import v8 from "node:v8";
 
 import type { CompiledConfig } from "../../../source/fastlint/plugin/ts/compile.ts";
 import { nativeConfig, resolveFile } from "../../../source/fastlint/plugin/ts/compile.ts";
-import type { FileReport } from "../../../source/fastlint/plugin/ts/engine.ts";
+import type {
+  EngineKind,
+  FileReport,
+} from "../../../source/fastlint/plugin/ts/engine.ts";
 import { findWasmModule } from "../../../source/fastlint/plugin/ts/engine.ts";
 import { mergeReports } from "../../../source/fastlint/plugin/ts/report.ts";
 import type { FileMessages } from "../../../source/fastlint/plugin/ts/driver.ts";
 import { lint, type Addon } from "../../../source/fastlint/plugin/ts/runtime.ts";
 import { loadWasmAddon } from "../../../source/fastlint/plugin/ts/wasm_addon.ts";
+import type { NativeRun } from "./native.ts";
 
 type LintingAddon = Addon & { lintText: NonNullable<Addon["lintText"]> };
+
+/** One lint's report and which engine produced it. */
+export interface LintResult {
+  report: FileReport;
+  engine: EngineKind;
+  /** Type-aware rules ran; only a native run can say so. */
+  typed: boolean;
+  /** Why they did not, when the native binary said. */
+  typeError?: string;
+}
 
 /** The native handoff document, serialized once per compiled config. */
 const handoffJson = new WeakMap<CompiledConfig, string>();
@@ -59,36 +74,61 @@ export class Engine {
   /**
    * Lints `source` as `filePath`. Without a config the recommended preset
    * applies and no plugin rule runs. A file the config ignores gets an empty
-   * report without a parse.
+   * report without a parse. With `native` the built-in rules run in the
+   * resident binary, which sees `source` in place of the file on disk.
    */
-  lint(
+  async lint(
     source: string,
     filePath: string,
-    compiled: CompiledConfig | undefined
-  ): FileReport {
-    const merged = (native: FileReport[], plugin: FileMessages[]): FileReport =>
-      mergeReports([filePath], native, plugin)[0]!;
+    compiled: CompiledConfig | undefined,
+    native?: NativeRun
+  ): Promise<LintResult> {
+    const merged = (builtIn: FileReport[], plugin: FileMessages[]): FileReport =>
+      mergeReports([filePath], builtIn, plugin)[0]!;
+    const kind: EngineKind = native === undefined ? "wasm" : "native";
+    const result = (report: FileReport, typed = false, typeError?: string): LintResult =>
+      typeError === undefined
+        ? { report, engine: kind, typed }
+        : { report, engine: kind, typed, typeError };
 
-    if (compiled === undefined) {
-      const native = JSON.parse(this.addon.lintText(source, filePath)) as FileReport[];
-      return merged(native, []);
+    const resolved = compiled === undefined ? undefined : resolveFile(compiled, filePath);
+    if (resolved?.ignored) return result(merged([], []));
+
+    let builtIn: FileReport[];
+    let typed = false;
+    let typeError: string | undefined;
+    if (native !== undefined) {
+      const answer = await native.client.lint(filePath, source, native.handoff);
+      builtIn = answer.results.map((report) => ({ ...report, filePath }));
+      typed = answer.typed;
+      typeError = answer.typeError;
+    } else if (compiled === undefined) {
+      builtIn = JSON.parse(this.addon.lintText(source, filePath)) as FileReport[];
+    } else {
+      builtIn = JSON.parse(
+        this.addon.lintText(source, filePath, handoffFor(compiled), compiled.baseDir)
+      ) as FileReport[];
     }
-    const resolved = resolveFile(compiled, filePath);
-    if (resolved.ignored) return merged([], []);
-
-    const native = JSON.parse(
-      this.addon.lintText(source, filePath, handoffFor(compiled), compiled.baseDir)
-    ) as FileReport[];
-    if (resolved.rules.length === 0) return merged(native, []);
+    if (resolved === undefined || resolved.rules.length === 0) {
+      return result(merged(builtIn, []), typed, typeError);
+    }
 
     try {
       const messages = lint(this.addon, source, filePath, resolved.rules);
-      return merged(native, [{ filename: filePath, messages }]);
+      return result(
+        merged(builtIn, [{ filename: filePath, messages }]),
+        typed,
+        typeError
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return merged(native, [
-        { filename: filePath, messages: [], error: `plugin rules: ${message}` },
-      ]);
+      return result(
+        merged(builtIn, [
+          { filename: filePath, messages: [], error: `plugin rules: ${message}` },
+        ]),
+        typed,
+        typeError
+      );
     }
   }
 }

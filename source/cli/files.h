@@ -36,5 +36,6 @@ int benchCommand(int argc, char **argv);
 int cacheBenchCommand(int argc, char **argv);
 int cacheCommand(int argc, char **argv);
 int lintCommand(int argc, char **argv);
+int serveCommand(int argc, char **argv);
 
 } // namespace fastlint::cli

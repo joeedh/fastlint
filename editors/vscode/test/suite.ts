@@ -47,14 +47,19 @@ export async function run(): Promise<void> {
   const document = await vscode.workspace.openTextDocument(uri);
   await vscode.window.showTextDocument(document);
 
+  // With a native binary (run.mts sets `lintrix.binaryPath`) the type-aware
+  // rules run too, so the unnecessary `!` is reported and fixed with the rest.
+  const native = process.env["LINTRIX_SMOKE_NATIVE"] === "1";
+  const expected = ["curly", "no-debugger"];
+  if (native) expected.push("no-unnecessary-type-assertion");
   const diagnostics = await waitFor("lintrix diagnostics", () => {
     const found = lintrixDiagnostics(uri);
-    return found.length > 0 ? found : undefined;
+    return found.length >= expected.length ? found : undefined;
   });
-  assert.deepEqual(diagnostics.map(codeOf).sort(), ["curly", "no-debugger"]);
+  assert.deepEqual(diagnostics.map(codeOf).sort(), expected.sort());
   const debuggerProblem = diagnostics.find((d) => codeOf(d) === "no-debugger")!;
   assert.equal(debuggerProblem.severity, vscode.DiagnosticSeverity.Error);
-  assert.equal(debuggerProblem.range.start.line, 1);
+  assert.equal(debuggerProblem.range.start.line, 3);
 
   const actions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
     "vscode.executeCodeActionProvider",
@@ -72,6 +77,12 @@ export async function run(): Promise<void> {
     document.getText().includes("debugger") ? undefined : true
   );
   assert.ok(document.getText().includes("{"), "curly's fix should have braced the if");
+  if (native) {
+    assert.ok(
+      !document.getText().includes("!"),
+      "the unnecessary assertion should be gone"
+    );
+  }
   await waitFor("the diagnostics to clear", () =>
     lintrixDiagnostics(uri).length === 0 ? true : undefined
   );

@@ -267,7 +267,8 @@ void printHelp()
               "\n"
               "commands:\n"
               "  lint         lint files and report problems\n"
-              "  parse        report only syntax diagnostics, running no rules\n"
+              "  serve        lint on request over stdio, for editors\n"
+              "  parse       report only syntax diagnostics, running no rules\n"
               "  dump-tree    print a file's grammar tree\n"
               "  dump-ast     print a file's lowered AST\n"
               "\n"
@@ -331,6 +332,9 @@ int main(int argc, char **argv)
   }
   if (argc > 1 && std::strcmp(argv[1], "lint") == 0) {
     return lintCommand(argc, argv);
+  }
+  if (argc > 1 && std::strcmp(argv[1], "serve") == 0) {
+    return serveCommand(argc, argv);
   }
   if (argc > 1 && std::strcmp(argv[1], "parse") == 0) {
     return parseCommand(argc, argv);
