@@ -28,19 +28,17 @@ import { URI } from "vscode-uri";
 import type { CompiledConfig } from "../../../source/fastlint/plugin/ts/compile.ts";
 import { onPath, resolveBinary } from "../../../source/fastlint/plugin/ts/engine.ts";
 import {
+  applyFixes,
+  maxFixPasses,
+  nonOverlapping,
+} from "../../../source/fastlint/plugin/ts/fixes.ts";
+import {
   revalidateNotification,
   statusNotification,
   type Settings,
   type StatusParams,
 } from "../shared/protocol.ts";
-import {
-  applyAllFixesCommand,
-  applyFixes,
-  fixAllKind,
-  fixEdit,
-  nonOverlapping,
-  quickFixes,
-} from "./actions.ts";
+import { applyAllFixesCommand, fixAllKind, fixEdit, quickFixes } from "./actions.ts";
 import { ConfigCache } from "./configs.ts";
 import { runDiagnostic, source, toState, type DocumentState } from "./diagnostics.ts";
 import { editsBetween } from "./diff.ts";
@@ -223,10 +221,6 @@ async function lintDocument(document: TextDocument): Promise<DocumentState> {
   status(statusFor(document.uri, run, result));
   return toState(document, result.report);
 }
-
-/** Passes fix-all makes before giving up on a text whose fixes keep producing
- * new problems. ESLint stops at ten as well. */
-const maxFixPasses = 10;
 
 /**
  * The edits that fix everything fixable in `document`. In `problems` mode the

@@ -436,9 +436,9 @@ The `lintrix` command the npm package installs (plugin/ts/cli.ts) is the front
 end that runs plugin rules, since the native binary has no JavaScript engine.
 
 ```
-lintrix [--config <file>] [--format pretty|json] [--engine auto|native|wasm]
-         [--concurrency N] [--max-warnings N] [--quiet] [--color|--no-color]
-         <file|dir>...
+lintrix [--config <file>] [--fix] [--format pretty|json]
+         [--engine auto|native|wasm] [--concurrency N] [--max-warnings N]
+         [--quiet] [--color|--no-color] <file|dir>...
 lintrix config [--native] [--out <path>]
 lintrix --init
 ```
@@ -453,8 +453,13 @@ lintrix --init
 - `lintrix config` prints the resolved JSON, and `--native` the handoff
   document. `lintrix --init` writes the starter `lintrix.config.json`, with a
   `$schema` pointing into `node_modules`.
-- Options the native binary has and this one does not (`--fix`, `--rule`,
-  `--project`, `sarif`) are not refusals; they are unimplemented here.
+- `--fix` rewrites files with the built-in rules' fixes. The native binary
+  applies its own; the WASM path lints and fixes each file until a pass finds
+  nothing fixable, to `maxFixPasses` (plugin/ts/fixes.ts), and writes it back
+  when it changed. Either way the listing shows what the fixes left. Plugin
+  rules offer no fixes yet, so theirs are reported as before.
+- Options the native binary has and this one does not (`--rule`, `--project`,
+  `sarif`) are not refusals; they are unimplemented here.
 
 ## Result cache
 

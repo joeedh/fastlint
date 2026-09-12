@@ -18,7 +18,10 @@ import type {
   EslintFix,
   EslintMessage,
 } from "../../../source/fastlint/plugin/ts/engine.ts";
+import { applyFixes, nonOverlapping } from "../../../source/fastlint/plugin/ts/fixes.ts";
 import type { DiagnosticData, DocumentState } from "./diagnostics.ts";
+
+export { applyFixes, nonOverlapping };
 
 /** The kind fix-all registers under, so `editor.codeActionsOnSave` can name
  * it and a bare `source.fixAll` also reaches it. */
@@ -40,34 +43,6 @@ export function fixEdit(document: TextDocument, fix: EslintFix): TextEdit {
     },
     newText: fix.text,
   };
-}
-
-/** The fixes of `messages` that can apply together: in source order, each
- * starting at or after the previous one ended. */
-export function nonOverlapping(messages: readonly EslintMessage[]): EslintFix[] {
-  const fixes = messages
-    .filter((message) => message.fix !== undefined)
-    .map((message) => message.fix!)
-    .sort((a, b) => a.range[0] - b.range[0] || a.range[1] - b.range[1]);
-  const out: EslintFix[] = [];
-  let end = -1;
-  for (const fix of fixes) {
-    if (fix.range[0] < end) continue;
-    out.push(fix);
-    end = fix.range[1];
-  }
-  return out;
-}
-
-/** `text` with `fixes` applied, which must be non-overlapping and in order. */
-export function applyFixes(text: string, fixes: readonly EslintFix[]): string {
-  let out = "";
-  let at = 0;
-  for (const fix of fixes) {
-    out += text.slice(at, fix.range[0]) + fix.text;
-    at = fix.range[1];
-  }
-  return out + text.slice(at);
 }
 
 function eolOf(document: TextDocument): string {

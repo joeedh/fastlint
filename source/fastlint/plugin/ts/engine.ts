@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { nativeConfig, nativeConfigPath, type CompiledConfig } from "./compile.ts";
+import { applyFixes, maxFixPasses, nonOverlapping } from "./fixes.ts";
 import type { Addon } from "./runtime.ts";
 import { loadWasmAddon } from "./wasm_addon.ts";
 
@@ -60,18 +61,35 @@ export type EngineKind = "native" | "wasm";
 
 const exeSuffix = process.platform === "win32" ? ".exe" : "";
 
-/** `name` found on PATH, or undefined. Windows tries each PATHEXT suffix. */
+/**
+ * True when `file` is a shim npm generated for this package's own `bin`, which
+ * shares the name `lintrix` with the native executable and sits first on PATH
+ * under `npm exec`, `pnpm` and package scripts. A shim's real path is inside a
+ * `node_modules` tree, whether the project's `.bin` or a global prefix's.
+ */
+export function isPackageShim(file: string): boolean {
+  let real = file;
+  try {
+    real = fs.realpathSync(file);
+  } catch {
+    return true;
+  }
+  return real.split(/[\\/]/).includes("node_modules");
+}
+
+/**
+ * The native executable called `name` on PATH, or undefined. Only a real
+ * executable counts: Windows takes `.exe` alone, since `.cmd` and `.bat` there
+ * are npm's shims and `spawnSync` refuses them without a shell, and a candidate
+ * `isPackageShim` names is skipped on every platform.
+ */
 export function onPath(name: string): string | undefined {
-  const suffixes =
-    process.platform === "win32"
-      ? (process.env["PATHEXT"] ?? ".EXE;.CMD;.BAT").split(";")
-      : [""];
   for (const dir of (process.env["PATH"] ?? "").split(path.delimiter)) {
     if (dir.length === 0) continue;
-    for (const suffix of suffixes) {
-      const candidate = path.join(dir, name + suffix);
-      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
-    }
+    const candidate = path.join(dir, name + exeSuffix);
+    if (!fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) continue;
+    if (isPackageShim(candidate)) continue;
+    return candidate;
   }
   return undefined;
 }
@@ -137,7 +155,8 @@ export function fatalReport(filePath: string, message: string): FileReport {
 /**
  * Lints `files` through the native binary. The handoff config is written beside
  * the config it came from, since the binary anchors globs and tsconfig paths at
- * the directory the config sits in.
+ * the directory the config sits in. With `fix` the binary rewrites each file
+ * and reports what its fixes left behind.
  *
  * Exit code 1 only says problems were found. Anything above that is the binary
  * failing, and its stderr is raised rather than read as an empty report.
@@ -146,16 +165,18 @@ export function lintWithBinary(
   binary: string,
   configPath: string,
   compiled: CompiledConfig,
-  files: readonly string[]
+  files: readonly string[],
+  fix = false
 ): FileReport[] {
   const handoff = nativeConfigPath(configPath);
   fs.writeFileSync(handoff, `${JSON.stringify(nativeConfig(compiled), undefined, 2)}\n`);
 
-  const result = spawnSync(
-    binary,
-    ["lint", "--config", handoff, "--format", "json", ...files],
-    { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 }
-  );
+  const args = ["lint", "--config", handoff, "--format", "json"];
+  if (fix) args.push("--fix");
+  const result = spawnSync(binary, [...args, ...files], {
+    encoding : "utf8",
+    maxBuffer: 256 * 1024 * 1024,
+  });
   if (result.error) throw result.error;
   if ((result.status ?? 0) > 1) {
     throw new Error(`${binary}: ${result.stderr.trim() || `exit ${result.status}`}`);
@@ -169,17 +190,28 @@ export function lintWithBinary(
  * config goes with each call, so the same rules and severities apply as the
  * native binary would give; the type-aware rules do not run, because an
  * embedding has no tsgo process (docs/embedding.md).
+ *
+ * With `fix` each file is linted and fixed until a pass finds nothing fixable
+ * (or `maxFixPasses` is reached), written back when it changed, and reported
+ * as the last pass saw it, which is what the native `--fix` does.
  */
 export async function lintWithWasm(
   modulePath: string,
   compiled: CompiledConfig,
-  files: readonly string[]
+  files: readonly string[],
+  fix = false
 ): Promise<FileReport[]> {
   const addon: Addon = await loadWasmAddon(modulePath);
   if (!addon.lintText) {
     throw new Error(`${modulePath}: the module exports no lintText`);
   }
   const configJson = JSON.stringify(nativeConfig(compiled));
+  const lintText = (source: string, file: string): FileReport => {
+    const json = addon.lintText!(source, file, configJson, compiled.baseDir);
+    const parsed = JSON.parse(json) as FileReport[];
+    return { ...(parsed[0] ?? emptyReport(file)), filePath: file };
+  };
+
   const reports: FileReport[] = [];
   for (const file of files) {
     let source: string;
@@ -191,10 +223,27 @@ export async function lintWithWasm(
       );
       continue;
     }
-    const json = addon.lintText(source, file, configJson, compiled.baseDir);
-    const parsed = JSON.parse(json) as FileReport[];
-    const report = parsed[0] ?? emptyReport(file);
-    reports.push({ ...report, filePath: file });
+    let report = lintText(source, file);
+    if (fix) {
+      let text = source;
+      for (let pass = 1; pass < maxFixPasses; pass++) {
+        const fixes = nonOverlapping(report.messages);
+        if (fixes.length === 0) break;
+        text = applyFixes(text, fixes);
+        report = lintText(text, file);
+      }
+      if (text !== source) {
+        try {
+          fs.writeFileSync(file, text);
+        } catch (error) {
+          report = fatalReport(
+            file,
+            `cannot write: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      }
+    }
+    reports.push(report);
   }
   return reports;
 }

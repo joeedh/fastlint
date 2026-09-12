@@ -1220,6 +1220,12 @@ JSON.
   through the bundled WASM runtime. Merge the native built-in results with the
   plugin-rule results into one report. `plugin/ts/{cli,engine,files,report}.ts`;
   `--engine native|wasm` pins the choice, and both engines report identically.
+  - [x] `--fix` (2026-09-12): passed through to the native binary; the WASM
+    path runs the fix loop the VS Code extension's fix-all already had, now
+    shared in plugin/ts/fixes.ts.
+  - [x] The PATH lookup for the native binary skips npm's own `lintrix` shims
+    (2026-09-12); `pack --install` lints with `node_modules/.bin` first on
+    PATH to cover it.
 - [x] Decide how the native binary is distributed: an optional
   platform-specific dependency or a postinstall download, against WASM-only by
   default. The WASM fallback is what lets that stay a performance choice.

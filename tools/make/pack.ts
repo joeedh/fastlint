@@ -181,11 +181,21 @@ export async function installTest(tarball: string): Promise<void> {
 
   // Node reads USERPROFILE first on Windows and HOME on POSIX, so both are set
   // to cover either host without a platform test here.
-  const env = {
+  const env: NodeJS.ProcessEnv = {
     ...process.env,
     HOME            : home,
     USERPROFILE     : home,
     npm_config_cache: path.join(scratch, "npm-cache"),
+  };
+  // `npm exec`, `pnpm` and package scripts put `node_modules/.bin` first on
+  // PATH, where the shim for this package's own `bin` is called `lintrix` too.
+  // The lint run gets the same PATH, so a CLI that mistook the shim for the
+  // native binary would spawn itself here rather than in a user's project.
+  const pathKey = Object.keys(env).find((key) => key.toUpperCase() === "PATH") ?? "PATH";
+  const binDir = path.join(project, "node_modules", ".bin");
+  const withBin = {
+    ...env,
+    [pathKey]: [binDir, env[pathKey] ?? ""].join(path.delimiter),
   };
 
   const shim =
@@ -218,7 +228,7 @@ export async function installTest(tarball: string): Promise<void> {
 
     const linted = await run(shim, ["--format", "json", "--no-color", "src"], {
       cwd: project,
-      env,
+      env: withBin,
       shell,
       capture     : true,
       quiet       : true,

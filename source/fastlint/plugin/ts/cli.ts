@@ -34,6 +34,7 @@ interface Options {
   quiet: boolean;
   maxWarnings: number;
   concurrency?: number;
+  fix: boolean;
   native: boolean;
   out?: string;
   inputs: string[];
@@ -45,6 +46,7 @@ const usage = `usage: lintrix [options] <file|dir>...
 
 options:
   --config <file>     the config to use, found by walking up otherwise
+  --fix               rewrite files with the fixes the built-in rules offer
   --format <name>     pretty (the default) or json
   --engine <name>     auto (the default), native or wasm
   --concurrency <n>   worker count for the plugin rules
@@ -68,6 +70,7 @@ function parseArgs(argv: readonly string[]): Options {
     engine: "auto",
     quiet: false,
     maxWarnings: -1,
+    fix: false,
     native: false,
     inputs: [],
   };
@@ -106,6 +109,8 @@ function parseArgs(argv: readonly string[]): Options {
       options.concurrency = Number(value(arg, argv[++i]));
     } else if (arg === "--max-warnings") {
       options.maxWarnings = Number(value(arg, argv[++i]));
+    } else if (arg === "--fix") {
+      options.fix = true;
     } else if (arg === "--quiet") {
       options.quiet = true;
     } else if (arg === "--color") {
@@ -204,7 +209,7 @@ async function runBuiltins(
   files: readonly string[]
 ): Promise<FileReport[]> {
   const binary = options.engine === "wasm" ? undefined : resolveBinary(compiled);
-  if (binary) return lintWithBinary(binary, configPath, compiled, files);
+  if (binary) return lintWithBinary(binary, configPath, compiled, files, options.fix);
   if (options.engine === "native") {
     throw new Error("no native lintrix binary found; drop --engine native to use WASM");
   }
@@ -212,7 +217,7 @@ async function runBuiltins(
   if (!module) {
     throw new Error("no native binary on PATH and no bundled WASM build to fall back to");
   }
-  return lintWithWasm(module, compiled, files);
+  return lintWithWasm(module, compiled, files, options.fix);
 }
 
 /** `lintrix <files>`: lint, merge and print. */

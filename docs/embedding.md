@@ -202,6 +202,12 @@ reported.
 - The CLI drives the native binary the config's `binary` item names, or one
   called `lintrix` on PATH. It writes `.lintrix.native.json` beside the config
   and runs `lint --config … --format json`.
+- The package's `bin` is called `lintrix` as well, and `npm exec`, `pnpm` and
+  package scripts put `node_modules/.bin` first on PATH, so the lookup skips
+  npm's shims: on Windows only a `.exe` counts, and on every platform a
+  candidate whose real path lies under a `node_modules` directory is passed
+  over (`isPackageShim` in engine.ts). Without that the CLI spawned itself.
+  `pack --install` lints with `.bin` first on PATH to keep it that way.
 - Without one it lints through `dist/wasm/fastlint.js`, one file at a time,
   passing the same resolved config to `fl_wasm_lint_config`. Both engines
   answer in the ESLint-shaped JSON, so the reports merge the same way.
