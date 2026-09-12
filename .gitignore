@@ -16,3 +16,10 @@ vendor/emsdk/
 
 # The publishable package, built by `node make.ts pack`.
 dist/
+
+# The VS Code extension's bundles and what `node make.ts vsix` copies in.
+editors/vscode/out/
+editors/vscode/wasm/
+editors/vscode/schema/
+editors/vscode/LICENSE
+editors/vscode/*.vsix

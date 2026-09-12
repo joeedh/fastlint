@@ -9,7 +9,14 @@ interface Args {
 }
 
 const prettierBin = "node_modules/@pathtx/prettier/bin/prettier.cjs";
-const prettierGlobs = ["make.ts", "tools/**/*.ts", "*.json", ".prettierrc"];
+const prettierGlobs = [
+  "make.ts",
+  "tools/**/*.ts",
+  "editors/vscode/**/*.{ts,mts}",
+  "editors/vscode/*.json",
+  "*.json",
+  ".prettierrc",
+];
 
 export async function formatAll(check: boolean): Promise<void> {
   const tools = toolchain();

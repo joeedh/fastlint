@@ -1267,19 +1267,30 @@ What already lines up (surveyed 2026-09-12):
   have no counterpart here and are not ported.
 
 ### 9.1 Layout and packaging
-- [ ] `editors/vscode/` with its own `package.json`, `client/` and `server/`,
-  bundled by esbuild into `client/out` and `server/out`. The server imports
-  `source/fastlint/plugin/ts` by path rather than copying it, so the config
-  loader has one home; `pack` learns to emit the published `lintrix` package
-  instead once the extension depends on a released version.
-- [ ] `node make.ts vsix [--install]` builds the VSIX with `vsce` and
-  optionally installs it into the running VS Code. Phase 1 bundles
-  `dist/wasm/` only, so one VSIX serves every platform.
-- [ ] Manifest: `activationEvents: onStartupFinished`, `contributes.languages`
-  for javascript, javascriptreact, typescript, typescriptreact,
-  `jsonValidation` mapping `lintrix.config.json` to
-  schema/lintrix.config.schema.json, `capabilities.untrustedWorkspaces:
-  supported: false` (a `.ts` config is executed).
+Landed 2026-09-12; docs/vscode-extension.md describes it.
+- [x] `editors/vscode/` with its own `package.json`, `client/` and `server/`,
+  bundled by `esbuild.mts` into `out/client.js` and `out/server.js`. The
+  server imports `source/fastlint/plugin/ts` by path rather than copying it,
+  so the config loader has one home. The bundles are CommonJS, and
+  `import.meta.url` is defined to the bundle's own URL so `findWasmModule`
+  resolves `out/../wasm/`. The extension's tsconfig switches to
+  `moduleResolution: bundler`, since `nodenext` reads the directory's
+  package.json as CommonJS; `check` typechecks it when it is installed.
+  - [ ] `pack` learns to emit the published `lintrix` package instead once the
+    extension depends on a released version.
+- [x] `node make.ts vsix [--wasm] [--install]` installs the extension's
+  dependencies, stages the WASM engine, the config schema and the license,
+  bundles, packages with `vsce --no-dependencies` into build/vsix/, and
+  optionally installs into the `code` on PATH. One VSIX serves every platform.
+  Verified: the bundled server answers `initialize` over `--stdio` and logs
+  the staged engine; the VSIX installs.
+- [x] Manifest: `activationEvents: onStartupFinished`, `jsonValidation`
+  mapping `lintrix.config.json` to the staged schema,
+  `capabilities.untrustedWorkspaces: supported: false` (a `.ts` config is
+  executed), `virtualWorkspaces: supported: false`. The client's document
+  selector names javascript, javascriptreact, typescript and typescriptreact;
+  `contributes.languages` is not needed, since VS Code defines those ids.
+  - [ ] `publisher` is a placeholder until there is a Marketplace publisher.
 
 ### 9.2 Client
 - [ ] Settings under `lintrix.*`: `enable`, `run` (`onType` | `onSave`),

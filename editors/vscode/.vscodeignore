@@ -1,0 +1,8 @@
+**
+!out/client.js
+!out/server.js
+!wasm/**
+!schema/**
+!package.json
+!README.md
+!LICENSE

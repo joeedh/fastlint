@@ -1,0 +1,16 @@
+// Typechecks the extension against the root settings. The sources are ESM that
+// esbuild bundles to CommonJS, so resolution is `bundler` here rather than the
+// root's `nodenext`, which would read the missing `"type": "module"` in this
+// directory's package.json as CommonJS and reject the imports. The server pulls
+// the plugin surface in through relative imports, so it is checked as well;
+// `vscode` resolves through this directory's own node_modules.
+{
+  "extends"        : "../../tsconfig.json",
+  "compilerOptions": {
+    "module"          : "esnext",
+    "moduleResolution": "bundler",
+    "types"           : ["node", "vscode"],
+  },
+  "include"        : ["client/**/*.ts", "server/**/*.ts", "esbuild.mts"],
+  "exclude"        : ["node_modules", "out"],
+}

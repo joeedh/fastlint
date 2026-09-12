@@ -39,6 +39,9 @@ built both as an N-API addon and as WASM.
 - docs/plugins.md — the guide for writing rules in TypeScript: the rule
   shape, the node view, config and the file driver, and the performance cost
   of the host boundary.
+- docs/vscode-extension.md — the VS Code extension under editors/vscode/: the
+  client and server layout, how the bundles find the WASM engine, and the
+  `vsix` build.
 - docs/debugging.md — debugging aids per subsystem (dump commands, trace
   flags, ASAN, leak tracker).
 - vendor/litestl/CLAUDE.md — conventions for the vendored litestl library.
@@ -64,7 +67,8 @@ file in `tools/make/`). The build is CMake + Ninja with presets `debug`,
 `clean`. Parser gates: `parse-diff` (tsgo differential), `fuzz` (ASAN
 mutation fuzz), `bench` (parse MB/s). Codegen: `gen-ast`, `gen-tsgo-enums`,
 `new-rule`. Packaging and release: `pack`, `release <bump>`, `publish`
-(docs/embedding.md). MASTER.md task 1 lists the options of each.
+(docs/embedding.md), `vsix` (docs/vscode-extension.md). MASTER.md task 1
+lists the options of each.
 - The embedding builds sit outside the presets (docs/embedding.md).
   `build --napi` produces `build/napi/fastlint.node` through cmake-js;
   `build --wasm` produces `build/wasm/bin/fastlint.js` and needs the pinned

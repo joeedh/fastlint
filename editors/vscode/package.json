@@ -1,0 +1,75 @@
+{
+  "name": "lintrix-vscode",
+  "displayName": "lintrix",
+  "description": "Integrates the lintrix TypeScript/JavaScript linter into VS Code.",
+  "version": "0.1.0",
+  "publisher": "joeedh",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joeedh/fastlint.git",
+    "directory": "editors/vscode"
+  },
+  "bugs": "https://github.com/joeedh/fastlint/issues",
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "lint",
+    "linter",
+    "typescript",
+    "javascript",
+    "multi-root ready"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./out/client.js",
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "lintrix reads the workspace's config and source files from disk."
+    },
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "A lintrix.config.ts or .js in the workspace is executed to load it."
+    }
+  },
+  "contributes": {
+    "jsonValidation": [
+      {
+        "fileMatch": "lintrix.config.json",
+        "url": "./schema/lintrix.config.schema.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mts",
+    "watch": "node esbuild.mts --watch"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^10.1.1",
+    "vscode-languageserver": "^10.1.1",
+    "vscode-languageserver-textdocument": "^1.0.14",
+    "vscode-uri": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.28.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

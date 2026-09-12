@@ -41,11 +41,10 @@ async function compile(): Promise<void> {
   if (result.code !== 0) fail("the package did not compile");
 }
 
-/** Copies the built WASM module in, which is the engine the package falls back
- * to when no native binary is installed. */
-function bundleWasm(preset: "wasm" | "wasm-release"): void {
+/** Copies the built WASM module into `to`, which is the engine the package and
+ * the VS Code extension fall back to when no native binary is installed. */
+export function bundleWasm(preset: "wasm" | "wasm-release", to: string): void {
   const from = path.join(buildDir(preset), "bin");
-  const to = path.join(distDir, "wasm");
   fs.mkdirSync(to, { recursive: true });
   for (const name of ["fastlint.js", "fastlint.wasm"]) {
     const source = path.join(from, name);
@@ -90,14 +89,12 @@ async function smoke(): Promise<void> {
   }
 }
 
-/** Builds `dist/` and reports whether the release WASM engine went into it. A
- * debug engine is several times the size and slower to parse with, so a package
- * carrying one is for trying the pipeline rather than for publishing. */
-export async function buildPackage(options: {
-  wasm: boolean;
-  smoke: boolean;
-}): Promise<boolean> {
-  if (options.wasm) await buildWasm("wasm-release");
+/** The WASM preset to bundle: the release one, built first when `build` is
+ * set, or the debug one with a warning when no release build exists. */
+export async function wasmPresetToBundle(
+  build: boolean
+): Promise<"wasm" | "wasm-release"> {
+  if (build) await buildWasm("wasm-release");
   const released = fs.existsSync(
     path.join(buildDir("wasm-release"), "bin", "fastlint.js")
   );
@@ -108,10 +105,21 @@ export async function buildPackage(options: {
       )
     );
   }
+  return released ? "wasm-release" : "wasm";
+}
+
+/** Builds `dist/` and reports whether the release WASM engine went into it. A
+ * debug engine is several times the size and slower to parse with, so a package
+ * carrying one is for trying the pipeline rather than for publishing. */
+export async function buildPackage(options: {
+  wasm: boolean;
+  smoke: boolean;
+}): Promise<boolean> {
+  const preset = await wasmPresetToBundle(options.wasm);
   await compile();
-  bundleWasm(released ? "wasm-release" : "wasm");
+  bundleWasm(preset, path.join(distDir, "wasm"));
   if (options.smoke) await smoke();
-  return released;
+  return preset === "wasm-release";
 }
 
 /**
