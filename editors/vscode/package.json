@@ -44,6 +44,114 @@
     }
   },
   "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "lintrix",
+      "properties": {
+        "lintrix.enable": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Lint with lintrix."
+        },
+        "lintrix.run": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "onType",
+            "onSave"
+          ],
+          "default": "onType",
+          "description": "When a document is linted: as it is typed, or when it is saved."
+        },
+        "lintrix.validate": {
+          "scope": "resource",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "javascript",
+            "javascriptreact",
+            "typescript",
+            "typescriptreact"
+          ],
+          "description": "Language ids of the documents lintrix lints."
+        },
+        "lintrix.engine": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "auto",
+            "native",
+            "wasm"
+          ],
+          "enumDescriptions": [
+            "The native lintrix when one resolves, otherwise the bundled WASM engine.",
+            "The native lintrix only; an error when none resolves.",
+            "The bundled WASM engine only. Type-aware rules do not run."
+          ],
+          "default": "auto",
+          "description": "Which engine runs the built-in rules. The native engine is not available in this version; 'auto' and 'wasm' both lint through the bundled WASM engine."
+        },
+        "lintrix.binaryPath": {
+          "scope": "resource",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "A native lintrix executable for the native engine. Null leaves it to the config's 'binary' item, then PATH."
+        },
+        "lintrix.codeActionsOnSave.mode": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "all",
+            "problems"
+          ],
+          "enumDescriptions": [
+            "Fix every fixable problem the rules find, linting again after each pass.",
+            "Fix only the problems currently shown, in one pass."
+          ],
+          "default": "all",
+          "description": "What 'source.fixAll.lintrix' fixes when it runs on save."
+        },
+        "lintrix.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Log the messages between VS Code and the lintrix server to the output channel."
+        }
+      }
+    },
+    "commands": [
+      {
+        "title": "Fix all auto-fixable Problems",
+        "category": "lintrix",
+        "command": "lintrix.executeAutofix"
+      },
+      {
+        "title": "Restart Server",
+        "category": "lintrix",
+        "command": "lintrix.restart"
+      },
+      {
+        "title": "Revalidate all open files",
+        "category": "lintrix",
+        "command": "lintrix.revalidate"
+      },
+      {
+        "title": "Show Output Channel",
+        "category": "lintrix",
+        "command": "lintrix.showOutputChannel"
+      }
+    ],
     "jsonValidation": [
       {
         "fileMatch": "lintrix.config.json",

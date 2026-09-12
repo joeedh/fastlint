@@ -11,6 +11,6 @@
     "moduleResolution": "bundler",
     "types"           : ["node", "vscode"],
   },
-  "include"        : ["client/**/*.ts", "server/**/*.ts", "esbuild.mts"],
+  "include": ["client/**/*.ts", "server/**/*.ts", "shared/**/*.ts", "esbuild.mts"],
   "exclude"        : ["node_modules", "out"],
 }

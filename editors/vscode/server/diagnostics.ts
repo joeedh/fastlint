@@ -64,7 +64,7 @@ export function toDiagnostic(
 
 /** A diagnostic for a problem with the run itself rather than the source: a
  * config that did not load, or an engine that failed. Shown at the top of the
- * file, since a status bar item is not yet there to carry it (task 9.2). */
+ * file, so the Problems view lists it beside the status bar's report. */
 export function runDiagnostic(message: string): Diagnostic {
   return {
     range   : { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },

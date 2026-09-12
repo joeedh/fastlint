@@ -1,17 +1,53 @@
-// The extension entry point (task 9.1). It starts the language server that
-// does the linting and stops it on deactivate; the settings, commands and the
-// status bar item land in task 9.2.
+// The extension entry point (tasks 9.1, 9.2). It starts the language server
+// that does the linting, decides when the server is asked to lint (the `run`
+// and `validate` settings act here, on the pull side), registers the commands
+// and keeps the status bar item, and stops the server on deactivate.
 
 import path from "node:path";
 import * as vscode from "vscode";
 import {
+  DiagnosticPullMode,
+  ExecuteCommandRequest,
   LanguageClient,
   TransportKind,
   type LanguageClientOptions,
   type ServerOptions,
 } from "vscode-languageclient/node";
 
+import {
+  defaultSettings,
+  revalidateNotification,
+  statusNotification,
+  type Settings,
+  type StatusParams,
+} from "../shared/protocol.ts";
+import { StatusBar } from "./status.ts";
+
+const commands = {
+  executeAutofix   : "lintrix.executeAutofix",
+  restart          : "lintrix.restart",
+  revalidate       : "lintrix.revalidate",
+  showOutputChannel: "lintrix.showOutputChannel",
+} as const;
+
+/** The server command fix-all is routed to (task 9.4 provides it). */
+const applyAllFixes = "lintrix.applyAllFixes";
+
 let client: LanguageClient | undefined;
+
+function settingsFor(document: vscode.TextDocument): Settings {
+  const config = vscode.workspace.getConfiguration("lintrix", document);
+  return {
+    enable           : config.get("enable", defaultSettings.enable),
+    run              : config.get("run", defaultSettings.run),
+    validate         : config.get("validate", defaultSettings.validate),
+    engine           : config.get("engine", defaultSettings.engine),
+    binaryPath       : config.get("binaryPath", defaultSettings.binaryPath),
+    codeActionsOnSave: {
+      mode: config.get("codeActionsOnSave.mode", defaultSettings.codeActionsOnSave.mode),
+    },
+  };
+}
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const serverModule = context.asAbsolutePath(path.join("out", "server.js"));
@@ -29,8 +65,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       { scheme: "file", language: "javascriptreact" },
       { scheme: "file", language: "typescript" },
       { scheme: "file", language: "typescriptreact" },
+      { scheme: "untitled", language: "javascript" },
+      { scheme: "untitled", language: "javascriptreact" },
+      { scheme: "untitled", language: "typescript" },
+      { scheme: "untitled", language: "typescriptreact" },
     ],
-    outputChannelName: "lintrix",
+    outputChannelName    : "lintrix",
     synchronize: {
       // A config or tsconfig change can alter what any open document lints
       // with; the server drops its config cache and re-pulls on either.
@@ -41,10 +81,55 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.workspace.createFileSystemWatcher("**/tsconfig.json"),
       ],
     },
+    diagnosticPullOptions: {
+      onChange: true,
+      onSave  : true,
+      onFocus : true,
+      // True excludes the document from this pull. `run` picks which of the
+      // typing and saving pulls goes through; `validate` and `enable` gate both.
+      filter: (document, mode) => {
+        const settings = settingsFor(document);
+        if (mode === DiagnosticPullMode.onType && settings.run !== "onType") return true;
+        if (mode === DiagnosticPullMode.onSave && settings.run !== "onSave") return true;
+        return !settings.enable || !settings.validate.includes(document.languageId);
+      },
+      onTabs  : false,
+    },
   };
 
   client = new LanguageClient("lintrix", "lintrix", serverOptions, clientOptions);
-  context.subscriptions.push(client);
+  const statusBar = new StatusBar(commands.showOutputChannel);
+  context.subscriptions.push(
+    client,
+    statusBar,
+    client.onNotification(statusNotification, (params: StatusParams) => {
+      statusBar.update(params);
+    }),
+    vscode.commands.registerCommand(commands.showOutputChannel, () => {
+      client?.outputChannel.show();
+    }),
+    vscode.commands.registerCommand(commands.restart, async () => {
+      statusBar.reset();
+      await client?.restart();
+    }),
+    vscode.commands.registerCommand(commands.revalidate, () => {
+      void client?.sendNotification(revalidateNotification);
+    }),
+    vscode.commands.registerCommand(commands.executeAutofix, async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (editor === undefined || client === undefined) return;
+      const { uri, version } = editor.document;
+      try {
+        await client.sendRequest(ExecuteCommandRequest.type, {
+          command  : applyAllFixes,
+          arguments: [{ uri: uri.toString(), version }],
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        void vscode.window.showErrorMessage(`lintrix: fix all failed: ${message}`);
+      }
+    })
+  );
   await client.start();
 }
 

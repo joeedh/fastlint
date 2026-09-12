@@ -60,9 +60,42 @@ The one command that builds the extension. In order:
 The manifest's `publisher` is a placeholder until there is a Marketplace
 publisher to release under; the VSIX installs locally regardless.
 
+## The client
+
+`client/extension.ts` starts the server and owns everything the user touches.
+
+- Settings are `lintrix.*`, declared in package.json with `scope: resource`
+  so a folder can override them: `enable`, `run` (`onType` or `onSave`),
+  `validate` (language ids), `engine` (`auto`, `native`, `wasm`),
+  `binaryPath`, `codeActionsOnSave.mode` (`all` or `problems`) and
+  `trace.server`. `shared/protocol.ts` names their shape and defaults once for
+  both sides. `engine: native` and `binaryPath` are declared ahead of the serve
+  mode (task 9.5); until then `native` reports an error and `auto` lints
+  through WASM.
+- `run`, `validate` and `enable` act on the client, in the diagnostic pull
+  filter: a pull the settings exclude is never sent, so the server has one
+  path and no notion of modes. `enable` is also read on the server, which
+  answers an empty report for a disabled document that the client pulls
+  anyway (a focus pull, say).
+- The server reads the settings through `workspace/configuration` per document
+  and caches them (`server/settings.ts`); the client's
+  `workspace/didChangeConfiguration` drops that cache and re-pulls.
+- Commands, all under the `lintrix` category: `lintrix.executeAutofix` (runs
+  the server's `lintrix.applyAllFixes` on the active document, which task 9.4
+  provides), `lintrix.restart`, `lintrix.revalidate` (the server drops every
+  cache and re-pulls) and `lintrix.showOutputChannel`.
+- The status bar item (`client/status.ts`) follows the active editor. The
+  server sends `lintrix/status` after each lint, naming the document, the
+  engine and the state, and once for itself when the engine loads. The item
+  shows a document's own state when the server has reported on it, and the
+  server-wide state for every editor while that is failing; it is hidden
+  otherwise. Clicking it opens the output channel. A run problem (an engine or
+  config that did not load) is therefore both the status and one diagnostic at
+  the top of the file, so it shows in the Problems view as well.
+
 ## The server
 
-`server/server.ts` wires the protocol; the work is in three modules beside it.
+`server/server.ts` wires the protocol; the work is in the modules beside it.
 
 - Diagnostics are pulled, not pushed: the server advertises
   `diagnosticProvider` and answers `textDocument/diagnostic` with a full report
@@ -79,8 +112,9 @@ publisher to release under; the VSIX installs locally regardless.
   once per config path. Module configs load with `fresh: true`
   (plugin/ts/config.ts), because the server outlives edits to them and Node's
   import cache would otherwise serve the first version forever. A config that
-  fails to load is remembered as its error, and every document under it shows
-  that error as one diagnostic at the top of the file.
+  fails to load is remembered as its error, and every document under it
+  reports that error as its status and as one diagnostic at the top of the
+  file.
 - `diagnostics.ts` maps a message to an LSP `Diagnostic`. The JSON already
   counts lines from 1 and columns in UTF-16 units, so the range is an offset of
   one, clamped to the document. `ruleId` becomes `code`, the rule's `url`

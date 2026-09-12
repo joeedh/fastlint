@@ -1293,19 +1293,27 @@ Landed 2026-09-12; docs/vscode-extension.md describes it.
   - [ ] `publisher` is a placeholder until there is a Marketplace publisher.
 
 ### 9.2 Client
-- [ ] Settings under `lintrix.*`: `enable`, `run` (`onType` | `onSave`),
+Landed 2026-09-12; docs/vscode-extension.md "The client" describes it.
+- [x] Settings under `lintrix.*`: `enable`, `run` (`onType` | `onSave`),
   `validate` (language ids), `binaryPath` (a native `lintrix` for 9.5;
   otherwise the config's `binary` item, then PATH), `engine` (`auto` |
   `native` | `wasm`), `codeActionsOnSave.mode` (`all` | `problems`),
-  `trace.server`. Each is `scope: resource`.
-- [ ] Commands: `lintrix.executeAutofix`, `lintrix.restart`,
-  `lintrix.revalidate`, `lintrix.showOutputChannel`.
-- [ ] Start the server through `vscode-languageclient` on stdio, with the file
-  watchers for `lintrix.config.*` and `tsconfig.json` registered by the client,
-  and `lintrix.*` settings synchronized to it.
-- [ ] Status bar item showing the engine in use and an error state when the
-  server failed to start or the config did not load; the output channel carries
-  the reason.
+  `trace.server`. Each is `scope: resource`; `shared/protocol.ts` holds the
+  shape and defaults for both sides. `run`, `validate` and `enable` act in the
+  client's diagnostic pull filter; the server reads the rest through
+  `workspace/configuration` (`server/settings.ts`) and drops the cache on
+  `didChangeConfiguration`. `engine: native` reports an error until 9.5.
+- [x] Commands: `lintrix.executeAutofix` (routed to the server's
+  `lintrix.applyAllFixes`, which 9.4 provides), `lintrix.restart`,
+  `lintrix.revalidate` (a `lintrix/revalidate` notification; the server drops
+  every cache and re-pulls), `lintrix.showOutputChannel`.
+- [x] The server runs over Node IPC (the extension host's own transport for a
+  Node server), with the file watchers for `lintrix.config.*` and
+  `tsconfig.json` registered by the client.
+- [x] Status bar item (`client/status.ts`) fed by `lintrix/status`
+  notifications: the engine in use per document, an error state when the
+  engine or the config did not load, hidden for documents the server has not
+  reported on. Clicking it opens the output channel, which carries the reason.
 
 ### 9.3 Server: diagnostics
 Landed 2026-09-12; docs/vscode-extension.md "The server" describes it.

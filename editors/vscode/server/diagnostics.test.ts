@@ -38,11 +38,11 @@ test("a warning without an end collapses to its start", () => {
   const d = toDiagnostic(
     doc("x;\n"),
     message({
-      severity: 1,
-      endLine: undefined,
+      severity : 1,
+      endLine  : undefined,
       endColumn: undefined,
-      line: 1,
-      column: 2,
+      line     : 1,
+      column   : 2,
     }),
     0
   );
