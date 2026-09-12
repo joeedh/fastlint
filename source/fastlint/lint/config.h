@@ -75,6 +75,10 @@ public:
   /** The rules `filename` is linted with, after every matching override. */
   void resolve(string_view filename, ResolvedConfig &out) const;
 
+  /** True when `path` (a file or a directory) matches an `ignores` glob. A
+   * directory matching `dir/**` is pruned before descending into it. */
+  bool isIgnored(string_view path) const;
+
   /** Every plugin rule the config turns on, once each, in the order the layers
    * name them. Empty when the config declares no `plugins`. */
   void pluginRuleNames(Vector<string> &out) const;

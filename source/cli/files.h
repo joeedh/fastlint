@@ -19,8 +19,17 @@ syntax::Parser::Options optionsFor(const std::filesystem::path &path);
 
 bool isSourceFile(const std::filesystem::path &path);
 
-/** Expands directories recursively; files are taken as given. */
-void collectFiles(const char *arg, litestl::util::Vector<std::filesystem::path> &files);
+/** Returns true when `path`, found while walking a directory, should be
+ * pruned: a matching file is dropped, a matching directory is not descended
+ * into. */
+using PathFilter = bool (*)(const std::filesystem::path &path, void *context);
+
+/** Expands directories recursively; files are taken as given. Entries for
+ * which `skip` (when given) returns true are pruned before descending. */
+void collectFiles(const char *arg,
+                   litestl::util::Vector<std::filesystem::path> &files,
+                   PathFilter skip = nullptr,
+                   void *context = nullptr);
 
 int fuzzCommand(int argc, char **argv);
 int benchCommand(int argc, char **argv);

@@ -272,9 +272,17 @@ uint64_t environmentHash(const string &configPath,
 
 } // namespace
 
+/** True when `path` matches one of `config`'s `ignores` globs; used to prune
+ * ignored directories while `collectFiles` walks the tree. */
+bool skipIgnored(const std::filesystem::path &path, void *context)
+{
+  const auto *config = static_cast<const lint::Config *>(context);
+  return config->isIgnored(std::string_view(path.generic_string()));
+}
+
 int lintCommand(int argc, char **argv)
 {
-  Vector<std::filesystem::path> files;
+  Vector<std::string> pathArgs;
   const char *configPath = nullptr;
   bool noConfig = false;
   bool fix = false;
@@ -334,10 +342,10 @@ int lintCommand(int argc, char **argv)
       usage();
       return 2;
     } else {
-      collectFiles(arg, files);
+      pathArgs.append(std::string(arg));
     }
   }
-  if (files.isEmpty()) {
+  if (pathArgs.isEmpty()) {
     usage();
     return 2;
   }
@@ -379,6 +387,17 @@ int lintCommand(int argc, char **argv)
       return 2;
     }
     config.setRule(rule, severity);
+  }
+
+  // Walked after the config loads so an ignored directory is pruned instead
+  // of expanded and filtered file by file.
+  Vector<std::filesystem::path> files;
+  for (const std::string &pathArg : pathArgs) {
+    collectFiles(pathArg.c_str(), files, skipIgnored, &config);
+  }
+  if (files.isEmpty()) {
+    usage();
+    return 2;
   }
 
   // A plugin rule needs a JavaScript host to import and run it. Passing over one

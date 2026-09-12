@@ -411,6 +411,9 @@ void Config::relativePath(string_view filename, string &out) const
       c = '/';
     }
   }
+  if (path.size() >= 2 && path[0] == '.' && path[1] == '/') {
+    path = path.substr(2);
+  }
   std::string base(m_baseDir.c_str(), m_baseDir.size());
   for (char &c : base) {
     if (c == '\\') {
@@ -429,6 +432,19 @@ void Config::relativePath(string_view filename, string &out) const
   append(out, path);
 }
 
+bool Config::isIgnored(string_view filename) const
+{
+  string relative;
+  relativePath(filename, relative);
+  string_view path = view(relative);
+  for (const string &pattern : m_ignores) {
+    if (globMatch(view(pattern), path, kPathCaseInsensitive)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void Config::resolve(string_view filename, ResolvedConfig &out) const
 {
   out.rules.clear();
@@ -436,7 +452,7 @@ void Config::resolve(string_view filename, ResolvedConfig &out) const
   out.pluginRules.clear();
   out.unusedDirectives = m_unusedDirectives;
   out.eslintDirectives = m_eslintDirectives;
-  out.ignored = false;
+  out.ignored = isIgnored(filename);
   for (const string &name : m_unknownRules) {
     out.unknownRules.append(name);
   }
@@ -444,11 +460,6 @@ void Config::resolve(string_view filename, ResolvedConfig &out) const
   string relative;
   relativePath(filename, relative);
   string_view path = view(relative);
-  for (const string &pattern : m_ignores) {
-    if (globMatch(view(pattern), path, kPathCaseInsensitive)) {
-      out.ignored = true;
-    }
-  }
 
   auto apply = [&](const Entry &entry) {
     for (RuleSetting &setting : out.rules) {

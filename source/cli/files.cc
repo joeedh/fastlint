@@ -110,7 +110,10 @@ bool isSourceFile(const std::filesystem::path &path)
   return ext == ".ts" || ext == ".tsx" || ext == ".mts" || ext == ".cts";
 }
 
-void collectFiles(const char *arg, Vector<std::filesystem::path> &files)
+void collectFiles(const char *arg,
+                   Vector<std::filesystem::path> &files,
+                   PathFilter skip,
+                   void *context)
 {
   std::error_code error;
   std::filesystem::path path(arg);
@@ -123,6 +126,12 @@ void collectFiles(const char *arg, Vector<std::filesystem::path> &files)
   for (; it != std::filesystem::recursive_directory_iterator(); it.increment(error)) {
     if (error) {
       break;
+    }
+    if (skip && skip(it->path(), context)) {
+      if (it->is_directory(error)) {
+        it.disable_recursion_pending();
+      }
+      continue;
     }
     if (it->is_regular_file(error) && isSourceFile(it->path())) {
       files.append(it->path());
