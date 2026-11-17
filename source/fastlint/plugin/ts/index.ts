@@ -44,7 +44,7 @@ export {
 export { validateConfigFile } from "./validate.ts";
 
 export type { FileMessages, LintFilesOptions } from "./driver.ts";
-export { lintFiles, lintOne } from "./driver.ts";
+export { lintFiles, lintOne, loadAddon } from "./driver.ts";
 
 export { NodeKind, kindNames } from "../generated/ts/views.ts";
 export type { Node } from "../generated/ts/views.ts";

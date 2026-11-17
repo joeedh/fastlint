@@ -132,9 +132,9 @@ reference for which fields a kind has.
   enums from the generated module. `no-var` reads `VariableKind.Var`, `eqeqeq`
   reads `BinaryOperator.Equal` and `BinaryOperator.NotEqual`.
 - The `lintrix` package surface re-exports `NodeKind`, `kindNames`, `Node`,
-  `Rule`, `RuleContext`, `defineConfig`, the config loader and the driver. A rule that needs a
-  field enum an external package does not yet re-export imports it from the
-  generated views module directly.
+  `Rule`, `RuleContext`, `defineConfig`, the config loader, the driver and
+  `loadAddon`. A rule that needs a field enum an external package does not yet
+  re-export imports it from the generated views module directly.
 
 ## Packaging rules as a plugin
 
@@ -222,6 +222,15 @@ Three entry points run a config's rules, all from the `lintrix` surface.
   returns the last, so a slow file never idles the others. One file, or
   `concurrency: 1`, stays in the calling thread. The worker pool is N-API only;
   a browser runs one file at a time on its single thread through `lint`.
+
+`loadAddon(addonPath?)` resolves to the addon that `lint` and `lintOne` take. It
+loads a built `.node` addon or a WASM module from `addonPath`, and the WASM build
+bundled with the package when no path is given. A rule that has to parse a file
+other than the one it is visiting runs `lint` on that file with a helper rule
+that collects what it needs. The rule context does not expose the addon the
+runtime is using, and each `loadAddon` call loads a separate instance with its
+own heap. A plugin therefore loads one with a top-level `await loadAddon()` in
+its module, since `create` and the visitors are synchronous and cannot await it.
 
 Each problem carries the `ruleId` the config configured (`acme/no-debugger`) and
 its `severity`, 2 for an error and 1 for a warning, as ESLint's JSON reports it.
