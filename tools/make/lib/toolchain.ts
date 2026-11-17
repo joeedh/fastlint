@@ -208,10 +208,15 @@ export interface VcvarsCache {
  */
 export function captureVcvars(arch = "x64", refresh = false): VcvarsCache {
   if (!isWindows) fail("vcvarsall is Windows-only");
-  const tools = toolchain();
   const file = vcvarsFile(arch);
   const cached = refresh ? undefined : readJson<VcvarsCache>(file);
-  if (cached && cached.vsVersion === tools.vsVersion) return cached;
+  // A Visual Studio update can remove the MSVC toolset without moving cmake or
+  // vcvarsall, so the toolchain cache keeps the old `vsVersion` too
+  const toolset = cached?.changed["VCTOOLSINSTALLDIR"];
+  const gone = cached !== undefined && (!toolset || !fs.existsSync(toolset));
+  if (gone) warn("the cached MSVC toolset is gone, re-probing");
+  const tools = toolchain(gone);
+  if (cached && !gone && cached.vsVersion === tools.vsVersion) return cached;
 
   const comspec = process.env["COMSPEC"] ?? "cmd.exe";
   const before = capture(comspec, ["/d", "/c", "set"]);
