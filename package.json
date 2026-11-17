@@ -1,6 +1,6 @@
 {
   "name": "lintrix",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "type": "module",
   "description": "A fast TypeScript/JavaScript linter written in C++",
   "license": "MIT",
